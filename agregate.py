@@ -110,6 +110,7 @@ def main(sim_dir,PLOT_NAME,DIRECTORY):
     aplot =join(sim_dir,PLOT_NAME +".aplot")
 
     print DIRECTORY
+    pdb.set_trace()
     dirs = [d for d in glob.glob(join(sim_dir,DIRECTORY)) if os.path.isdir(d)]
     print dirs
     for dirc in dirs:
@@ -143,5 +144,5 @@ def main(sim_dir,PLOT_NAME,DIRECTORY):
 
 if __name__=="__main__":
     arguments = docopt(__doc__)
-    main(sim_dir=os.getcwd(),PLOT_NAME=arguments['PLOT_NAME'],DIRECTORY=arguments['DIRECTORY'])
+    main(sim_dir=os.getcwd(),PLOT_NAME=arguments['PLOT_NAME'],DIRECTORY=arguments['DIRECTORY'][0])
 
