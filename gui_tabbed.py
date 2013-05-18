@@ -12,11 +12,14 @@ import re
 import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
+from matplotlib import cm
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 import numpy as np
 import pylab
 import mpl_toolkits.mplot3d.axes3d as p3
+from simp_zoom import zoom_factory
+from itertools import cycle
 
 regexf = re.compile(r'(L\d{1,2}).aplot$')
 SIM_DIR = ""
@@ -29,35 +32,55 @@ def debug():
         pdb.set_trace()
 
 class ScatterPanel(wx.Panel):
-
     xlabel = 'Mx'    
     ylabel = 'My'
     zlabel = 'Mz'
     all_data = dict()
+    
     def __init__(self,parent):
+        
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
         self.parent = parent
+        self.tooltip = wx.ToolTip("Press 'd' for next T, scroll to zoom")
+        self.tooltip.Enable(False)
         self.load_data()
         self.fig = Figure()
         self.ax = p3.Axes3D(self.fig)
         self.canvas = FigCanvas(self,-1,self.fig)
-        self.ax.mouse_init()
+        self.canvas.SetToolTip(self.tooltip)
+        self.canvas.mpl_connect('key_press_event',self.on_key_press)
+        # self.canvas.mpl_connect('button_press_event',self.on_button_press)
+        self.canvas.mpl_connect('figure_enter_event',self.on_figure_enter)
+        self.zoomf = zoom_factory(self.ax,self.canvas)
 
-       
+        self.ax.mouse_init()
         self.init_gui()
+        
         self.ts = self.all_data.keys()
         key = lambda x: int(x[1:])
-        sorted(self.ts,key = lambda x: int(x[1:]))
-        self.ts.reverse()
+        self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
+        self.temprs = cycle(self.ts)
+        self.setup_plot()
+        self.canvas.mpl_connect('draw_event',self.forceUpdate)
+        
         print DEBUG,"self.ts reversed",self.ts
 
+    def on_figure_enter(self,event):
+        self.tooltip.Enable(True)
+        print "entered figure"
+        
+    def on_button_press(self,event):
+        self.step(event)
+    def on_key_press(self,event):
+        if event.key =='d':
+            self.step(event)
 
     def init_gui(self):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
        
-        self.draw_button = wx.Button(self, -1, 'Draw plot')
-        self.Bind(wx.EVT_BUTTON, self.animate, self.draw_button)
+        self.draw_button = wx.Button(self, -1, 'Next T')
+        self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
@@ -92,19 +115,36 @@ class ScatterPanel(wx.Panel):
         
         "Initial drawing of scatter plot"
         from matplotlib import cm
-        t=self.ts[0]
-        self.scat = self.ax.scatter(self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z'],s=1,cmap =cm.jet )       
 
-    def animate(self,event):
-        self.setup_plot()
+        self.step("dummy")
+        # t=self.temprs.next()
+        # x,y,z =  self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
+        # # magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
+  
+        # self.scat = self.ax.scatter(x,y,z,s=6 )       
+  
+    def step(self,event):
         import time
+        from matplotlib import cm
+        
+        t=self.temprs.next()
+        x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
+        magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
+        print magt
+        print np.mean(magt)
+        colors = np.where(magt>np.mean(magt),'r','b')
+        # self.scat._offsets3d = (x,y,z)
+        self.ax.cla()
+             
+        # self.ax.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
+        self.scat=self.ax.scatter(x,y,z,s=10,c=colors)
+        self.ax.set_title(t)
+        self.canvas.draw()
             
-        for t in self.ts:
-            x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
-            self.scat._offsets3d = (x,y,z)
-            self.ax.set_title(t)
-            self.canvas.draw()
-            time.sleep(1)
+    def forceUpdate(self,event):
+       
+        self.scat.changed()
+
 
 
 
@@ -488,6 +528,7 @@ def check_modified():
     PUTANJA_DO_SIM_DATOTEKE:NJEN_MD5 i gleda da li ijedan zapis
     odgovara paru na kom trenutno radimo. Ako postoji putanja
     a md5 je razlicit - brise se zapis"""
+    return False
     hashmd5 = getmd5hash()
     with open(join(LATTICE_MC,"hash.txt"),mode = "r") as file:
         for line in file.readlines():
