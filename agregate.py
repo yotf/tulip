@@ -110,7 +110,6 @@ def main(sim_dir,PLOT_NAME,DIRECTORY):
     aplot =join(sim_dir,PLOT_NAME +".aplot")
 
     print DIRECTORY
-    pdb.set_trace()
     dirs = [d for d in glob.glob(join(sim_dir,DIRECTORY)) if os.path.isdir(d)]
     print dirs
     for dirc in dirs:
