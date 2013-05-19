@@ -19,11 +19,12 @@ import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
 from matplotlib import cm
+
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 import numpy as np
 import pylab
-import mpl_toolkits.mplot3d.axes3d as p3
+from mpl_toolkits.mplot3d import Axes3D
 from simp_zoom import zoom_factory
 from itertools import cycle
 
@@ -50,16 +51,24 @@ class ScatterPanel(wx.Panel):
         self.tooltip = wx.ToolTip("Press 'd' for next T, scroll to zoom")
         self.tooltip.Enable(False)
         self.load_data()
-        self.fig = Figure()
-        self.ax = p3.Axes3D(self.fig)
+        self.dpi = 100
+        fig_width = self.parent.GetParent().width / self.dpi
+        fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
+        #self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
+
+        self.fig = Figure(figsize=(20,7))
+        # self.ax = Axes3D(self.fig)
+        self.ax_3d = self.fig.add_subplot(121,projection="3d")
+        print type(self.ax_3d)
+        self.ax_hist = self.fig.add_subplot(122)
         self.canvas = FigCanvas(self,-1,self.fig)
         self.canvas.SetToolTip(self.tooltip)
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
         # self.canvas.mpl_connect('button_press_event',self.on_button_press)
         self.canvas.mpl_connect('figure_enter_event',self.on_figure_enter)
-        self.zoomf = zoom_factory(self.ax,self.canvas)
+        self.zoomf = zoom_factory(self.ax_3d,self.canvas)
 
-        self.ax.mouse_init()
+        self.ax_3d.mouse_init()
         self.init_gui()
         
         self.ts = self.all_data.keys()
@@ -83,7 +92,8 @@ class ScatterPanel(wx.Panel):
 
     def init_gui(self):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
-        self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
+        # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
+        self.vbox.Add(self.canvas)
        
         self.draw_button = wx.Button(self, -1, 'Next T')
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
@@ -140,11 +150,19 @@ class ScatterPanel(wx.Panel):
         print np.mean(magt)
         colors = np.where(magt>np.mean(magt),'r','b')
         # self.scat._offsets3d = (x,y,z)
-        self.ax.cla()
+        self.ax_3d.cla()
+        self.ax_hist.cla()
+
              
-        # self.ax.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
-        self.scat=self.ax.scatter(x,y,z,s=10,c=colors)
-        self.ax.set_title(t)
+        self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
+        # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
+        self.ax_3d.set_title(t)
+        self.ax_hist.set_ylim(0,100)
+        self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
+        self.ax_hist.plot(kind="kde",style="k--")
+       
+       
+        
         self.canvas.draw()
             
     def forceUpdate(self,event):
@@ -187,13 +205,13 @@ class ThermPanel(wx.Panel):
                 choices=self.get_files(), value='<Choose plot file>')
 
         self.cmb_mats = wx.ComboBox(self,size=(300,-1),choices = self.get_files(ext="*.mat"),
-                                    value = '<Choose mat file>')
+                                    value = '<Choose best mat>')
         
                                     
 
         self.Bind(wx.EVT_COMBOBOX, self.on_select, self.cmb_plots)
-        self.Bind(wx.EVT_COMBOBOX, self.on_select_L, self.cmb_L)
-        self.Bind(wx.EVT_COMBOBOX, self.on_select_T, self.cmb_T)
+        self.Bind(wx.EVT_COMBOBOX, self.update_combos, self.cmb_L)
+        self.Bind(wx.EVT_COMBOBOX, self.update_combos, self.cmb_T)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_pfiles,
                   self.cmb_pfiles)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -249,16 +267,17 @@ class ThermPanel(wx.Panel):
         statmat.main(mcs_dir,mcs)
         compose.main(mcs_dir,mcs)
         self.cmb_pfiles.SetItems(self.get_files())
-        
 
-    def on_select_L(self, event):
+
+    def update_combos(self,event):
+        """Ova metoda azurira kombinacijske kutije koje zavise od stanja
+        drugih elemenata/kontrola """
         self.cmb_T.SetItems(LT_combo[self.cmb_L.GetValue()])
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
+        self.cmb_mats.SetItems(self.get_files("*.mat"));
+        self.cmb_mats.SetValue('<Choose best .mat  file>')
 
-    def on_select_T(self, event):
-        self.cmb_pfiles.SetItems(self.get_files())
-        self.cmb_pfiles.SetValue('<Choose plot file>')
 
     def get_files(self,ext="*.plot"):
       
@@ -294,7 +313,6 @@ class ThermPanel(wx.Panel):
         self.ax_cv.set_title('Coefficient of Variation')
 
         self.ax_mag.set_xlabel(self.xlabel)
-
         self.ax_cv.set_xlabel(self.xlabel)
 
         pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
@@ -462,6 +480,7 @@ class AggPanel(wx.Panel):
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
         self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
         self.ax_agg = self.fig.add_subplot(111)
+        
         self.ax_agg.set_title('Aggregate thingie')
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
