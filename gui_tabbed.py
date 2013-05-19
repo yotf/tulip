@@ -9,7 +9,13 @@ from os.path import join
 import glob
 import re
 
+import unify
+import agregate
+import compose
+import statmat
 import matplotlib
+
+
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
 from matplotlib import cm
@@ -152,13 +158,19 @@ class ThermPanel(wx.Panel):
 
     xlabel = 'Thermalisation Cycles'
 
+    best_mat_dict = dict()
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.init_plot()
-        self.save_button = wx.Button(self, -1, 'Save plot')
+        # self.save_button = wx.Button(self, -1, 'Save plot')
 
-        self.Bind(wx.EVT_BUTTON, self.on_save_button, self.save_button)
+        self.mc_txt = wx.TextCtrl(self, size = (80,-1))
+        self.add_button = wx.Button(self,-1,'Add')
+        self.bestmat_button=wx.Button(self,-1,"'s the best mat ma..")
+        self.Bind(wx.EVT_BUTTON, self.on_bestmat_button,self.bestmat_button)
+        self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
+#        self.Bind(wx.EVT_BUTTON, self.on_save_button, self.save_button)
         plot_choices = ['M1', 'M2', 'M4']
         self.cmb_plots = wx.ComboBox(self, size=(150, -1),
                 choices=plot_choices, style=wx.CB_READONLY,
@@ -174,14 +186,19 @@ class ThermPanel(wx.Panel):
         self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
                 choices=self.get_files(), value='<Choose plot file>')
 
+        self.cmb_mats = wx.ComboBox(self,size=(300,-1),choices = self.get_files(ext="*.mat"),
+                                    value = '<Choose mat file>')
+        
+                                    
+
         self.Bind(wx.EVT_COMBOBOX, self.on_select, self.cmb_plots)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_L, self.cmb_L)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_T, self.cmb_T)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_pfiles,
                   self.cmb_pfiles)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
+#        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
+                     #  | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
 
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
@@ -192,6 +209,17 @@ class ThermPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_plots, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.cmb_mats, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        
+        
+        
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
         self.toolhbox.Add(self.toolbar)
         
@@ -203,6 +231,26 @@ class ThermPanel(wx.Panel):
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
 
+    def on_bestmat_button(self,event):
+        LT = self.cmb_L.GetValue()+self.cmb_T.GetValue()
+        self.best_mat_dict[LT]=self.cmb_mats.GetValue()
+        print "BEST MAT DICT:",self.best_mat_dict
+        self.parent.flash_status_message("Best .mat for %s selected" % LT)
+    def on_add_button(self,event):
+        
+        mcs =int( self.mc_txt.GetValue())
+        # gledamo sta je korisnik selektovao sto se tice L i T
+        # i onda u tom folderu pravimo nove .mat fajlove
+        # i radimo compose nad novim .mat fajlovima
+        # ovde bi bilo dobro da napravim da se gleda .all fajl
+        # sa najvise MC-ova i da se ogranici upis na to
+        mcs_dir =join(SIM_DIR,self.cmb_L.GetValue()+self.cmb_T.GetValue())
+        print "Making new plot files in dir %s for %d MCs" % (mcs_dir,mcs)
+        statmat.main(mcs_dir,mcs)
+        compose.main(mcs_dir,mcs)
+        self.cmb_pfiles.SetItems(self.get_files())
+        
+
     def on_select_L(self, event):
         self.cmb_T.SetItems(LT_combo[self.cmb_L.GetValue()])
         self.cmb_pfiles.SetItems(self.get_files())
@@ -212,13 +260,13 @@ class ThermPanel(wx.Panel):
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
 
-    def get_files(self):
-        from os.path import join
+    def get_files(self,ext="*.plot"):
+      
         """Vraca sve plot fajlove u zadatom folderu (L i T))"""
         folder_name = join(SIM_DIR,self.cmb_L.GetValue() +  self.cmb_T.GetValue())+os.path.sep
         print "folder name",folder_name
-        print DEBUG,"glob for get_files",folder_name+'*.plot'
-        files = glob.glob(folder_name + '*.plot')
+        print DEBUG,"glob for get_files",folder_name+ext
+        files = glob.glob(folder_name + ext)
         print DEBUG,"files",files
         return files
 
@@ -226,7 +274,10 @@ class ThermPanel(wx.Panel):
         """Kada korisnik izabere .plot fajl, iscrtava se """
         path = self.cmb_pfiles.GetValue()
         self.data = pd.read_csv(path, index_col=0)
-        self.draw_plot()
+        #self.draw_plot()
+        # gledamo da li je selektovano M M^2 ili M^4
+        # tako ili mozemo vratiti vrednost uvek na M
+        self.on_select("dummy")
 
     def init_plot(self):
         self.dpi = 100
@@ -285,22 +336,22 @@ class ThermPanel(wx.Panel):
         self.ax_mag.set_ylabel(r'$\langle{%s}\rangle$' % item)
         self.canvas.draw()
 
-    def on_save_button(self, event):
-        file_choices = ' EPS (*.eps)|*.eps| PNG (*.png)|*.png'
+    # def on_save_button(self, event):
+    #     file_choices = ' EPS (*.eps)|*.eps| PNG (*.png)|*.png'
 
-        dlg = wx.FileDialog(
-            self,
-            message='Save plot as...',
-            defaultDir=os.getcwd(),
-            defaultFile='plot.eps',
-            wildcard=file_choices,
-            style=wx.SAVE,
-            )
+    #     dlg = wx.FileDialog(
+    #         self,
+    #         message='Save plot as...',
+    #         defaultDir=os.getcwd(),
+    #         defaultFile='plot.eps',
+    #         wildcard=file_choices,
+    #         style=wx.SAVE,
+    #         )
 
-        if dlg.ShowModal() == wx.ID_OK:
-            path = dlg.GetPath()
-            self.canvas.print_figure(path, dpi=self.dpi)
-            self.flash_status_message('Saved to %s' % path)
+    #     if dlg.ShowModal() == wx.ID_OK:
+    #         path = dlg.GetPath()
+    #         self.canvas.print_figure(path, dpi=self.dpi)
+    #         self.flash_status_message('Saved to %s' % path)
 
 
 class AggPanel(wx.Panel):
@@ -313,30 +364,37 @@ class AggPanel(wx.Panel):
         self.init_gui()        
         
     def init_gui(self):
+        self.agregate_btn = wx.Button(self,-1,"Aggregate!")
+        self.Bind(wx.EVT_BUTTON,self.on_agg_button,self.agregate_btn)
         self.cmb_L = wx.ComboBox(
             self,
             -1,
-            value=L_choices[0],
+            value="<Aggregate first!>",
+         #   value=L_choices[0],
             size=(150, -1),
-            choices=L_choices,
+#            choices=L_choices,
             style=wx.CB_READONLY,
             )
         self.cmb_mag = wx.ComboBox(
             self,
             -1,
-            value=mag_choices[0],
+ #           value=mag_choices[0],
+            value="<Aggregate First!>",
             size=(150, -1),
-            choices=mag_choices,
+#            choices=mag_choices,
             style=wx.CB_READONLY,
             )
         self.draw_button = wx.Button(self, -1, 'Draw plot')
+        self.draw_button.Enable(False)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
         self.clear_button = wx.Button(self, -1, 'Clear plot')
+        self.clear_button.Enable(False)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
                   self.clear_button)
         
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        
+        self.hbox1.Add(self.agregate_btn, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
@@ -358,23 +416,26 @@ class AggPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
+
+    def on_agg_button(self,event):
+        pass
         
-    def on_save_button(self, event):
-        file_choices = ' EPS (*.eps)|*.eps| PNG (*.png)|*.png'
+    # def on_save_button(self, event):
+    #     file_choices = ' EPS (*.eps)|*.eps| PNG (*.png)|*.png'
         
-        dlg = wx.FileDialog(
-            self,
-            message='Save plot as...',
-            defaultDir=os.getcwd(),
-            defaultFile='plot.eps',
-            wildcard=file_choices,
-            style=wx.SAVE,
-            )
+    #     dlg = wx.FileDialog(
+    #         self,
+    #         message='Save plot as...',
+    #         defaultDir=os.getcwd(),
+    #         defaultFile='plot.eps',
+    #         wildcard=file_choices,
+    #         style=wx.SAVE,
+    #         )
         
-        if dlg.ShowModal() == wx.ID_OK:
-            path = dlg.GetPath()
-            self.canvas.print_figure(path, dpi=self.dpi)
-            self.flash_status_message('Saved to %s' % path)
+    #     if dlg.ShowModal() == wx.ID_OK:
+    #         path = dlg.GetPath()
+    #         self.canvas.print_figure(path, dpi=self.dpi)
+    #         self.flash_status_message('Saved to %s' % path)
         
     def on_draw_button(self, event):
         L_select = self.cmb_L.GetValue()
@@ -421,6 +482,9 @@ class TabContainer(wx.Notebook):
         self.AddPage(ThermPanel(self), 'Therm')
         self.AddPage(AggPanel(self), 'Aggregate')
         self.AddPage(ScatterPanel(self),"Scatter")
+
+    def flash_status_message(self,message):
+        self.GetParent().flash_status_message(message,3000)
 
 
 class GraphFrame(wx.Frame):
@@ -539,10 +603,6 @@ def check_modified():
     return True
 
 def handle_sfiles ():
-    import unify
-    import agregate
-    import compose
-    import statmat
     rxdir = re.compile(r'^(L\d*)T(\d*)$')
 
     """Obradjuju se sve datoteke simulacije, ako je potrebno"""
