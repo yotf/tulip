@@ -26,19 +26,6 @@ from os.path import join
 
 # nije sigurno potrebno ovoliko svega
 
-schema = Schema({'N': All(Coerce(int), Range(min=1))}, extra=True)
-
-args = docopt(__doc__, version='0')
-
-try:
-    args = schema(args)
-except Invalid, ex:
-    print '\n'.join([e.msg for e in ex.errors])
-    sys.exit()
-except TypeError, terr:
-    n = 0
-else:
-    n = args['N']
 
 
 def create_mat(data, tmc, base,ltdir):
@@ -155,7 +142,6 @@ def create_stat(data, tmc, base,ltdir):
     out = pd.Series([
         tmc,
         M1avg,
-        0,
         M2avg,
         stdMeanM2,
         M4avg,
@@ -164,7 +150,6 @@ def create_stat(data, tmc, base,ltdir):
         index=[
         'THERM',
         'M1avg',
-        'nula',
         'M2avg',
         'stdMeanM2',
         'M4avg',
@@ -191,29 +176,40 @@ MC)(\d+)    #MC sa bilo kojim int broje posle
 """
                , re.VERBOSE)
 
-def main(ltdir):
+def main(ltdir,n=None):
     unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
 
     for u in unified:
         print 'Unified:  ', u
         base_name, therm_count, mc_count = glregex.match(u).groups()
-
-        # ako je n >= od mc_count onda vracamo isto ko da nije dao n
-        # ako je manji od saljemo n prvih linija
-        # ovo verovatno nije zeljeno ponasanje!! 
-
-        #promeni ovo, prolazi bez upozorenja. uradi ono sto moze, sto ne moze tiho preskoci
-        mc_count = n < int(mc_count) and n or int(mc_count)
-        agregate = base_name + str(mc_count)
-
-        print "Aggregate: ", agregate
-        # hm, verovatno postoji bolji nacin odbacivanja prve kolone
-        #proveri da li moze beline da gleda za separator
-        data = pd.read_table(join(ltdir,u), nrows=mc_count, sep='  ', names=['seed', 'E'
-                             , 'Mx', 'My', 'Mz'])[['E', 'Mx', 'My', 'Mz']]
-        create_output(data, therm_count, agregate,ltdir)
+        mc_count=int(mc_count)
+        # jedino ako nije prosledjeno n ili ako je prosledjeno n
+        # koje je manje ili jednako broj mc koraka u fajlu ima
+        # smisla da bilo sta radimo
+        if n is None or n<=mc_count:
+            mc_count = n or mc_count
+            print mc_count
+            agregate = base_name + str(mc_count)
+            print "Aggregate: ", agregate
+            # hm, verovatno postoji bolji nacin odbacivanja prve kolone
+            #proveri da li moze beline da gleda za separator
+            data = pd.read_table(join(ltdir,u), nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])[['E', 'Mx', 'My', 'Mz']]
+            create_output(data, therm_count, agregate,ltdir)
 
 
 if __name__=="__main__":
-    main(os.getcwd())
-    
+    schema = Schema({'N': All(Coerce(int), Range(min=1))}, extra=True)
+
+    args = docopt(__doc__, version='0')
+
+    try:
+        args = schema(args)
+    except Invalid, ex:
+        print '\n'.join([e.msg for e in ex.errors])
+        sys.exit()
+    except TypeError, terr:
+        n = 0
+    else:
+        n = args['N']
+        
+    main(os.getcwd(),n) 
