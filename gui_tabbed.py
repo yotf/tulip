@@ -194,7 +194,7 @@ class ThermPanel(wx.Panel):
 
     xlabel = 'Thermalisation Cycles'
 
-    best_mat_dict = dict()
+    best_mat_dict = defaultdict(dict)
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
@@ -212,13 +212,13 @@ class ThermPanel(wx.Panel):
                 choices=plot_choices, style=wx.CB_READONLY,
                 value=plot_choices[0])
         self.cmb_L = wx.ComboBox(self, size=(70, -1),
-                                 choices=L_choices,
+                                 choices=lt_dict.keys(),
                                  style=wx.CB_READONLY,
-                                 value=L_choices[0])
-        cmb_T_choices = LT_combo[self.cmb_L.GetValue()]
+                                 value=lt_dict.keys()[0])
+        t_choices = lt_dict[self.cmb_L.GetValue()]
         self.cmb_T = wx.ComboBox(self, size=(100, -1),
-                                 choices=cmb_T_choices,
-                                 value=cmb_T_choices[0])
+                                 choices=t_choices,
+                                 value=t_choices[0])
         self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
                 choices=self.get_files(), value='<Choose plot file>')
 
@@ -290,15 +290,16 @@ class ThermPanel(wx.Panel):
         
 
     def on_bestmat_button(self,event):
-        LT = self.cmb_L.GetValue()+self.cmb_T.GetValue()
+        L = self.cmb_L.GetValue()
+        T = self.cmb_T.GetValue()
         therms = self.cmb_mtherms.GetValue()
         mcs = self.cmb_mmcs.GetValue()
         best_mat = self.get_files("*%s%s*.mat" %(therms,mcs))
         # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
         assert len(best_mat)==1
-        self.best_mat_dict[LT]=best_mat[0]
+        self.best_mat_dict[L][T]=best_mat[0]
         print "BEST MAT DICT:",self.best_mat_dict
-        self.parent.flash_status_message("Best .mat for %s selected" % LT)
+        self.parent.flash_status_message("Best .mat for %s%s selected" % (L,T))
     def on_add_button(self,event):
         
         mcs =int( self.mc_txt.GetValue())
@@ -332,7 +333,7 @@ class ThermPanel(wx.Panel):
     def update_combos(self,event="dummy"):
         """Ova metoda azurira kombinacijske kutije koje zavise od stanja
         drugih elemenata/kontrola """
-        t_items=LT_combo[self.cmb_L.GetValue()]
+        t_items=lt_dict[self.cmb_L.GetValue()]
         self.cmb_T.SetItems(t_items)
         self.cmb_T.SetValue(t_items[0])
         #selektovali smo T, pa pozivamo odgovarajucu metodu
@@ -469,7 +470,7 @@ class AggPanel(wx.Panel):
         self.draw_button.Enable(False)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
         self.clear_button = wx.Button(self, -1, 'Clear plot')
-        self.clear_button.Enable(False)
+        self.clear_button.Enable(True)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
                   self.clear_button)
         
@@ -499,32 +500,34 @@ class AggPanel(wx.Panel):
         self.vbox.Fit(self)
 
     def on_agg_button(self,event):
-        pass
+        agregate.main(dict(ThermPanel.best_mat_dict),SIM_DIR)
+        self.aggd = load_agg()
+        self.L_choices = zip(*self.aggd.columns)[0]
+        print self.L_choices
         
-    # def on_save_button(self, event):
-    #     file_choices = ' EPS (*.eps)|*.eps| PNG (*.png)|*.png'
+        self.L_choices = list(set(self.L_choices))
+        print self.L_choices
         
-    #     dlg = wx.FileDialog(
-    #         self,
-    #         message='Save plot as...',
-    #         defaultDir=os.getcwd(),
-    #         defaultFile='plot.eps',
-    #         wildcard=file_choices,
-    #         style=wx.SAVE,
-    #         )
-        
-    #     if dlg.ShowModal() == wx.ID_OK:
-    #         path = dlg.GetPath()
-    #         self.canvas.print_figure(path, dpi=self.dpi)
-    #         self.flash_status_message('Saved to %s' % path)
+        # self.LT_combo = dict()
+
+        # for L in L_choices:
+        #     self.LT_combo[L] = [t for (l, t) in agg_data.columns if l == L]
+
+        # print DEBUG,"LT_combo", LT_combo
+        self.mag_choices = list(self.aggd.index)
+        self.cmb_L.SetItems(self.L_choices)
+        self.cmb_L.SetValue(self.L_choices[0])
+        self.cmb_mag.SetItems(self.mag_choices)
+        self.cmb_mag.SetValue(self.mag_choices[0])
+        self.draw_button.Enable(True)
         
     def on_draw_button(self, event):
         L_select = self.cmb_L.GetValue()
         mag_select = self.cmb_mag.GetValue()
         print L_select, mag_select
-        print agg_data[L_select].ix['T']
-        self.ax_agg.plot(agg_data[L_select].ix['T'],
-                         agg_data[L_select].ix[mag_select],
+        print self.aggd[L_select].ix['T']
+        self.ax_agg.plot(self.aggd[L_select].ix['T'],
+                         self.aggd[L_select].ix[mag_select],
                          linewidth=1, color='#563f33', label=L_select)
         debug()
         self.ax_agg.set_xlim(right=1.55)
@@ -660,6 +663,8 @@ def handle_simfiles(dir_md5):
    
     dirlist = [d for d in glob.glob(join(SIM_DIR,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
     dirlist.sort()
+    
+    
     maxi = len(dirlist)
 
     prbar = wx.ProgressDialog("Please wait, doing statistics 'n stuff...",message="starting",maximum=maxi,parent=None,style=0| wx.PD_APP_MODAL| wx.PD_CAN_ABORT)
@@ -675,7 +680,7 @@ def handle_simfiles(dir_md5):
         # defaultdict vraca prazan '', i jednakost nije zadovoljena
         # 2. postoji zapis koji ima razlicit md5 za d - jednoakost nezadovoljena
         # 3. nista nije promenjeno - True
-        print type(dir_md5)
+
         print dir_md5[d]
         if dir_md5[d]!=hashmd5:
             remove_old_calcs(d)
@@ -733,9 +738,16 @@ def load_agg():
 
     agg_data = pd.concat(agg, axis=1)
     agg_data.columns.names = ['L', 'T']
-    debug()
+    print agg_data
     return agg_data
 
+
+# def load_agg():
+#     aplot_files = glob.glob(join(SIM_DIR,"L[0-9]*.aplot"))
+#     aplot_files.sort()
+#     agg=dict()
+#     for aplot in aplot_files:
+        
 def read_hashf(hfpath):
     """Ako postoji fajl na hashf putanji
     ucitava ga u dict i vraca, ako ne postoji- pravi ga
@@ -749,6 +761,23 @@ def read_hashf(hfpath):
        except EOFError:
            fcontent = defaultdict(str)
     return fcontent
+
+def get_choices():
+    regex = re.compile(r"^(L\d+)(T\d+)$")
+    dirlist = [d for d in os.walk(SIM_DIR).next()[1] if regex.match(d)]
+    dirlist.sort()
+    dct = defaultdict(list)
+    # ide kroz imena svih direktorijuma i za svaki L prilepljuje odgovarajuc
+    # T-ove. prvi put kad naidje na odredjen L, to ce biti prazan niz, pa ce
+    # nalepljivati dalje nove clanove
+    for d in dirlist:
+        l,t = regex.match(d).groups()
+        dct[l].append(t)
+
+    return dct
+        
+        
+    
     
 if __name__ == '__main__':
     import sys
@@ -773,27 +802,18 @@ if __name__ == '__main__':
     hfpath = join(LATTICE_MC,"md5_hash.dict")
     
     dir_md5  = read_hashf(hfpath)
-    # ako nije dict nesto nije u redu! 
+   
     assert type(dir_md5) is defaultdict
-    # mozda bi bilo bolje da ovaj sim_dir samo prosledjujem
-    # nem pojma
+   
+   
     handle_simfiles(dir_md5)
+    # ova globalna varijabla ce sadrzati kombinacije L-ova i T-ova koje
+    # su nam dostupne. sto se tice foldera
+    lt_dict = get_choices()
 
     # I OVO CE SE TEK KAD NAPRAVE AGREGATE IZVRSITI
     # TJ, TREBA DA POGLEDAMO DA LI POSTOJI DICTIONARY U FAJLU NEKOM
-    agg_data = load_agg()
 
-    L_choices = zip(*agg_data.columns)[0]
-    L_choices = list(set(L_choices))
-
-    LT_combo = dict()
-
-    for L in L_choices:
-        LT_combo[L] = [t for (l, t) in agg_data.columns if l == L]
-
-    print DEBUG,"LT_combo", LT_combo
-
-    mag_choices = list(agg_data.index)
     app.frame = GraphFrame()
 
     app.frame.Show()
