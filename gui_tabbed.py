@@ -8,7 +8,10 @@ import os
 from os.path import join
 import glob
 import re
+import pickle
 
+from collections import defaultdict
+import itertools
 import unify
 import agregate
 import compose
@@ -27,6 +30,7 @@ import pylab
 from mpl_toolkits.mplot3d import Axes3D
 from simp_zoom import zoom_factory
 from itertools import cycle
+
 
 regexf = re.compile(r'(L\d{1,2}).aplot$')
 SIM_DIR = ""
@@ -185,7 +189,7 @@ class ThermPanel(wx.Panel):
 
         self.mc_txt = wx.TextCtrl(self, size = (80,-1))
         self.add_button = wx.Button(self,-1,'Add')
-        self.bestmat_button=wx.Button(self,-1,"'s the best mat ma..")
+        self.bestmat_button=wx.Button(self,-1,"'s the best .mat ma..")
         self.Bind(wx.EVT_BUTTON, self.on_bestmat_button,self.bestmat_button)
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
 #        self.Bind(wx.EVT_BUTTON, self.on_save_button, self.save_button)
@@ -564,102 +568,100 @@ class GraphFrame(wx.Frame):
     def on_flash_status_off(self, event):
         self.statusbar.SetStatusText('')
 
-    
-def getmd5hash():
-    """Vraca trenutni md5hash sim direktorijuma"""
-    import hashlib
-    m = hashlib.md5()
-    for root, dirs, files in os.walk(SIM_DIR):
-        for file_read in files:
-            full_path = join(root, file_read)
-            for line in open(full_path).readlines():
-                m.update(line)
-    return  m.hexdigest()
 
-def writemd5hash():
-    """Kada je zavrsio sa statistickom obradom datoteka
-    dodaje u fajl  podatak u obliku --> PUTANJA_DO_OBRADJENOG_SIM_DIR:NJEGOV_MD5"""
-    hashmd5 = getmd5hash()
-    with open(join(LATTICE_MC,"hash.txt"),mode="a") as file:
-        file.write("%s:%s\n" %(SIM_DIR,hashmd5))
+def writemd5hash(dir_md5):
+    """Serijalizuje dir_md5 defaultdict,
+    pre toga ga pretvara u regularni dict"""
+    import pickle
+    with open(hfpath,mode="wb") as file:
+        pickle.dump(dict(dir_md5),file)
 
 
-def del_old_md5hash():
-    # mm, nisam sigurna koji je nabolji nacin da izbrisem liniju u fajlu
-    # ako se ne podudaraju podaci onda brisemo (ako postoji) tu liniju iz fajla
-    # posto cemo dodati svoje podatke. Samo da li je ovo dobro, pa jeste, posto svejedno
-    # cemo morati ponovo obradjivati fajlove, i ovaj zapis je ocigledno zastareo tako
-    # da nam ne treba tu, a kad zavrsi ce regularno ispisati tamo onda
-    import fileinput
-    for line in fileinput.input(join(LATTICE_MC,"hash.txt"),inplace=True):
-        if line.split(":")[0]!=SIM_DIR:
-            print line,
 
-
-def remove_old_calcs():
+def remove_old_calcs(d):
     """Posto je utvrdio da je direktorijum sa simulacijama
     izmenjem, izbrise sva prethodna izracunavanja. Ovo treba
     da napravim na nivou pojedinacnih LT direktorijuma"""
-    from subprocess import call
-    os.chdir(SIM_DIR)
-    os.system("rm *.aplot")
-    os.system( "for dir in L[0-9]*T[0-9]* ;do  [ -d $dir ] || continue; cd $dir; rm -f *.mat *.stat *.raw *.cv *.plot; cd ..; done | bash -x")
-#    os.system("ls -1 | grep -v '.all$' | xargs -I {} rm {}")
     
-def check_modified():
-    """Cita iz datoteke koja ima linije u sledecem obliku:
-    PUTANJA_DO_SIM_DATOTEKE:NJEN_MD5 i gleda da li ijedan zapis
-    odgovara paru na kom trenutno radimo. Ako postoji putanja
-    a md5 je razlicit - brise se zapis"""
-    return False
-    hashmd5 = getmd5hash()
-    with open(join(LATTICE_MC,"hash.txt"),mode = "r") as file:
-        for line in file.readlines():
-            if line.split(":")==[SIM_DIR,hashmd5]:
-                return False
-    del_old_md5hash()
-    remove_old_calcs()
-    return True
+    os.chdir(d)
+    # ovo kad smislis sta ces sa agregatima
+    #os.system("rm *.aplot")
+    os.system("rm -f *.mat *.stat *.raw *.cv *.plot ")
+    
+def handle_simfiles(dir_md5):
+    """Za svaki folder iz sim foldera on proverava da li stari
+    hashmd5 odgovara novo izracunatom, za svakog racuna novi hash
+    i stavlja ga u hash.txt (trebalo bi ove neizmenjene da ne dira, tj
+    resi to nekako da zaobidje neki if i da se samo ponovo ispise, da ne moras
+    da rewritujes u fajlovima). Mislim da je bolje da proverava za sve fajlove
+    a ne samo za .dat fajlove, posto mozda hoce neko da izbrise .mat fajlove, i
+    ocekuje da ce ovaj to prepoznati i ponovo ih napraviti. da. """
+   
+    # dirlist = os.walk(SIM_DIR).next()[1]
+   
+    dirlist = [d for d in glob.glob(join(SIM_DIR,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
+    dirlist.sort()
+    maxi = len(dirlist)
 
-def handle_sfiles ():
-    rxdir = re.compile(r'^(L\d*)T(\d*)$')
-
-    """Obradjuju se sve datoteke simulacije, ako je potrebno"""
-    # lista svih direktorijuma ako se poklapaju sa patternom
-    # drugi nacin:
-    #dlist = filter(rxdir.match,os.listdir(SIM_DIR))
-    #print dlist
-    dlist = [d  for d in os.listdir(SIM_DIR) if rxdir.match(d) and os.path.isdir(join(SIM_DIR,d))]
-    dlist.sort()
-    print dlist
-    Ls = [rxdir.match(d).groups()[0] for d in dlist]
-    Ls = list(set(Ls))
-    maxi = len(dlist)+len(Ls)
-    print DEBUG,"prog bar len: ", maxi
     prbar = wx.ProgressDialog("Please wait, doing statistics 'n stuff...",message="starting",maximum=maxi,parent=None,style=0| wx.PD_APP_MODAL| wx.PD_CAN_ABORT)
     prbar.SetMinSize(wx.Size(350,100))
-    dlg.Destroy()
-    # preko brojaca updejtujemo progressbar
-    count = 0
-    for d in dlist:
-        #trenutni direktorijum koji obradjujemo
-        ltdir=join(SIM_DIR,d)
-        print ltdir
-        prbar.Update(count,d)
-        count = count+1
-        unify.main(ltdir)
-        statmat.main(ltdir)
-        compose.main(ltdir=ltdir)
-    for L in Ls:
-        prbar.Update(count,"Aggregating: %s" % L)
-        print DEBUG,"Ls", Ls
-        print L,L+"*"
-        agregate.main(SIM_DIR,L,L+"T*")
-        count= count+1
+    count =itertools.count()
+    for d in dirlist:
+        hashmd5 = getmd5(d)
+        
+        #ako je doslo do promena u direktorijumu
+        #ili po prvi put pisemo
+        # posto radimo sa defaultdictom, postoje tri slucaja
+        # 1. ne postoji uopste zapis za ovaj direktorijum, u tom slucaju
+        # defaultdict vraca prazan '', i jednakost nije zadovoljena
+        # 2. postoji zapis koji ima razlicit md5 za d - jednoakost nezadovoljena
+        # 3. nista nije promenjeno - True
+        print type(dir_md5)
+        print dir_md5[d]
+        if dir_md5[d]!=hashmd5:
+            remove_old_calcs(d)
+            prbar.Update(count.next(),d.split(os.path.sep)[-1])
+            unify.main(d)
+            statmat.main(d)
+            compose.main(d)
+            
+            #ponovo se racuna hash, mada mozda je ovo prebrzo
+            # posto ce korisnici mozda generisati nove .mat fajlove
+            # ali dobro, otom potom
+            # pa da, sa ovim dictom ce sada to biti lakse, posto stalno
+            # moze biti u memoriji, pa kad se dodaju novi fajlovi, ponovo se racuna
+            # dictovi su kul
+   
+            # stavljamo novu vrednost
+            # mislim da sacuvam ipak ovaj dict na pocetku
+            # ako se desi do nekog prekida programa, da ipak sacuvamo
+            dir_md5[d] = getmd5(d)
+    #izracunato sve
+    writemd5hash(dir_md5)
     prbar.Destroy()
-    #posto smo generisali sve fajlove ovo se pise
-    #ako korisnik bude dodavao nove, opet ce se zvati
-    writemd5hash()
+        
+def getmd5(d):
+    """Izracunava md5 za direktorijum cija
+    je apsolutna putanja prosledjena"""
+    import hashlib
+    m = hashlib.md5()
+    for f in glob.glob(join(d,"*")):
+        for line in  open(f,"rb").readlines():
+            m.update(line)
+    return m.hexdigest()
+        
+   
+#AGREGATE, mozda za kasnije treba
+    # for L in Ls:
+        
+    #     print DEBUG,"Ls", Ls
+    #     print L,L+"*"
+    #     agregate.main(SIM_DIR,L,L+"T*")
+    #     count= count+1
+    # prbar.Destroy()
+    # #posto smo generisali sve fajlove ovo se pise
+    # #ako korisnik bude dodavao nove, opet ce se zvati
+    # writemd5hash()
 
 def load_agg():
     aplot_files = [f for f in os.listdir(SIM_DIR) if regexf.match(f)]
@@ -675,6 +677,20 @@ def load_agg():
     debug()
     return agg_data
 
+def read_hashf(hfpath):
+    """Ako postoji fajl na hashf putanji
+    ucitava ga u dict i vraca, ako ne postoji- pravi ga
+    i vraca prazan dict"""
+
+    # stavljam ab+ cisto da bi ga napravio ako ga nema
+    # ne znam koliko je to pametno
+    with open(hfpath,mode="ab+") as hashf:
+       try:
+           fcontent =  defaultdict(str,pickle.load(hashf))
+       except EOFError:
+           fcontent = defaultdict(str)
+    return fcontent
+    
 if __name__ == '__main__':
     import sys
     app = wx.PySimpleApp()
@@ -689,9 +705,18 @@ if __name__ == '__main__':
         sys.exit(0)
 
     dlg.Destroy()
-    # ako su izmenjeni fajlovi..
-    if(check_modified()):
-        handle_sfiles()
+    #ovde cemo drzati stanje hash.txt fajla, kakvo je trenutno
+    hfpath = join(LATTICE_MC,"md5_hash.dict")
+    
+    dir_md5  = read_hashf(hfpath)
+    # ako nije dict nesto nije u redu! 
+    assert type(dir_md5) is defaultdict
+    # mozda bi bilo bolje da ovaj sim_dir samo prosledjujem
+    # nem pojma
+    handle_simfiles(dir_md5)
+
+    # I OVO CE SE TEK KAD NAPRAVE AGREGATE IZVRSITI
+    # TJ, TREBA DA POGLEDAMO DA LI POSTOJI DICTIONARY U FAJLU NEKOM
     agg_data = load_agg()
 
     L_choices = zip(*agg_data.columns)[0]
