@@ -1,10 +1,24 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""
+=================================================================
+Opis aplikacije....
+=================================================================
+
+Usage:
+    gui_tabbed.py [SIMDIR]
+    gui_tabbed.py -h | --help
+Arguments:
+    SIMDIR     Path to sim directory
+Options:
+    -h --help
+"""
 
 import pdb
 import wx
 import pandas as pd
 import os
+from docopt import docopt
 from os.path import join
 import glob
 import re
@@ -693,18 +707,23 @@ def read_hashf(hfpath):
     
 if __name__ == '__main__':
     import sys
+    args = docopt(__doc__)
+    SIM_DIR = args['SIMDIR']
+    print SIM_DIR
+    
     app = wx.PySimpleApp()
-    # dijalog za odabir simulacijske datoteke
-    # ako se opovrgne- izlazimo
-    # ovo sve treba u main metodu
-    # samo cu morati da koristim global SIM_DIR direktivu
-    dlg=wx.DirDialog(None,style=wx.DD_DEFAULT_STYLE,message="Where your simulation files are...")
-    if dlg.ShowModal() == wx.ID_OK:
-        SIM_DIR=dlg.GetPath()
-    else:
-        sys.exit(0)
 
-    dlg.Destroy()
+    # ok, mozda bi bolje bilo da koristim dirpickerctrl???
+    # mm, ifovi. Ako nije prosledjen argument, ili nije validan
+    # pokazuje se dijalog
+    if not SIM_DIR or not os.path.isdir(SIM_DIR):
+        dlg=wx.DirDialog(None,style=wx.DD_DEFAULT_STYLE,message="Where your simulation files are...")
+        if dlg.ShowModal() == wx.ID_OK:
+            SIM_DIR=dlg.GetPath()
+        else:
+            sys.exit(0)
+
+        dlg.Destroy()
     #ovde cemo drzati stanje hash.txt fajla, kakvo je trenutno
     hfpath = join(LATTICE_MC,"md5_hash.dict")
     
