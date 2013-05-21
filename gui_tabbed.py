@@ -208,7 +208,7 @@ class ThermPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
 #        self.Bind(wx.EVT_BUTTON, self.on_save_button, self.save_button)
         plot_choices = ['M1', 'M2', 'M4']
-        self.cmb_plots = wx.ComboBox(self, size=(150, -1),
+        self.cmb_plots = wx.ComboBox(self, size=(100, -1),
                 choices=plot_choices, style=wx.CB_READONLY,
                 value=plot_choices[0])
         self.cmb_L = wx.ComboBox(self, size=(70, -1),
@@ -222,16 +222,23 @@ class ThermPanel(wx.Panel):
         self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
                 choices=self.get_files(), value='<Choose plot file>')
 
-        self.cmb_mats = wx.ComboBox(self,size=(300,-1),choices = self.get_files(ext="*.mat"),
-                                    value = '<Choose best mat>')
-        
+        self.cmb_mtherms = wx.ComboBox(self,size=(150,-1),choices = [], value="temp")
+        #get_mmcs se uvek desava u zavisnosti od od mthermss
+        self.cmb_mmcs = wx.ComboBox(self,size=(100,-1),choices = [])
+        # self.cmb_mats = wx.ComboBox(self,size=(300,-1),choices = self.get_files(ext="*.mat"),
+        #                             value = '<Choose best mat>')
+
+        #punimo combo boxove
+        self.update_combos()
                                     
 
         self.Bind(wx.EVT_COMBOBOX, self.on_select, self.cmb_plots)
         self.Bind(wx.EVT_COMBOBOX, self.update_combos, self.cmb_L)
-        self.Bind(wx.EVT_COMBOBOX, self.update_combos, self.cmb_T)
+        self.Bind(wx.EVT_COMBOBOX, self.on_select_T, self.cmb_T)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_pfiles,
                   self.cmb_pfiles)
+        #malo previse vremena trosim, mislim
+        self.Bind(wx.EVT_COMBOBOX,self.on_select_mtherms,self.cmb_mtherms)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 #        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
                      #  | wx.ALIGN_CENTER_VERTICAL)
@@ -249,8 +256,10 @@ class ThermPanel(wx.Panel):
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.cmb_mats, border=5, flag=wx.ALL
+        self.hbox1.Add(self.cmb_mtherms, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.cmb_mmcs, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         
@@ -267,9 +276,27 @@ class ThermPanel(wx.Panel):
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
 
+    def get_mtherms(self,therms="THERM\d+",igroup=0,ext="*.mat"):
+        """za sve moguce .mat fajlove za dato L i T
+        vraca parove mc,therm  koji su dostupni. sigurno moze
+        nekako elegantnije"""
+        print '.*(%s)(MC\d+)' % therms
+        return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in self.get_files(ext)]
+        
+        
+    def get_mmcs(self):
+        therms = self.cmb_mtherms.GetValue()
+        return self.get_mtherms(therms,1,"*%sMC*.mat" %therms)
+        
+
     def on_bestmat_button(self,event):
         LT = self.cmb_L.GetValue()+self.cmb_T.GetValue()
-        self.best_mat_dict[LT]=self.cmb_mats.GetValue()
+        therms = self.cmb_mtherms.GetValue()
+        mcs = self.cmb_mmcs.GetValue()
+        best_mat = self.get_files("*%s%s*.mat" %(therms,mcs))
+        # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
+        assert len(best_mat)==1
+        self.best_mat_dict[LT]=best_mat[0]
         print "BEST MAT DICT:",self.best_mat_dict
         self.parent.flash_status_message("Best .mat for %s selected" % LT)
     def on_add_button(self,event):
@@ -285,16 +312,34 @@ class ThermPanel(wx.Panel):
         statmat.main(mcs_dir,mcs)
         compose.main(mcs_dir,mcs)
         self.cmb_pfiles.SetItems(self.get_files())
+        
+        
+    def on_select_mtherms(self,event="dummy"):
+        mccs_items = self.get_mmcs()
+        self.cmb_mmcs.SetItems(mccs_items)
+        self.cmb_mmcs.SetValue(mccs_items[0])
 
-
-    def update_combos(self,event):
-        """Ova metoda azurira kombinacijske kutije koje zavise od stanja
-        drugih elemenata/kontrola """
-        self.cmb_T.SetItems(LT_combo[self.cmb_L.GetValue()])
+    def on_select_T(self,event="dummy"):
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
-        self.cmb_mats.SetItems(self.get_files("*.mat"));
-        self.cmb_mats.SetValue('<Choose best .mat  file>')
+        mtherm_items = self.get_mtherms()
+        
+        self.cmb_mtherms.SetItems(mtherm_items)
+        self.cmb_mtherms.SetValue(mtherm_items[0])
+        #selektovali smo mtherms, pa pozivamo odg. metodu
+        self.on_select_mtherms()
+
+    def update_combos(self,event="dummy"):
+        """Ova metoda azurira kombinacijske kutije koje zavise od stanja
+        drugih elemenata/kontrola """
+        t_items=LT_combo[self.cmb_L.GetValue()]
+        self.cmb_T.SetItems(t_items)
+        self.cmb_T.SetValue(t_items[0])
+        #selektovali smo T, pa pozivamo odgovarajucu metodu
+        self.on_select_T()
+       
+        # self.cmb_mats.SetItems(self.get_files("*.mat"));
+        # self.cmb_mats.SetValue('<Choose best .mat  file>')
 
 
     def get_files(self,ext="*.plot"):
@@ -557,7 +602,7 @@ class GraphFrame(wx.Frame):
 
     def create_main_panel(self):
         self.notebook = TabContainer(self)
-        self.notebook.SetPadding(wx.Size(self.width / 4.0
+        self.notebook.SetPadding(wx.Size(self.width / 6.0
                                  - self.notebook.GetFont().GetPixelSize()[0]
                                  * 5, -1))
         sizer = wx.BoxSizer(wx.VERTICAL)
