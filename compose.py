@@ -18,7 +18,6 @@ import re
 import os
 from os.path import join
 import pandas as pd
-docopt(__doc__)
 
 
 def create_plot(df, cv_name,ltdir):
@@ -64,4 +63,5 @@ def main(ltdir,mcsteps="\d+"):
 
 
 if __name__=="__main__":
+    docopt(__doc__)
     main(os.getcwd())
