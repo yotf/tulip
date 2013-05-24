@@ -51,7 +51,8 @@ SIM_DIR = ""
 DEBUG = "+++DEBUG INFO+++  "
 DEBUGG = False
 LATTICE_MC = os.getcwd()
-
+fmt_strings = ['g+-','r*-','bo-','y+-']
+fmt_cycle = itertools.cycle(fmt_strings)
 def debug():
     if(DEBUGG):
         pdb.set_trace()
@@ -74,7 +75,7 @@ class ScatterPanel(wx.Panel):
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
         #self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
 
-        self.fig = Figure(figsize=(20,7))
+        self.fig = Figure(figsize=(20,7),facecolor='#595454')
         # self.ax = Axes3D(self.fig)
         self.ax_3d = self.fig.add_subplot(121,projection="3d")
         print type(self.ax_3d)
@@ -175,7 +176,7 @@ class ScatterPanel(wx.Panel):
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
         self.ax_3d.set_title(t)
-        self.ax_hist.set_ylim(0,100)
+        self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
         self.ax_hist.plot(kind="kde",style="k--")
        
@@ -199,7 +200,7 @@ def load_best_mat_dict():
 
 class ThermPanel(wx.Panel):
 
-    xlabel = 'Thermalisation Cycles'
+    
 
     best_mat_dict = load_best_mat_dict()
     def __init__(self, parent):
@@ -211,18 +212,26 @@ class ThermPanel(wx.Panel):
         self.mc_txt = wx.TextCtrl(self, size = (80,-1))
         self.add_button = wx.Button(self,-1,'Gen stat for this MC')
         self.bestmat_button=wx.Button(self,-1,"Choose best .mat's ...")
+        self.clear_button = wx.Button(self,-1,"Clear plot")
         self.Bind(wx.EVT_BUTTON, self.on_chooser,self.bestmat_button)
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
-#        self.Bind(wx.EVT_BUTTON, self.on_save_button, self.save_button)
+
+        
+        self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
+        self.lbl_cmp = wx.StaticText(self,-1,"Compare by:",size=(-1, 30))
+        self.chk_l = wx.CheckBox(self,-1,"Lattice size", size=(-1, 30))
+        self.chk_t = wx.CheckBox(self,-1,"Temperature",size=(-1, 30))
+        self.chk_mc = wx.CheckBox(self,-1,"MC steps",size=(-1, 30))
+
         plot_choices = ['M1', 'M2', 'M4']
         self.cmb_plots = wx.ComboBox(self, size=(100, -1),
                 choices=plot_choices, style=wx.CB_READONLY,
                 value=plot_choices[0])
         self.cmb_L = wx.ComboBox(self, size=(70, -1),
-                                 choices=lt_dict.keys(),
+                                 choices=sorted(lt_dict.keys(),key=lambda x: int(x[1:])),
                                  style=wx.CB_READONLY,
                                  value=lt_dict.keys()[0])
-        t_choices = lt_dict[self.cmb_L.GetValue()]
+        t_choices = sorted(lt_dict[self.cmb_L.GetValue()],key= lambda x: int(x[1:]))
         self.cmb_T = wx.ComboBox(self, size=(100, -1),
                                  choices=t_choices,
                                  value=t_choices[0])
@@ -260,6 +269,9 @@ class ThermPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_plots, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+
+        self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
@@ -271,10 +283,17 @@ class ThermPanel(wx.Panel):
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         
-        
-        
+
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
+
         self.toolhbox.Add(self.toolbar)
+        self.toolhbox.AddSpacer(20)
+#        self.toolhbox.Add(self.lbl_cmp 0,wx.ALIGN_RIGHT|wx.TOP|wx.LEFT,5)
+        self.toolhbox.Add(self.lbl_cmp,5,wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.TOP, 8)
+        self.toolhbox.AddSpacer(20)
+        self.toolhbox.Add(self.chk_l,5, wx.TOP,3)
+        self.toolhbox.Add(self.chk_t,5,wx.TOP,3)
+        self.toolhbox.Add(self.chk_mc,5,wx.TOP,3)
         
         
 
@@ -284,6 +303,7 @@ class ThermPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
+    
 
     def get_mtherms(self,therms="THERM\d+",igroup=0,ext="*.mat",L=None,T=None):
         """za sve moguce .mat fajlove za dato L i T
@@ -291,7 +311,13 @@ class ThermPanel(wx.Panel):
         nekako elegantnije"""
         print '.*(%s)(MC\d+)' % therms
         return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in self.get_files(ext,L=L,T=T)]
-        
+
+    def on_clear_button(self,event):
+        self.ax_cv.cla()
+        self.ax_mag.cla()
+      #  self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
+       # self.ax_cv.set_title('Coefficient of Variation',fontsize=10,family='monospace')
+        self.canvas.draw()
 
     def get_mmcs(self,L=None,T=None, THERM = None):
         therms = THERM or self.cmb_mtherms.GetValue()
@@ -377,6 +403,8 @@ class ThermPanel(wx.Panel):
         """Kada korisnik izabere .plot fajl, iscrtava se """
         path = self.cmb_pfiles.GetValue()
         self.data = pd.read_csv(path, index_col=0)
+        print "self data"
+        print self.data
         #self.draw_plot()
         # gledamo da li je selektovano M M^2 ili M^4
         # tako ili mozemo vratiti vrednost uvek na M
@@ -384,20 +412,18 @@ class ThermPanel(wx.Panel):
 
     def init_plot(self):
         self.dpi = 100
-        fig_width = self.parent.GetParent().width / self.dpi
+        fig_width = (self.parent.GetParent().width / self.dpi) 
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
-        self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
+
+        self.fig = Figure((fig_width, fig_height), dpi=self.dpi,facecolor='w')
 
 
 
         self.ax_mag = self.fig.add_subplot(1, 2, 1)
         self.ax_cv = self.fig.add_subplot(1, 2, 2)
 
-        self.ax_mag.set_title('Magnetisation')
-        self.ax_cv.set_title('Coefficient of Variation')
-
-        self.ax_mag.set_xlabel(self.xlabel)
-        self.ax_cv.set_xlabel(self.xlabel)
+        # self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
+        # self.ax_cv.set_title('Coefficient of Variation',fontsize=10,family='monospace')
 
         pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
@@ -418,24 +444,49 @@ class ThermPanel(wx.Panel):
         """Redraws the plot
         """
 
-        self.ax_mag.cla()
-        self.ax_cv.cla()
-
+        # self.ax_mag.cla()
+        # self.ax_cv.cla()
+        print self.cmb_pfiles.GetValue().split(os.path.sep)[-1]
+        lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
+        lbl_mc ="%s=%s" %(lbl_mc[:2],lbl_mc[2:])
+        lbl_t ="%s=%s" %(self.cmb_T.GetValue()[0],self.cmb_T.GetValue()[1:])
+        lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
+        lchk  = self.chk_l.IsChecked()
+        mcchk  = self.chk_mc.IsChecked()
+        tchk  = self.chk_t.IsChecked()
+        lbl = "%s %s %s" %(lbl_l if lchk else "", lbl_t if tchk else "",lbl_mc if mcchk else "")
+     #   lbl = lbl if lbl.split() else "dummy"
+        print lbl
+        
+        
+        fmt =fmt_cycle.next()
         line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
-                             y=self.data.ix[item + 'avg'], linewidth=1,
-                             color='#564453',
-                             yerr=self.data.ix['stdMean' + item])[0]
+                             y=self.data.ix[item + 'avg'],
+                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',label=lbl)
+
+        mag_leg=self.ax_mag.legend(loc="best",fontsize=10,frameon=False,shadow=True)
+        # just for fu
+        mag_leg.draggable(True)
+       
 ###        line.set_markerfacecolor('w')
         self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
-                             % item], linewidth=1, color='#56ae53')
+                             % item],fmt,label =lbl,fillstyle='none')
+        cv_leg=self.ax_cv.legend(loc="best",fontsize=10,frameon=False,shadow=True)
+        cv_leg.draggable(True)
+
         self.ax_mag.set_xscale('log')
         self.ax_cv.grid(True, color='red', linestyle=':')
         self.ax_mag.grid(True, color='red', linestyle=':')
-        self.ax_cv.set_xlabel('Thermalisation cycles')
-        self.ax_mag.set_xlabel('Thermalisation cycles')
-        self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s}\rangle$'
-                               % item)
-        self.ax_mag.set_ylabel(r'$\langle{%s}\rangle$' % item)
+        self.ax_cv.set_xlabel('Number of lattice sweeps', size=10)
+        self.ax_mag.set_xlabel('Number of lattice sweeps',size=10)
+        self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s^%s}\rangle$'
+                               % (item[0],item[1]))
+        self.ax_mag.set_ylabel(r'$\langle{%s^%s}\rangle$' % (item[0],item[1]))
+        pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
+        pylab.setp(self.ax_mag.get_yticklabels(), fontsize=5)
+        pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
+        pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
+        
         self.canvas.draw()
 
     # def on_save_button(self, event):
@@ -545,29 +596,30 @@ class AggPanel(wx.Panel):
         L_select = self.cmb_L.GetValue()
         mag_select = self.cmb_mag.GetValue()
         print L_select, mag_select
+        lbl = "$%s_{%s}$" %(L_select[0],L_select[1:])
         print self.aggd[L_select].ix['T']
         self.ax_agg.plot(self.aggd[L_select].ix['T'],
-                         self.aggd[L_select].ix[mag_select],
-                         linewidth=1, color='#563f33', label=L_select)
-        debug()
+                         self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl)
         self.ax_agg.set_xlim(right=1.55)
-        self.ax_agg.legend(loc='upper left')
-        self.ax_agg.set_xlabel("Temperature")
+        leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
+        leg.draggable(True)
+        self.ax_agg.set_xlabel("Temperature",size=10)
         self.ax_agg.grid(True, color='red', linestyle=':')
         self.canvas.draw()
         
     def on_clear_button(self,event):
         self.ax_agg.cla()
+        self.ax_agg.set_xlabel("Temperature",size=10)
         self.canvas.draw()
         
     def init_plot(self):
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
-        self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
+        self.fig = Figure((fig_width, fig_height), dpi=self.dpi,facecolor='w')
         self.ax_agg = self.fig.add_subplot(111)
         
-        self.ax_agg.set_title('Aggregate thingie')
+#        self.ax_agg.set_title('Aggregate')
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
         self.canvas = FigCanvas(self, -1, self.fig)
