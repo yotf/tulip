@@ -188,13 +188,20 @@ class ScatterPanel(wx.Panel):
         self.scat.changed()
 
 
-
+def load_best_mat_dict():
+    with open(join(LATTICE_MC,"mat.dict"),mode="ab+") as hashf:
+       try:
+           fcontent =  defaultdict(dict,pickle.load(hashf))
+       except EOFError:
+           fcontent = defaultdict(dict)
+    print "best mat dict",fcontent
+    return fcontent
 
 class ThermPanel(wx.Panel):
 
     xlabel = 'Thermalisation Cycles'
 
-    best_mat_dict = defaultdict(dict)
+    best_mat_dict = load_best_mat_dict()
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
@@ -202,9 +209,9 @@ class ThermPanel(wx.Panel):
         # self.save_button = wx.Button(self, -1, 'Save plot')
 
         self.mc_txt = wx.TextCtrl(self, size = (80,-1))
-        self.add_button = wx.Button(self,-1,'Add')
-        self.bestmat_button=wx.Button(self,-1,"'s the best .mat ma..")
-        self.Bind(wx.EVT_BUTTON, self.on_bestmat_button,self.bestmat_button)
+        self.add_button = wx.Button(self,-1,'Gen stat for this MC')
+        self.bestmat_button=wx.Button(self,-1,"Choose best .mat's ...")
+        self.Bind(wx.EVT_BUTTON, self.on_chooser,self.bestmat_button)
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
 #        self.Bind(wx.EVT_BUTTON, self.on_save_button, self.save_button)
         plot_choices = ['M1', 'M2', 'M4']
@@ -222,12 +229,13 @@ class ThermPanel(wx.Panel):
         self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
                 choices=self.get_files(), value='<Choose plot file>')
 
-        self.cmb_mtherms = wx.ComboBox(self,size=(150,-1),choices = [], value="temp")
+       # self.cmb_mtherms = wx.ComboBox(self,size=(150,-1),choices = [], value="temp")
         #get_mmcs se uvek desava u zavisnosti od od mthermss
-        self.cmb_mmcs = wx.ComboBox(self,size=(100,-1),choices = [])
+        #self.cmb_mmcs = wx.ComboBox(self,size=(100,-1),choices = [])
         # self.cmb_mats = wx.ComboBox(self,size=(300,-1),choices = self.get_files(ext="*.mat"),
         #                             value = '<Choose best mat>')
-
+        
+        
         #punimo combo boxove
         self.update_combos()
                                     
@@ -238,7 +246,7 @@ class ThermPanel(wx.Panel):
         self.Bind(wx.EVT_COMBOBOX, self.on_select_pfiles,
                   self.cmb_pfiles)
         #malo previse vremena trosim, mislim
-        self.Bind(wx.EVT_COMBOBOX,self.on_select_mtherms,self.cmb_mtherms)
+        #self.Bind(wx.EVT_COMBOBOX,self.on_select_mtherms,self.cmb_mtherms)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 #        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
                      #  | wx.ALIGN_CENTER_VERTICAL)
@@ -256,10 +264,10 @@ class ThermPanel(wx.Panel):
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.cmb_mtherms, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.cmb_mmcs, border=5, flag=wx.ALL
-               | wx.ALIGN_CENTER_VERTICAL)
+        # self.hbox1.Add(self.cmb_mtherms, border=5, flag=wx.ALL
+        #                | wx.ALIGN_CENTER_VERTICAL)
+        # self.hbox1.Add(self.cmb_mmcs, border=5, flag=wx.ALL
+        #        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         
@@ -267,6 +275,7 @@ class ThermPanel(wx.Panel):
         
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
         self.toolhbox.Add(self.toolbar)
+        
         
 
         self.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -276,30 +285,39 @@ class ThermPanel(wx.Panel):
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
 
-    def get_mtherms(self,therms="THERM\d+",igroup=0,ext="*.mat"):
+    def get_mtherms(self,therms="THERM\d+",igroup=0,ext="*.mat",L=None,T=None):
         """za sve moguce .mat fajlove za dato L i T
         vraca parove mc,therm  koji su dostupni. sigurno moze
         nekako elegantnije"""
         print '.*(%s)(MC\d+)' % therms
-        return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in self.get_files(ext)]
-        
-        
-    def get_mmcs(self):
-        therms = self.cmb_mtherms.GetValue()
-        return self.get_mtherms(therms,1,"*%sMC*.mat" %therms)
+        return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in self.get_files(ext,L=L,T=T)]
         
 
-    def on_bestmat_button(self,event):
-        L = self.cmb_L.GetValue()
-        T = self.cmb_T.GetValue()
-        therms = self.cmb_mtherms.GetValue()
-        mcs = self.cmb_mmcs.GetValue()
-        best_mat = self.get_files("*%s%s*.mat" %(therms,mcs))
+    def get_mmcs(self,L=None,T=None, THERM = None):
+        therms = THERM or self.cmb_mtherms.GetValue()
+        return self.get_mtherms(therms,1,"*%sMC*.mat" %therms,L=L,T=T)
+        
+
+    def on_chooser(self,event):
+        self.chooser = Reader(self,-1,"Chooser")
+        self.chooser.ShowModal()
+      
+        self.chooser.Destroy()
+        
+    def add_to_mat_dict(self,l =None,t=None,therm=None,mc = None):
+        L = l or self.cmb_L.GetValue()
+        T = t or self.cmb_T.GetValue()
+        therms = therm or self.cmb_mtherms.GetValue()
+        mcs = mc or self.cmb_mmcs.GetValue()
+        best_mat = self.get_files("*%s%s*.mat" %(therms,mcs),L=L,T=T)
         # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
         assert len(best_mat)==1
         self.best_mat_dict[L][T]=best_mat[0]
         print "BEST MAT DICT:",self.best_mat_dict
         self.parent.flash_status_message("Best .mat for %s%s selected" % (L,T))
+        with open(join(LATTICE_MC,"mat.dict") ,"wb") as matdictfile:
+            pickle.dump(dict(self.best_mat_dict),matdictfile)
+        
     def on_add_button(self,event):
         
         mcs =int( self.mc_txt.GetValue())
@@ -323,12 +341,12 @@ class ThermPanel(wx.Panel):
     def on_select_T(self,event="dummy"):
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
-        mtherm_items = self.get_mtherms()
+#        mtherm_items = self.get_mtherms()
         
-        self.cmb_mtherms.SetItems(mtherm_items)
-        self.cmb_mtherms.SetValue(mtherm_items[0])
+        #self.cmb_mtherms.SetItems(mtherm_items)
+        #self.cmb_mtherms.SetValue(mtherm_items[0])
         #selektovali smo mtherms, pa pozivamo odg. metodu
-        self.on_select_mtherms()
+        #self.on_select_mtherms()
 
     def update_combos(self,event="dummy"):
         """Ova metoda azurira kombinacijske kutije koje zavise od stanja
@@ -343,10 +361,12 @@ class ThermPanel(wx.Panel):
         # self.cmb_mats.SetValue('<Choose best .mat  file>')
 
 
-    def get_files(self,ext="*.plot"):
+    def get_files(self,ext="*.plot",L=None,T=None):
       
         """Vraca sve plot fajlove u zadatom folderu (L i T))"""
-        folder_name = join(SIM_DIR,self.cmb_L.GetValue() +  self.cmb_T.GetValue())+os.path.sep
+        lval = L or self.cmb_L.GetValue()
+        tval = T or self.cmb_T.GetValue()
+        folder_name = join(SIM_DIR,lval+tval)+os.path.sep
         print "folder name",folder_name
         print DEBUG,"glob for get_files",folder_name+ext
         files = glob.glob(folder_name + ext)
@@ -634,10 +654,9 @@ class GraphFrame(wx.Frame):
 def writemd5hash(dir_md5):
     """Serijalizuje dir_md5 defaultdict,
     pre toga ga pretvara u regularni dict"""
-    import pickle
+   
     with open(hfpath,mode="wb") as file:
         pickle.dump(dict(dir_md5),file)
-
 
 
 def remove_old_calcs(d):
@@ -776,7 +795,298 @@ def get_choices():
 
     return dct
         
+class ListCtrlLeft(wx.ListCtrl):
+    def __init__(self, parent, id):
+        wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
+		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
+       
+        self.parent = parent
+
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
+        self.InsertColumn(0, '')
+        for l in sorted(lt_dict.keys(), key = lambda x: int(x[1:]),reverse=True):
+            self.InsertStringItem(0,l)
+      
+    def OnSize(self, event):
+        size = self.parent.GetSize()
+        self.SetColumnWidth(0, size.x-5)
+        event.Skip()
+
+    def OnSelect(self, event):
+        print "parent of window is ",self.parent
+        print "grand parent of window is",self.parent.GetGrandParent()
+        window = self.parent.GetGrandParent().FindWindowByName('ListControlTemperature')
+        selected = event.GetIndex()
+        print "first selected",selected
+        self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlTherm').DeleteAllItems()
+        self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
+        self.parent.GetGrandParent().GetGrandParent().disable_choose()
+        window.LoadData(self.GetItemText(selected))
+
+    def OnDeSelect(self, event):
+        index = event.GetIndex()
+        self.SetItemBackgroundColour(index, 'WHITE')
+
+    def OnFocus(self, event):
+        self.SetItemBackgroundColour(0, 'red')
+
+class ListCtrlRight(wx.ListCtrl):
+    def __init__(self, parent, id):
+        wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
+		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
+
+        self.parent = parent
+
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED,self.OnSelect)
+
+        self.InsertColumn(0, '')
+
+
+    def OnSize(self, event):
+        size = self.parent.GetSize()
+        self.SetColumnWidth(0, size.x-5)
+        event.Skip()
+
+    def OnSelect(self, event):
+        print "parent of window is ",self.parent
+        print "grand parent of window is",self.parent.GetGrandParent().GetParent()
+        print "grand parent of window is",self.parent.GetGrandParent().GetParent()
+        window = self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlTherm')
+        print "window",window
+        selected = event.GetIndex()
+        print "first selected",selected
+        self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
+        self.parent.GetGrandParent().GetGrandParent().disable_choose()
+        window.LoadData(self.GetItemText(selected),self.l)
+
+    def LoadData(self, item):
+        self.DeleteAllItems()
+        self.l = item
+        for t in sorted(lt_dict[item],key=lambda x: int(x[1:]),reverse=True):
+            self.InsertStringItem(0,t)
+
+
+class ListCtrlLeft2(wx.ListCtrl):
+    def __init__(self, parent, id):
+        wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
+		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
+
+        self.parent = parent
+
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED,self.OnSelect)
+
+        self.InsertColumn(0, '')
+    
+        self.SetName('ListControlTherm')
+    def OnSelect(self, event):
+        print "parent of window is ",self.parent
+        print "grand parent of window is",self.parent.GetGrandParent().GetParent()
+        print "grand parent of window is",self.parent.GetGrandParent().GetParent()
+        window = self.parent.GetGrandParent().FindWindowByName('ListControlMC')
+        print "window",window
+        selected = event.GetIndex()
+        print "first selected",selected
+        self.parent.GetGrandParent().GetGrandParent().disable_choose()
+        window.LoadData(self.GetItemText(selected),self.l,self.t)
+    
+    def OnSize(self, event):
+        size = self.parent.GetSize()
+        self.SetColumnWidth(0, size.x-5)
+        event.Skip()
+
+    def LoadData(self, t,l):
+        self.DeleteAllItems()
+        self.t = t
+        self.l = l
+        print "gparent",self.parent.GetGrandParent().GetGrandParent().GetParent()
+        for t in sorted(self.parent.GetGrandParent().GetGrandParent().GetParent().get_mtherms(L=l,T=t),key=lambda x: int(x[5:]),reverse=True):
+            self.InsertStringItem(0,t)
+
+
+class ListCtrlRight2(wx.ListCtrl):
+    def __init__(self, parent, id):
+        wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
+		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
+
+        self.parent = parent
+
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_LIST_ITEM_SELECTED,self.OnSelect)
+
+        self.InsertColumn(0, '')
+
+
+    def OnSize(self, event):
+        size = self.parent.GetSize()
+        self.SetColumnWidth(0, size.x-5)
+        event.Skip()
+
+    def LoadData(self,therm,l,t):
+        self.DeleteAllItems()
+        for t in sorted(self.parent.GetGrandParent().GetGrandParent().GetParent().get_mmcs(L=l,T=t,THERM=therm),key=lambda x: int(x[2:]),reverse=True):
+            self.InsertStringItem(0,t)
+
+    def OnSelect(self,event):
+        self.parent.GetGrandParent().GetGrandParent().enable_choose()
+
+
+
+class Reader(wx.Dialog):
+    def __init__(self, parent, id, title):
+        wx.Dialog.__init__(self, parent, id, title)
+        self.parent = parent
+        self.SetSize((500,500))
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        splitter = wx.SplitterWindow(self, -1, style=wx.SP_LIVE_UPDATE|wx.SP_NOBORDER)
+        leftSplitter = wx.SplitterWindow(splitter,-1,style=wx.SP_LIVE_UPDATE | wx.SP_NOBORDER,name='leftSplitter')
+        rightSplitter = wx.SplitterWindow(splitter,-1,style=wx.SP_LIVE_UPDATE | wx.SP_NOBORDER,name='rightSplitter')
+
+        vboxL = wx.BoxSizer(wx.VERTICAL)
+        panelL = wx.Panel(leftSplitter, -1)
+        panelLTxt = wx.Panel(panelL, -1, size=(-1, 40))
+        panelLTxt.SetBackgroundColour('#53728c')
+        stL = wx.StaticText(panelLTxt, -1, 'Lattice size', (5, 5))
+        stL.SetForegroundColour('WHITE')
+
+        panelLList = wx.Panel(panelL, -1, style=wx.BORDER_SUNKEN)
+        vboxLList = wx.BoxSizer(wx.VERTICAL)
+        self.listL = ListCtrlLeft(panelLList, -1)
+        self.listL.SetName('ListControlLattice')
+
+        vboxLList.Add(self.listL, 1, wx.EXPAND)
+        panelLList.SetSizer(vboxLList)
+        panelLList.SetBackgroundColour('WHITE')
+
+
+        vboxL.Add(panelLTxt, 0, wx.EXPAND)
+        vboxL.Add(panelLList, 1, wx.EXPAND)
+
+        panelL.SetSizer(vboxL)
+
+        vboxT = wx.BoxSizer(wx.VERTICAL)
+        panelT = wx.Panel(leftSplitter, -1)
+        panelTTxt = wx.Panel(panelT, -1, size=(-1, 40), style=wx.NO_BORDER)
+        stT = wx.StaticText(panelTTxt, -1, 'Temperature', (5, 5))
+        stT.SetForegroundColour('WHITE')
+
+        panelTTxt.SetBackgroundColour('#53728c')
+
+        panelTList = wx.Panel(panelT, -1, style=wx.BORDER_RAISED)
+        vboxTList = wx.BoxSizer(wx.VERTICAL)
+        self.listT = ListCtrlRight(panelTList, -1)
+        self.listT.SetName('ListControlTemperature')
+        vboxTList.Add(self.listT, 1, wx.EXPAND)
+        panelTList.SetSizer(vboxTList)
+
+
+        panelTList.SetBackgroundColour('WHITE')
+        vboxT.Add(panelTTxt, 0, wx.EXPAND)
+        vboxT.Add(panelTList, 1, wx.EXPAND)
+
+        panelT.SetSizer(vboxT)
         
+        
+       
+        
+
+        vboxTherm = wx.BoxSizer(wx.VERTICAL)
+        panelTherm = wx.Panel(rightSplitter,-1)
+        panelThermTxt = wx.Panel(panelTherm,-1,size=(-1,40),style=wx.NO_BORDER)
+        panelThermList = wx.Panel(panelTherm, -1, style=wx.BORDER_RAISED)
+        vboxThermList = wx.BoxSizer(wx.VERTICAL)
+        self.listTherm = ListCtrlLeft2(panelThermList, -1)
+        #listTherm.SetName('ListControlTherm')
+        vboxThermList.Add(self.listTherm, 1, wx.EXPAND)
+        panelThermList.SetSizer(vboxThermList)
+        panelThermList.SetBackgroundColour('WHITE')
+        
+        stTherm = wx.StaticText(panelThermTxt, -1, 'Therms', (5, 5))
+        stTherm.SetForegroundColour('WHITE')
+        panelThermTxt.SetBackgroundColour('#53728c')
+        vboxTherm.Add(panelThermTxt,0,wx.EXPAND)
+        vboxTherm.Add(panelThermList,1,wx.EXPAND)
+        panelTherm.SetSizer(vboxTherm)
+        
+        
+        
+        
+        panelMC = wx.Panel(rightSplitter,-1)
+        panelMCTxt = wx.Panel(panelMC,-1,size=(-1,40),style=wx.NO_BORDER)
+        vboxMC = wx.BoxSizer(wx.VERTICAL)
+        stMC = wx.StaticText(panelMCTxt, -1, 'MCs', (5, 5))
+        stMC.SetForegroundColour('WHITE')
+       
+        panelMCTxt.SetBackgroundColour('#53728c')
+        panelMCList = wx.Panel(panelMC, -1, style=wx.BORDER_RAISED)
+        vboxMCList = wx.BoxSizer(wx.VERTICAL)
+        self.listMC = ListCtrlRight2(panelMCList, -1)
+        self.listMC.SetName('ListControlMC')
+        vboxMCList.Add(self.listMC, 1, wx.EXPAND)
+        panelMCList.SetSizer(vboxMCList)
+        panelMCList.SetBackgroundColour('WHITE')
+        vboxMC.Add(panelMCTxt,0,wx.EXPAND)
+        vboxMC.Add(panelMCList,1,wx.EXPAND)
+        panelMC.SetSizer(vboxMC)
+
+        
+      
+      
+        self.Bind(wx.EVT_TOOL, self.ExitApp, id=1)
+        rightSplitter.SplitVertically(panelTherm,panelMC)
+        # hbox.Add(leftSplitter, 1, wx.EXPAND | wx.TOP | wx.BOTTOM, 5)
+        # vboxLeft = wx.BoxSizer(wx.HORIZONTAL)
+        # vboxRight = wx.BoxSizer(wx.HORIZONTAL)
+#        vboxLeft.Add(leftSplitter,1,wx.EXPAND) #
+      #  vboxRight.Add(rightSplitter,1,wx.EXPAND)
+        # panelRight =wx.Panel(splitter,-1)
+        # panelRight.SetSizer(vboxRight)
+        # panelLeft = wx.Panel(splitter,-1)
+        # panelLeft.SetSizer(vboxLeft)
+        
+        splitter.SplitHorizontally(leftSplitter,rightSplitter)
+        self.button_choose = wx.Button(self,-1,"Choose")
+        self.button_choose.Enable(False)
+        self.button_done = wx.Button(self,-1,"Done")
+        self.Bind(wx.EVT_BUTTON, self.on_choose_button,self.button_choose)
+        self.Bind(wx.EVT_BUTTON, self.on_done_button,self.button_done)
+        vbox.Add(splitter, 1,  wx.EXPAND | wx.TOP | wx.BOTTOM, 5 )
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        hbox.Add(self.button_choose)
+        hbox.Add(self.button_done)
+        vbox.Add(hbox)
+        self.SetSizer(vbox)
+        leftSplitter.SplitVertically(panelL,panelT)
+      
+        #self.CreateStatusBar()
+        # toolbar = self.CreateToolBar()
+        # toolbar.AddLabelTool(1, 'Exit', wx.Bitmap('icons/stock_exit.png'))
+        # toolbar.Realize()
+        self.Centre()
+        self.Show(True)
+
+    def disable_choose(self):
+        self.button_choose.Enable(False)
+    def enable_choose(self):
+        self.button_choose.Enable(True)
+    def on_done_button(self,event):
+        self.SetReturnCode(wx.ID_OK)
+        self.Close()
+    def on_choose_button(self,event):
+        l =self.listL.GetItemText(self.listL.GetFirstSelected())
+        t =self.listT.GetItemText(self.listT.GetFirstSelected())
+        therm =self.listTherm.GetItemText(self.listTherm.GetFirstSelected())
+        mc =self.listMC.GetItemText(self.listMC.GetFirstSelected())
+
+        self.GetParent().add_to_mat_dict(l=l,t = t,therm=therm,mc=mc)
+
+        
+
+    def ExitApp(self, event):
+        self.Close()
+       
     
     
 if __name__ == '__main__':
