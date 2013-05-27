@@ -190,7 +190,7 @@ class ScatterPanel(wx.Panel):
 
 
 def load_best_mat_dict():
-    with open(join(LATTICE_MC,"mat.dict"),mode="ab+") as hashf:
+    with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
        try:
            fcontent =  defaultdict(dict,pickle.load(hashf))
        except EOFError:
@@ -202,7 +202,7 @@ class ThermPanel(wx.Panel):
 
     
 
-    best_mat_dict = load_best_mat_dict()
+
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
@@ -338,11 +338,11 @@ class ThermPanel(wx.Panel):
         best_mat = self.get_files("*%s%s*.mat" %(therms,mcs),L=L,T=T)
         # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
         assert len(best_mat)==1
-        self.best_mat_dict[L][T]=best_mat[0]
-        print "BEST MAT DICT:",self.best_mat_dict
+        best_mat_dict[L][T]=best_mat[0]
+        print "BEST MAT DICT:",best_mat_dict
         self.parent.flash_status_message("Best .mat for %s%s selected" % (L,T))
-        with open(join(LATTICE_MC,"mat.dict") ,"wb") as matdictfile:
-            pickle.dump(dict(self.best_mat_dict),matdictfile)
+        with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
+            pickle.dump(dict(best_mat_dict),matdictfile)
         
     def on_add_button(self,event):
         
@@ -509,6 +509,8 @@ class ThermPanel(wx.Panel):
 
 class AggPanel(wx.Panel):
 
+    name_dict = {'susc':"Magnetic Susceptibility",'Tcap':'Tcap???????','T':'Temperature',
+                 'M1avg':"Average value of $\langle{M}\rangle$",'M2avg':"Average value of $\langle{M^2}\rangle$",'M4avg':"Average value of $\langle{M^4}\rangle$",'Eavg':"Average value of $\langle{E}\rangle$",'E2avg':"Average value of $\langle{E^2}\rangle$",'U':'Binder Cumulant U$_{L}$'}
     def __init__(self, parent):
 
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -571,7 +573,7 @@ class AggPanel(wx.Panel):
         self.vbox.Fit(self)
 
     def on_agg_button(self,event):
-        agregate.main(dict(ThermPanel.best_mat_dict),SIM_DIR)
+        agregate.main(dict(best_mat_dict),SIM_DIR)
         self.aggd = load_agg()
         self.L_choices = zip(*self.aggd.columns)[0]
         print self.L_choices
@@ -599,17 +601,19 @@ class AggPanel(wx.Panel):
         lbl = "$%s_{%s}$" %(L_select[0],L_select[1:])
         print self.aggd[L_select].ix['T']
         self.ax_agg.plot(self.aggd[L_select].ix['T'],
-                         self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl)
+                         self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none')
         self.ax_agg.set_xlim(right=1.55)
         leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
         leg.draggable(True)
         self.ax_agg.set_xlabel("Temperature",size=10)
+        self.ax_agg.set_ylabel(self.name_dict[mag_select],size=10)
         self.ax_agg.grid(True, color='red', linestyle=':')
         self.canvas.draw()
         
     def on_clear_button(self,event):
         self.ax_agg.cla()
-        self.ax_agg.set_xlabel("Temperature",size=10)
+        pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
+        pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
         self.canvas.draw()
         
     def init_plot(self):
@@ -1082,9 +1086,6 @@ class Reader(wx.Dialog):
         vboxMC.Add(panelMCTxt,0,wx.EXPAND)
         vboxMC.Add(panelMCList,1,wx.EXPAND)
         panelMC.SetSizer(vboxMC)
-
-        
-      
       
         self.Bind(wx.EVT_TOOL, self.ExitApp, id=1)
         rightSplitter.SplitVertically(panelTherm,panelMC)
@@ -1099,16 +1100,17 @@ class Reader(wx.Dialog):
         # panelLeft.SetSizer(vboxLeft)
         
         splitter.SplitHorizontally(leftSplitter,rightSplitter)
-        self.button_choose = wx.Button(self,-1,"Choose")
+        self.button_choose = wx.Button(self,-1,"Choose",size=(70,30))
         self.button_choose.Enable(False)
-        self.button_done = wx.Button(self,-1,"Done")
+        self.button_done = wx.Button(self,-1,"Done",size=(70,30))
         self.Bind(wx.EVT_BUTTON, self.on_choose_button,self.button_choose)
         self.Bind(wx.EVT_BUTTON, self.on_done_button,self.button_done)
         vbox.Add(splitter, 1,  wx.EXPAND | wx.TOP | wx.BOTTOM, 5 )
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        hbox.Add(self.button_choose)
-        hbox.Add(self.button_done)
-        vbox.Add(hbox)
+        hbox.AddStretchSpacer()
+        hbox.Add(self.button_choose,1, wx.BOTTOM,5)
+        hbox.Add(self.button_done,1,wx.BOTTOM,5)
+        vbox.Add(hbox,flag=wx.ALIGN_RIGHT|wx.RIGHT,border=10)
         self.SetSizer(vbox)
         leftSplitter.SplitVertically(panelL,panelT)
       
@@ -1145,8 +1147,8 @@ if __name__ == '__main__':
     import sys
     args = docopt(__doc__)
     SIM_DIR = args['SIMDIR']
-    print SIM_DIR
-    
+    print SIM_DIR 
+    best_mat_dict = load_best_mat_dict()   
     app = wx.PySimpleApp()
 
     # ok, mozda bi bolje bilo da koristim dirpickerctrl???
