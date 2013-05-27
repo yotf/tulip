@@ -14,8 +14,10 @@ Usage: util.py
 #  -a --append  Dodavanje na vec postojace fajlove [default:False].
 # [-a |--append]
 import numpy as np
+import pandas as pd
 import sys
 import os
+from os.path import join
 from unittest import TestCase
 import re
 import glob
@@ -39,18 +41,13 @@ mcregex = r'%s\d+.*?\.dat'
 
 
 
-def check_seeds(sim_file):
+def check_seeds(seeds):
     """Checks if first column of a whitespace seperated file
     has unique values of longlong's.
-    Returns: True if unique, False otherwise
     """
-
-    sim_file.seek(0)
-    seeds = np.loadtxt(sim_file, usecols=(0, ), dtype=np.str)
-    sim_file.seek(0)
-    (uniqueVal, i) = np.unique(seeds, return_inverse=True)
-    duplicates = uniqueVal[np.bincount(i) > 1]
-    if duplicates:
+    duplicates = seeds[seeds.duplicated()]
+    
+    if len(duplicates)>0:
         print 'Ima duplikata medju seedovima!! ABORT ABORT!!'
         print 'Duplikati su' + str(duplicates)
         sys.exit()
@@ -65,27 +62,39 @@ def main(ltdir):
         grupa = glregex.search(all_files[0]).groups()[0]
         group_file[grupa] = re.findall(mcregex % grupa, ' '.join(all_files))
         all_files = all_files[len(group_file[grupa]):]
-    for (key, value) in group_file.items():
+    for key, value in group_file.items():
         print 'Simulacija', key
         # ako su vec napravljeni all fajlovi
-        prev_alls = glob.glob("%s[0-9]*.all" % key)
+        prev_alls = glob.glob(join(ltdir,"%s[0-9]*.all") % key)
         # nesto nije u redu ako ima vise .all fajlova
         assert(len(prev_alls)<=1)
         # ako vec postoji all fajl za dato lt i therm
-        # onda se dodaje na njega i menja mu se ime
-        ze_all = "temp" if not prev_alls else prev_alls[0]
-        with open(ze_all, "a+") as svi:
-            for sim_file in value:
-                with open(sim_file) as dat_file:
-                    svi.write(''.join([line for line in dat_file.readlines()
-                                       if not line.strip().startswith("#") ]) )
-                    os.remove(sim_file)
-            check_seeds(svi)
-            os.rename(ze_all, key + str(len(svi.readlines())) + '.all')
+        #ako postoji vec onda ga ucitavamo, u suprotnom pravimo prazan
+        #:((((((( iff
+        if not prev_alls:
+            all_frame=pd.DataFrame(columns=['seed', 'E', 'Mx', 'My', 'Mz'])
+        else:
+            all_frame =  pd.read_table(prev_alls[0],delim_whitespace=True,names=['seed', 'E', 'Mx', 'My', 'Mz'])
+            os.remove(prev_alls[0])
 
-        # ##I one CESGA logove
+        # znaci za svaki dat fajl. on ga cita
+        # zadaje mu kolone
+        #numpy je jako spor :(
+        for sim_file in value:
+            dat = pd.read_table(sim_file,names=['seed', 'E', 'Mx', 'My', 'Mz'],skiprows =
+                                1,delim_whitespace=True)
+#            dat =pd.DataFrame(np.loadtxt(sim_file,dtype=np.str),columns=['seed', 'E', 'Mx', 'My', 'Mz'])
+            all_frame=pd.concat([all_frame,dat])
+            os.remove(sim_file)      
+        check_seeds(all_frame.seed)
+        all_frame.to_csv(join(ltdir,"%s%s.all" %(key,len(all_frame.seed))) ,sep=" ",header=False,index=False)
+        
+        
+        
+        
+
 
 if __name__=="__main__":
     arguments = docopt(__doc__)
-#    mode = ('a+' if arguments['--append'] else 'w+')
+
     main(os.getcwd())
