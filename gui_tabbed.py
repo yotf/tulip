@@ -1,10 +1,12 @@
+
+
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
 =================================================================
 Opis aplikacije....
 =================================================================
-
+   
 Usage:
     gui_tabbed.py [SIMDIR]
     gui_tabbed.py -h | --help
@@ -13,8 +15,8 @@ Arguments:
 Options:
     -h --help
 """
-
-import pdb
+   
+#import pdb
 import wx
 import pandas as pd
 import os
@@ -23,7 +25,7 @@ from os.path import join
 import glob
 import re
 import pickle
-
+   
 from collections import defaultdict
 import itertools
 import unify
@@ -31,12 +33,16 @@ import agregate
 import compose
 import statmat
 import matplotlib
-
-
+   
+#PRETPOSTAVKA: SVI SKRIPTOVI SE NALAZE U ISTOM DIREKTORIJUMU
+# PRETPOSTAVKA : OVAJ (GLANI) SKRIPT SE UVEK POKRECE IZ DIREKTORIJUMA
+# U KOM SE NALAZI
+   
+   
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
 from matplotlib import cm
-
+   
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 import numpy as np
@@ -44,9 +50,10 @@ import pylab
 from mpl_toolkits.mplot3d import Axes3D
 from simp_zoom import zoom_factory
 from itertools import cycle
-
-
-regexf = re.compile(r'(L\d{1,2}).aplot$')
+   
+   
+regexf = re.compile(r'^(L\d{1,3}).aplot$')
+   
 SIM_DIR = ""
 DEBUG = "+++DEBUG INFO+++  "
 DEBUGG = False
@@ -56,7 +63,23 @@ fmt_cycle = itertools.cycle(fmt_strings)
 def debug():
     if(DEBUGG):
         pdb.set_trace()
+        
+def get_files(l,t,ext="*.plot"):
+    """Vraca sve plot fajlove u zadatom folderu (L i T))"""
 
+    folder_name = join(SIM_DIR,"%s%s" %(l,t),ext)
+    print "folder name",folder_name
+    files = glob.glob(folder_name)
+    return files
+   
+def get_mtherms(L,T,therms="THERM\d+",igroup=0,ext="*.mat"):
+    """za sve moguce .mat fajlove za dato L i T
+    vraca parove mc ili therm u zavisnosti od igroup parametra)"""
+    return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in get_files(l=L,t=T,ext=ext)]
+def get_mmcs(L,T,therms):
+    
+    return get_mtherms(L=L,T=T,therms=therms,igroup=1,ext="*%sMC*.mat" %therms)
+        
 class ScatterPanel(wx.Panel):
     xlabel = 'Mx'    
     ylabel = 'My'
@@ -74,7 +97,7 @@ class ScatterPanel(wx.Panel):
         fig_width = self.parent.GetParent().width / self.dpi
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
         #self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
-
+   
         self.fig = Figure(figsize=(20,7),facecolor='#595454')
         # self.ax = Axes3D(self.fig)
         self.ax_3d = self.fig.add_subplot(121,projection="3d")
@@ -86,7 +109,7 @@ class ScatterPanel(wx.Panel):
         # self.canvas.mpl_connect('button_press_event',self.on_button_press)
         self.canvas.mpl_connect('figure_enter_event',self.on_figure_enter)
         self.zoomf = zoom_factory(self.ax_3d,self.canvas)
-
+   
         self.ax_3d.mouse_init()
         self.init_gui()
         
@@ -98,7 +121,7 @@ class ScatterPanel(wx.Panel):
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
         
         print DEBUG,"self.ts reversed",self.ts
-
+   
     def on_figure_enter(self,event):
         self.tooltip.Enable(True)
         print "entered figure"
@@ -108,13 +131,13 @@ class ScatterPanel(wx.Panel):
     def on_key_press(self,event):
         if event.key =='d':
             self.step(event)
-
+   
     def init_gui(self):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
         self.vbox.Add(self.canvas)
        
-        self.draw_button = wx.Button(self, -1, 'Next T')
+        self.draw_button = wx.Button(self, -1, 'next')
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         
@@ -123,16 +146,16 @@ class ScatterPanel(wx.Panel):
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
-
+   
     
-
+   
     def load_data(self):
         """Ucitava podatke za animaciju"""
         import os
         flist=glob.glob(join(SIM_DIR,"L10T*"))
         flist = [f for f in flist if os.path.isdir(f)]
         print DEBUG,"flist",flist
-
+   
         for f in flist:
             print glob.glob(join(f,"*THERM1000MC*.all"))
             try:
@@ -144,51 +167,40 @@ class ScatterPanel(wx.Panel):
             data.set_index(np.arange(1000),inplace=True)
             temp =re.match(r".*L10(T\d{2,4})$",f).groups()[0]
             self.all_data[temp] = data
-
+   
         self.data = pd.concat(self.all_data,axis=0)
     def setup_plot(self):
         
         "Initial drawing of scatter plot"
         from matplotlib import cm
-
+   
         self.step("dummy")
-        # t=self.temprs.next()
-        # x,y,z =  self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
-        # # magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
-  
-        # self.scat = self.ax.scatter(x,y,z,s=6 )       
-  
+   
     def step(self,event):
         import time
-        from matplotlib import cm
-        
         t=self.temprs.next()
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
         magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
-        print magt
-        print np.mean(magt)
         colors = np.where(magt>np.mean(magt),'r','b')
-        # self.scat._offsets3d = (x,y,z)
+   
         self.ax_3d.cla()
         self.ax_hist.cla()
-
+   
              
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
         self.ax_3d.set_title(t)
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
-        self.ax_hist.plot(kind="kde",style="k--")
-       
-       
-        
+        self.ax_3d.set_xlabel(self.xlabel)
+        self.ax_3d.set_ylabel(self.ylabel)
+        self.ax_3d.set_zlabel(self.zlabel)
         self.canvas.draw()
             
     def forceUpdate(self,event):
-       
         self.scat.changed()
-
-
+   
+   
 def load_best_mat_dict():
     with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
        try:
@@ -197,32 +209,23 @@ def load_best_mat_dict():
            fcontent = defaultdict(dict)
     print "best mat dict",fcontent
     return fcontent
-
+   
 class ThermPanel(wx.Panel):
-
-    
-
-
+   
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.init_plot()
-        # self.save_button = wx.Button(self, -1, 'Save plot')
-
-        self.mc_txt = wx.TextCtrl(self, size = (80,-1))
+        self.mc_txt = wx.SpinCtrl(self, size = (80,-1))
         self.add_button = wx.Button(self,-1,'Gen stat for this MC')
-        self.bestmat_button=wx.Button(self,-1,"Choose best .mat's ...")
+        self.bestmat_button=wx.Button(self,-1,"Choose best .mats ...")
         self.clear_button = wx.Button(self,-1,"Clear plot")
         self.Bind(wx.EVT_BUTTON, self.on_chooser,self.bestmat_button)
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
-
-        
         self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
-        self.lbl_cmp = wx.StaticText(self,-1,"Compare by:",size=(-1, 30))
         self.chk_l = wx.CheckBox(self,-1,"Lattice size", size=(-1, 30))
         self.chk_t = wx.CheckBox(self,-1,"Temperature",size=(-1, 30))
         self.chk_mc = wx.CheckBox(self,-1,"MC steps",size=(-1, 30))
-
         plot_choices = ['M1', 'M2', 'M4']
         self.cmb_plots = wx.ComboBox(self, size=(100, -1),
                 choices=plot_choices, style=wx.CB_READONLY,
@@ -237,30 +240,18 @@ class ThermPanel(wx.Panel):
                                  value=t_choices[0])
         self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
                 choices=self.get_files(), value='<Choose plot file>')
-
-       # self.cmb_mtherms = wx.ComboBox(self,size=(150,-1),choices = [], value="temp")
-        #get_mmcs se uvek desava u zavisnosti od od mthermss
-        #self.cmb_mmcs = wx.ComboBox(self,size=(100,-1),choices = [])
-        # self.cmb_mats = wx.ComboBox(self,size=(300,-1),choices = self.get_files(ext="*.mat"),
-        #                             value = '<Choose best mat>')
-        
-        
-        #punimo combo boxove
         self.update_combos()
                                     
-
+   
         self.Bind(wx.EVT_COMBOBOX, self.on_select, self.cmb_plots)
         self.Bind(wx.EVT_COMBOBOX, self.update_combos, self.cmb_L)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_T, self.cmb_T)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_pfiles,
                   self.cmb_pfiles)
-        #malo previse vremena trosim, mislim
-        #self.Bind(wx.EVT_COMBOBOX,self.on_select_mtherms,self.cmb_mtherms)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-#        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
-                     #  | wx.ALIGN_CENTER_VERTICAL)
+        
         self.hbox1.AddSpacer(20)
-
+   
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_T, border=5, flag=wx.ALL
@@ -269,34 +260,28 @@ class ThermPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_plots, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-
+   
         self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-        # self.hbox1.Add(self.cmb_mtherms, border=5, flag=wx.ALL
-        #                | wx.ALIGN_CENTER_VERTICAL)
-        # self.hbox1.Add(self.cmb_mmcs, border=5, flag=wx.ALL
-        #        | wx.ALIGN_CENTER_VERTICAL)
+   
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         
-
+   
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
-
+   
         self.toolhbox.Add(self.toolbar)
         self.toolhbox.AddSpacer(20)
-#        self.toolhbox.Add(self.lbl_cmp 0,wx.ALIGN_RIGHT|wx.TOP|wx.LEFT,5)
-        self.toolhbox.Add(self.lbl_cmp,5,wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.TOP, 8)
+      
         self.toolhbox.AddSpacer(20)
         self.toolhbox.Add(self.chk_l,5, wx.TOP,3)
         self.toolhbox.Add(self.chk_t,5,wx.TOP,3)
         self.toolhbox.Add(self.chk_mc,5,wx.TOP,3)
-        
-        
-
+   
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
         self.vbox.Add(self.toolhbox)
@@ -304,76 +289,56 @@ class ThermPanel(wx.Panel):
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
     
-
-    def get_mtherms(self,therms="THERM\d+",igroup=0,ext="*.mat",L=None,T=None):
-        """za sve moguce .mat fajlove za dato L i T
-        vraca parove mc,therm  koji su dostupni. sigurno moze
-        nekako elegantnije"""
-        print '.*(%s)(MC\d+)' % therms
-        return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in self.get_files(ext,L=L,T=T)]
-
+   
+   
+   
     def on_clear_button(self,event):
         self.ax_cv.cla()
         self.ax_mag.cla()
       #  self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
        # self.ax_cv.set_title('Coefficient of Variation',fontsize=10,family='monospace')
         self.canvas.draw()
-
-    def get_mmcs(self,L=None,T=None, THERM = None):
-        therms = THERM or self.cmb_mtherms.GetValue()
-        return self.get_mtherms(therms,1,"*%sMC*.mat" %therms,L=L,T=T)
-        
-
+   
     def on_chooser(self,event):
         self.chooser = Reader(self,-1,"Chooser")
         self.chooser.ShowModal()
-      
         self.chooser.Destroy()
         
-    def add_to_mat_dict(self,l =None,t=None,therm=None,mc = None):
-        L = l or self.cmb_L.GetValue()
-        T = t or self.cmb_T.GetValue()
-        therms = therm or self.cmb_mtherms.GetValue()
-        mcs = mc or self.cmb_mmcs.GetValue()
-        best_mat = self.get_files("*%s%s*.mat" %(therms,mcs),L=L,T=T)
+    def add_to_mat_dict(self,l,t,therm,mc):
+        """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
+        u status baru, i cuva novo stanje best_mat_dict-a na disk"""
+        best_mat = get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
         # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
         assert len(best_mat)==1
-        best_mat_dict[L][T]=best_mat[0]
+        best_mat_dict[l][t]=best_mat[0]
         print "BEST MAT DICT:",best_mat_dict
-        self.parent.flash_status_message("Best .mat for %s%s selected" % (L,T))
+        self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
         with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
             pickle.dump(dict(best_mat_dict),matdictfile)
         
     def on_add_button(self,event):
-        
+        """Pravi novi .plot fajl u zeljenom direktorijumu
+        tj. u zavisnosti od vrednosti L i T combo boxova"""
         mcs =int( self.mc_txt.GetValue())
         # gledamo sta je korisnik selektovao sto se tice L i T
         # i onda u tom folderu pravimo nove .mat fajlove
         # i radimo compose nad novim .mat fajlovima
-        # ovde bi bilo dobro da napravim da se gleda .all fajl
-        # sa najvise MC-ova i da se ogranici upis na to
         mcs_dir =join(SIM_DIR,self.cmb_L.GetValue()+self.cmb_T.GetValue())
         print "Making new plot files in dir %s for %d MCs" % (mcs_dir,mcs)
         statmat.main(mcs_dir,mcs)
         compose.main(mcs_dir,mcs)
         self.cmb_pfiles.SetItems(self.get_files())
-        
-        
-    def on_select_mtherms(self,event="dummy"):
-        mccs_items = self.get_mmcs()
-        self.cmb_mmcs.SetItems(mccs_items)
-        self.cmb_mmcs.SetValue(mccs_items[0])
-
+      
     def on_select_T(self,event="dummy"):
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
-#        mtherm_items = self.get_mtherms()
-        
-        #self.cmb_mtherms.SetItems(mtherm_items)
-        #self.cmb_mtherms.SetValue(mtherm_items[0])
-        #selektovali smo mtherms, pa pozivamo odg. metodu
-        #self.on_select_mtherms()
-
+        # trazimo najveci mc od svih .all fajlova.  inace
+        # nece se desiti nista pri odabiru generisanja za taj mc
+        uplimit = get_mtherms(L=self.cmb_L.GetValue(),T=self.cmb_T.GetValue(),igroup=1,ext="*.all")
+        uplimit = int(sorted(uplimit,key=lambda x: int(x[2:]))[-1][2:])
+        print "uplimit",uplimit
+        self.mc_txt.SetRange(0,uplimit)
+   
     def update_combos(self,event="dummy"):
         """Ova metoda azurira kombinacijske kutije koje zavise od stanja
         drugih elemenata/kontrola """
@@ -382,22 +347,15 @@ class ThermPanel(wx.Panel):
         self.cmb_T.SetValue(t_items[0])
         #selektovali smo T, pa pozivamo odgovarajucu metodu
         self.on_select_T()
-       
-        # self.cmb_mats.SetItems(self.get_files("*.mat"));
-        # self.cmb_mats.SetValue('<Choose best .mat  file>')
 
-
-    def get_files(self,ext="*.plot",L=None,T=None):
       
-        """Vraca sve plot fajlove u zadatom folderu (L i T))"""
-        lval = L or self.cmb_L.GetValue()
-        tval = T or self.cmb_T.GetValue()
-        folder_name = join(SIM_DIR,lval+tval)+os.path.sep
-        print "folder name",folder_name
-        print DEBUG,"glob for get_files",folder_name+ext
-        files = glob.glob(folder_name + ext)
-        print DEBUG,"files",files
-        return files
+         
+    def get_files(self):
+        """Kada zovemo iz klase ovu metodu, uglavnom nista ne tweakujemo i to, vec
+        stavljamo defaultnu vrednost "*.plot" """
+        return get_files(ext="*.plot",l=self.cmb_L.GetValue(),t=self.cmb_T.GetValue())
+        
+
 
     def on_select_pfiles(self, event):
         """Kada korisnik izabere .plot fajl, iscrtava se """
@@ -443,7 +401,6 @@ class ThermPanel(wx.Panel):
     def draw_plot(self, item='M1'):
         """Redraws the plot
         """
-
         # self.ax_mag.cla()
         # self.ax_cv.cla()
         print self.cmb_pfiles.GetValue().split(os.path.sep)[-1]
@@ -455,7 +412,6 @@ class ThermPanel(wx.Panel):
         mcchk  = self.chk_mc.IsChecked()
         tchk  = self.chk_t.IsChecked()
         lbl = "%s %s %s" %(lbl_l if lchk else "", lbl_t if tchk else "",lbl_mc if mcchk else "")
-     #   lbl = lbl if lbl.split() else "dummy"
         print lbl
         
         
@@ -465,10 +421,7 @@ class ThermPanel(wx.Panel):
                              yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',label=lbl)
 
         mag_leg=self.ax_mag.legend(loc="best",fontsize=10,frameon=False,shadow=True)
-        # just for fu
         mag_leg.draggable(True)
-       
-###        line.set_markerfacecolor('w')
         self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
                              % item],fmt,label =lbl,fillstyle='none')
         cv_leg=self.ax_cv.legend(loc="best",fontsize=10,frameon=False,shadow=True)
@@ -488,23 +441,6 @@ class ThermPanel(wx.Panel):
         pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
         
         self.canvas.draw()
-
-    # def on_save_button(self, event):
-    #     file_choices = ' EPS (*.eps)|*.eps| PNG (*.png)|*.png'
-
-    #     dlg = wx.FileDialog(
-    #         self,
-    #         message='Save plot as...',
-    #         defaultDir=os.getcwd(),
-    #         defaultFile='plot.eps',
-    #         wildcard=file_choices,
-    #         style=wx.SAVE,
-    #         )
-
-    #     if dlg.ShowModal() == wx.ID_OK:
-    #         path = dlg.GetPath()
-    #         self.canvas.print_figure(path, dpi=self.dpi)
-    #         self.flash_status_message('Saved to %s' % path)
 
 
 class AggPanel(wx.Panel):
@@ -581,12 +517,6 @@ class AggPanel(wx.Panel):
         self.L_choices = list(set(self.L_choices))
         print self.L_choices
         
-        # self.LT_combo = dict()
-
-        # for L in L_choices:
-        #     self.LT_combo[L] = [t for (l, t) in agg_data.columns if l == L]
-
-        # print DEBUG,"LT_combo", LT_combo
         self.mag_choices = list(self.aggd.index)
         self.cmb_L.SetItems(self.L_choices)
         self.cmb_L.SetValue(self.L_choices[0])
@@ -789,18 +719,6 @@ def getmd5(d):
             m.update(line)
     return m.hexdigest()
         
-   
-#AGREGATE, mozda za kasnije treba
-    # for L in Ls:
-        
-    #     print DEBUG,"Ls", Ls
-    #     print L,L+"*"
-    #     agregate.main(SIM_DIR,L,L+"T*")
-    #     count= count+1
-    # prbar.Destroy()
-    # #posto smo generisali sve fajlove ovo se pise
-    # #ako korisnik bude dodavao nove, opet ce se zvati
-    # writemd5hash()
 
 def load_agg():
     aplot_files = [f for f in os.listdir(SIM_DIR) if regexf.match(f)]
@@ -816,12 +734,6 @@ def load_agg():
     print agg_data
     return agg_data
 
-
-# def load_agg():
-#     aplot_files = glob.glob(join(SIM_DIR,"L[0-9]*.aplot"))
-#     aplot_files.sort()
-#     agg=dict()
-#     for aplot in aplot_files:
         
 def read_hashf(hfpath):
     """Ako postoji fajl na hashf putanji
@@ -851,7 +763,7 @@ def get_choices():
 
     return dct
         
-class ListCtrlLeft(wx.ListCtrl):
+class ListCtrlLattice(wx.ListCtrl):
     def __init__(self, parent, id):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
 		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
@@ -887,7 +799,7 @@ class ListCtrlLeft(wx.ListCtrl):
     def OnFocus(self, event):
         self.SetItemBackgroundColour(0, 'red')
 
-class ListCtrlRight(wx.ListCtrl):
+class ListCtrlTempr(wx.ListCtrl):
     def __init__(self, parent, id):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
 		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
@@ -924,7 +836,7 @@ class ListCtrlRight(wx.ListCtrl):
             self.InsertStringItem(0,t)
 
 
-class ListCtrlLeft2(wx.ListCtrl):
+class ListCtrlTherm(wx.ListCtrl):
     def __init__(self, parent, id):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
 		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
@@ -958,11 +870,11 @@ class ListCtrlLeft2(wx.ListCtrl):
         self.t = t
         self.l = l
         print "gparent",self.parent.GetGrandParent().GetGrandParent().GetParent()
-        for t in sorted(self.parent.GetGrandParent().GetGrandParent().GetParent().get_mtherms(L=l,T=t),key=lambda x: int(x[5:]),reverse=True):
+        for t in sorted(get_mtherms(L=l,T=t),key=lambda x: int(x[5:]),reverse=True):
             self.InsertStringItem(0,t)
 
 
-class ListCtrlRight2(wx.ListCtrl):
+class ListCtrlMC(wx.ListCtrl):
     def __init__(self, parent, id):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
 		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
@@ -982,7 +894,7 @@ class ListCtrlRight2(wx.ListCtrl):
 
     def LoadData(self,therm,l,t):
         self.DeleteAllItems()
-        for t in sorted(self.parent.GetGrandParent().GetGrandParent().GetParent().get_mmcs(L=l,T=t,THERM=therm),key=lambda x: int(x[2:]),reverse=True):
+        for t in sorted(get_mmcs(L=l,T=t,therms=therm),key=lambda x: int(x[2:]),reverse=True):
             self.InsertStringItem(0,t)
 
     def OnSelect(self,event):
@@ -1009,7 +921,7 @@ class Reader(wx.Dialog):
 
         panelLList = wx.Panel(panelL, -1, style=wx.BORDER_SUNKEN)
         vboxLList = wx.BoxSizer(wx.VERTICAL)
-        self.listL = ListCtrlLeft(panelLList, -1)
+        self.listL = ListCtrlLattice(panelLList, -1)
         self.listL.SetName('ListControlLattice')
 
         vboxLList.Add(self.listL, 1, wx.EXPAND)
@@ -1032,7 +944,7 @@ class Reader(wx.Dialog):
 
         panelTList = wx.Panel(panelT, -1, style=wx.BORDER_RAISED)
         vboxTList = wx.BoxSizer(wx.VERTICAL)
-        self.listT = ListCtrlRight(panelTList, -1)
+        self.listT = ListCtrlTempr(panelTList, -1)
         self.listT.SetName('ListControlTemperature')
         vboxTList.Add(self.listT, 1, wx.EXPAND)
         panelTList.SetSizer(vboxTList)
@@ -1043,17 +955,12 @@ class Reader(wx.Dialog):
         vboxT.Add(panelTList, 1, wx.EXPAND)
 
         panelT.SetSizer(vboxT)
-        
-        
-       
-        
-
         vboxTherm = wx.BoxSizer(wx.VERTICAL)
         panelTherm = wx.Panel(rightSplitter,-1)
         panelThermTxt = wx.Panel(panelTherm,-1,size=(-1,40),style=wx.NO_BORDER)
         panelThermList = wx.Panel(panelTherm, -1, style=wx.BORDER_RAISED)
         vboxThermList = wx.BoxSizer(wx.VERTICAL)
-        self.listTherm = ListCtrlLeft2(panelThermList, -1)
+        self.listTherm = ListCtrlTherm(panelThermList, -1)
         #listTherm.SetName('ListControlTherm')
         vboxThermList.Add(self.listTherm, 1, wx.EXPAND)
         panelThermList.SetSizer(vboxThermList)
@@ -1078,7 +985,7 @@ class Reader(wx.Dialog):
         panelMCTxt.SetBackgroundColour('#53728c')
         panelMCList = wx.Panel(panelMC, -1, style=wx.BORDER_RAISED)
         vboxMCList = wx.BoxSizer(wx.VERTICAL)
-        self.listMC = ListCtrlRight2(panelMCList, -1)
+        self.listMC = ListCtrlMC(panelMCList, -1)
         self.listMC.SetName('ListControlMC')
         vboxMCList.Add(self.listMC, 1, wx.EXPAND)
         panelMCList.SetSizer(vboxMCList)
@@ -1089,15 +996,7 @@ class Reader(wx.Dialog):
       
         self.Bind(wx.EVT_TOOL, self.ExitApp, id=1)
         rightSplitter.SplitVertically(panelTherm,panelMC)
-        # hbox.Add(leftSplitter, 1, wx.EXPAND | wx.TOP | wx.BOTTOM, 5)
-        # vboxLeft = wx.BoxSizer(wx.HORIZONTAL)
-        # vboxRight = wx.BoxSizer(wx.HORIZONTAL)
-#        vboxLeft.Add(leftSplitter,1,wx.EXPAND) #
-      #  vboxRight.Add(rightSplitter,1,wx.EXPAND)
-        # panelRight =wx.Panel(splitter,-1)
-        # panelRight.SetSizer(vboxRight)
-        # panelLeft = wx.Panel(splitter,-1)
-        # panelLeft.SetSizer(vboxLeft)
+    
         
         splitter.SplitHorizontally(leftSplitter,rightSplitter)
         self.button_choose = wx.Button(self,-1,"Choose",size=(70,30))
@@ -1114,10 +1013,6 @@ class Reader(wx.Dialog):
         self.SetSizer(vbox)
         leftSplitter.SplitVertically(panelL,panelT)
       
-        #self.CreateStatusBar()
-        # toolbar = self.CreateToolBar()
-        # toolbar.AddLabelTool(1, 'Exit', wx.Bitmap('icons/stock_exit.png'))
-        # toolbar.Realize()
         self.Centre()
         self.Show(True)
 
@@ -1135,8 +1030,6 @@ class Reader(wx.Dialog):
         mc =self.listMC.GetItemText(self.listMC.GetFirstSelected())
 
         self.GetParent().add_to_mat_dict(l=l,t = t,therm=therm,mc=mc)
-
-        
 
     def ExitApp(self, event):
         self.Close()
@@ -1162,24 +1055,17 @@ if __name__ == '__main__':
             sys.exit(0)
 
         dlg.Destroy()
-    #ovde cemo drzati stanje hash.txt fajla, kakvo je trenutno
+
+    ########################################
+    ############ INIT #####################
     hfpath = join(LATTICE_MC,"md5_hash.dict")
-    
     dir_md5  = read_hashf(hfpath)
-   
     assert type(dir_md5) is defaultdict
-   
-   
     handle_simfiles(dir_md5)
     # ova globalna varijabla ce sadrzati kombinacije L-ova i T-ova koje
     # su nam dostupne. sto se tice foldera
     lt_dict = get_choices()
-
-    # I OVO CE SE TEK KAD NAPRAVE AGREGATE IZVRSITI
-    # TJ, TREBA DA POGLEDAMO DA LI POSTOJI DICTIONARY U FAJLU NEKOM
-
     app.frame = GraphFrame()
-
     app.frame.Show()
     app.MainLoop()
     
