@@ -173,7 +173,7 @@ class ScatterPanel(wx.Panel):
         
         "Initial drawing of scatter plot"
         from matplotlib import cm
-   
+        self.cbar=False
         self.step("dummy")
    
     def step(self,event):
@@ -185,10 +185,14 @@ class ScatterPanel(wx.Panel):
    
         self.ax_3d.cla()
         self.ax_hist.cla()
-   
-             
+                
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
+        if self.cbar :
+            self.cbar.draw_all()
+        else:
+            self.cbar = self.fig.colorbar(self.scat)  
+        
         self.ax_3d.set_title(t)
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
@@ -445,8 +449,8 @@ class ThermPanel(wx.Panel):
 
 class AggPanel(wx.Panel):
 
-    name_dict = {'susc':"Magnetic Susceptibility",'Tcap':'Tcap???????','T':'Temperature',
-                 'M1avg':"Average value of $\langle{M}\rangle$",'M2avg':"Average value of $\langle{M^2}\rangle$",'M4avg':"Average value of $\langle{M^4}\rangle$",'Eavg':"Average value of $\langle{E}\rangle$",'E2avg':"Average value of $\langle{E^2}\rangle$",'U':'Binder Cumulant U$_{L}$'}
+    name_dict = {'susc':r"Magnetic Susceptibility",'Tcap':'Tcap???????','T':'Temperature',
+                 'M1avg':r"Average value of $\langle{M}\rangle$",'M2avg':r"Average value of $\langle{M^2}\rangle$",'M4avg':r"Average value of $\langle{M^4}\rangle$",'Eavg':r"Average value of $\langle{E}\rangle$",'E2avg':r"Average value of $\langle{E^2}\rangle$",'U':r'Binder Cumulant U$_{L}$'}
     def __init__(self, parent):
 
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -961,7 +965,6 @@ class Reader(wx.Dialog):
         panelThermList = wx.Panel(panelTherm, -1, style=wx.BORDER_RAISED)
         vboxThermList = wx.BoxSizer(wx.VERTICAL)
         self.listTherm = ListCtrlTherm(panelThermList, -1)
-        #listTherm.SetName('ListControlTherm')
         vboxThermList.Add(self.listTherm, 1, wx.EXPAND)
         panelThermList.SetSizer(vboxThermList)
         panelThermList.SetBackgroundColour('WHITE')
