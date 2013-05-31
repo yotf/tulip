@@ -587,7 +587,7 @@ class GraphFrame(wx.Frame):
     """The main frame of the application
     """
 
-    title = 'Naslov aplikacije...'
+    title = 'tulip'
 
     def __init__(self):
         wx.Frame.__init__(self, None, -1, title=self.title)
