@@ -18,7 +18,6 @@ import re
 import os
 from os.path import join
 import pandas as pd
-docopt(__doc__)
 
 
 def create_plot(df, cv_name,ltdir):
@@ -38,18 +37,14 @@ def create_plot(df, cv_name,ltdir):
     return out
 
 
-glregex = \
-    re.compile(r"""
-^           #Pocetak stringa poklapam
-(L\d+)       #L i bilo koji int posle
-(T\d+)       #T sa bilo kojim int brojem posle
-THERM\d+    #THERM sa bilo kojim int brojem posle
-(MC\d+)     #MC sa bilo kojim int broje posle
-\.mat$      #uzimamo .mat fajlove
-"""
-               , re.VERBOSE)
-
-def main(ltdir):
+    #ok hocu ovde da samo pravim compose onih novih
+    # ako vec zovem tamo iz onoga
+    #znaci ako nismo specificirali trazi .mat sa bilo
+    # kojim mc. ako smo specificirali, onda trazi samo te
+    # odredjene
+def main(ltdir,mcsteps="\d+"):
+    glregex = \
+        re.compile(r"^(L\d+)(T\d+)THERM\d+(MC%s)\.mat$" % mcsteps)
     file_list = [f for f in os.listdir(ltdir) if glregex.match(f)]
     plots = list(set([glregex.match(f).groups() for f in file_list]))
     dataf= "nesto"
@@ -68,4 +63,5 @@ def main(ltdir):
 
 
 if __name__=="__main__":
+    docopt(__doc__)
     main(os.getcwd())

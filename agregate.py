@@ -31,7 +31,7 @@ def fname(mat_files):
         matf[therm_count] = mat
     return matf[max(matf.keys())]
 
-def agg(agg_mat, aplot):
+def agg2(agg_mat, aplot):
 
     T = agg_mat.ix['T'] / 100
     susc = (agg_mat.ix['M2avg'] - agg_mat.ix['M1avg'] ** 2) / T
@@ -95,8 +95,85 @@ def agg(agg_mat, aplot):
     print aplot
     out.to_csv(aplot)
 
+def agg(agg_mat,aplot):
 
-def main(sim_dir,PLOT_NAME,DIRECTORY):
+    T = agg_mat.ix['T'] / 100
+    susc = (agg_mat.ix['M2avg'] - agg_mat.ix['M1avg'] ** 2) / T
+
+    Tcap = (agg_mat.ix['E2avg'] - agg_mat.ix['Eavg'] ** 2) / T ** 2
+    U = 1.0 - 1.0 / 3.0 * (agg_mat.ix['M4avg'] / agg_mat.ix['M2avg'] ** 2)
+    print 'KUMULANT', U
+    print 'AGG_MAT\n', agg_mat
+    out_index = [
+        'T',
+        'M1avg',
+        'M2avg',
+        'M4avg',
+        'susc',
+        'Eavg',
+        'E2avg',
+        'Tcap',
+        'U'        
+        ]
+   
+    #ove Z kolone mi veerovatno ne trebaju??
+    # out_data={
+    #     'T': T,
+    #     'M1avg':agg_mat.ix['M1avg'],
+    #     'M2avg':agg_mat.ix['M2avg'],
+    #     'M4avg': agg_mat.ix['M4avg'],
+    #     'susc':susc,
+    #     'Eavg':agg_mat.ix['Eavg'],
+    #     'E2avg':agg_mat.ix['E2avg'],
+    #     'Tcap':Tcap,
+    #     'U':U}
+
+    
+#    out = pd.DataFrame(out_data, index = agg_mat.columns)
+
+    out = pd.DataFrame([
+        T,
+        agg_mat.ix['M1avg'],
+        agg_mat.ix['M2avg'],
+        agg_mat.ix['M4avg'],
+        susc,
+        agg_mat.ix['Eavg'],
+        agg_mat.ix['E2avg'],
+        Tcap,
+        U
+        ], columns=agg_mat.columns, index=out_index)
+
+   
+    print "OUT",out
+    print out
+    print aplot
+    out.to_csv(aplot)
+    
+
+def main(mat_dict,simd):
+    """Prima za parametar dict koji sadrzi apsolutne
+    putanje do izabranih .mat fajlova"""
+    #za svako L ce imati vise T-ova, znaci vise foldera
+    # za odredjeno L, i za svaki od tih izabran mat
+    # prebaci ga u regularni dict pre nego sto ga prosledis
+    for l,tdict in mat_dict.items():
+        agg_mat = list()
+        for t,path in tdict.items():
+            data_mat = pd.read_table(path,index_col=0,delim_whitespace=True,names=[t])
+            data_mat.rename(index={'THERM': 'T'},inplace=True)
+            data_mat.ix['T']=int(t[1:])
+            agg_mat.append(data_mat)
+        #uvek cemo imati samo jednu kolonu, naravno
+        agg_mat = sorted(agg_mat, key=lambda x: int(x.columns[0][1:]))
+        print agg_mat
+
+        agg_mat = pd.concat(agg_mat, axis=1)
+        agg(agg_mat,join(simd,"%s.aplot" % l ))
+
+
+        
+
+def main2(sim_dir,PLOT_NAME,DIRECTORY):
     """Ide kroz foldere bira najbolje od mat i stata,
     i pravi agregat od najboljeg.Umesto broja termalizacionh ciklusa cuva temperature.
     Pre njega se pozvala stat.py skripta tako da su matovi i statovi
@@ -139,9 +216,9 @@ def main(sim_dir,PLOT_NAME,DIRECTORY):
     agg_mat = pd.concat(agg_mat, axis=1)
     print agg_mat
     agg_stat = pd.concat(agg_stat, axis=1)
-    agg(agg_mat, aplot)
+    agg2(agg_mat, aplot)
 
 if __name__=="__main__":
     arguments = docopt(__doc__)
-    main(sim_dir=os.getcwd(),PLOT_NAME=arguments['PLOT_NAME'],DIRECTORY=arguments['DIRECTORY'][0])
+    main2(sim_dir=os.getcwd(),PLOT_NAME=arguments['PLOT_NAME'],DIRECTORY=arguments['DIRECTORY'][0])
 
