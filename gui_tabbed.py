@@ -1044,7 +1044,6 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     SIM_DIR = args['SIMDIR']
     print SIM_DIR 
-    best_mat_dict = load_best_mat_dict()   
     app = wx.PySimpleApp()
 
     # ok, mozda bi bolje bilo da koristim dirpickerctrl???
@@ -1058,6 +1057,7 @@ if __name__ == '__main__':
             sys.exit(0)
 
         dlg.Destroy()
+    best_mat_dict = load_best_mat_dict()   
 
     ########################################
     ############ INIT #####################
