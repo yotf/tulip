@@ -1,5 +1,4 @@
 
-
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
@@ -173,7 +172,7 @@ class ScatterPanel(wx.Panel):
         
         "Initial drawing of scatter plot"
         from matplotlib import cm
-        self.cbar=False
+   
         self.step("dummy")
    
     def step(self,event):
@@ -188,11 +187,7 @@ class ScatterPanel(wx.Panel):
                 
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
-        if self.cbar :
-            self.cbar.draw_all()
-        else:
-            self.cbar = self.fig.colorbar(self.scat)  
-        
+             
         self.ax_3d.set_title(t)
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
@@ -234,13 +229,23 @@ class ThermPanel(wx.Panel):
         self.init_plot()
         self.mc_txt = wx.SpinCtrl(self, size = (80,-1))
         self.add_button = wx.Button(self,-1,'Gen stat for this MC')
-        self.clear_button = wx.Button(self,-1,"Clear plot")
+        self.clear_button = wx.Button(self,-1,"Clear")
+        self.draw_button = wx.Button(self,-1,"Draw")
+        self.draw_button.Enable(False)
   
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
+        self.Bind(wx.EVT_BUTTON, self.on_draw_button,self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
         self.chk_l = wx.CheckBox(self,-1,"Lattice size", size=(-1, 30))
         self.chk_t = wx.CheckBox(self,-1,"Temperature",size=(-1, 30))
         self.chk_mc = wx.CheckBox(self,-1,"MC steps",size=(-1, 30))
+        self.chk_l.Enable(False)
+        self.chk_t.Enable(False)
+        self.chk_mc.Enable(False)
+        self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_l)
+        self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_t)
+        self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_mc)
+        
         plot_choices = ['M1', 'M2', 'M4']
         self.cmb_plots = wx.ComboBox(self, size=(100, -1),
                 choices=plot_choices, style=wx.CB_READONLY,
@@ -275,7 +280,11 @@ class ThermPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_plots, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-   
+
+
+        self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+
         self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
@@ -307,6 +316,9 @@ class ThermPanel(wx.Panel):
    
    
     def on_clear_button(self,event):
+        self.chk_l.Enable(False)
+        self.chk_t.Enable(False)
+        self.chk_mc.Enable(False)
         self.ax_cv.cla()
         self.ax_mag.cla()
       #  self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
@@ -332,6 +344,11 @@ class ThermPanel(wx.Panel):
     def on_select_T(self,event="dummy"):
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
+        self.draw_button.Enable(False)
+        self.reset_chkboxes()
+        # treba i checkboxovi da su disabled dok god nije nacrtan plot
+        # znaci kad se pozove draw onda se enable-uju a kad se cler pozove onda
+        # se disejbluju. valjda su to svi slucajevi 
         # trazimo najveci mc od svih .all fajlova.  inace
         # nece se desiti nista pri odabiru generisanja za taj mc
         uplimit = get_mtherms(L=self.cmb_L.GetValue(),T=self.cmb_T.GetValue(),igroup=1,ext="*.all")
@@ -395,15 +412,14 @@ class ThermPanel(wx.Panel):
         self.toolbar.Realize()
 
     def on_select(self, event):
-        item = self.cmb_plots.GetValue()
-        self.draw_plot(item=item)
+        # item = self.cmb_plots.GetValue()
+        # self.draw_plot(item=item)
+        self.draw_button.Enable(True)
 
-    def draw_plot(self, item='M1'):
-        """Redraws the plot
-        """
-        # self.ax_mag.cla()
-        # self.ax_cv.cla()
-        print self.cmb_pfiles.GetValue().split(os.path.sep)[-1]
+    def on_draw_button(self,event):
+        self.draw_plot(self.cmb_plots.GetValue())
+        
+    def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
         lbl_mc ="%s=%s" %(lbl_mc[:2],lbl_mc[2:])
         lbl_t ="%s=%s" %(self.cmb_T.GetValue()[0],self.cmb_T.GetValue()[1:])
@@ -413,34 +429,64 @@ class ThermPanel(wx.Panel):
         tchk  = self.chk_t.IsChecked()
         lbl = "%s %s %s" %(lbl_l if lchk else "", lbl_t if tchk else "",lbl_mc if mcchk else "")
         print lbl
+
+
+        error_line = self.ax_mag.get_lines()[-1]
+        semilog_line = self.ax_cv.get_lines()[-1]
+        error_line.set_label(lbl)
+        semilog_line.set_label(lbl)
+        mag_leg=self.ax_mag.legend(loc="best",fontsize=10,frameon=False,shadow=True)
+        mag_leg.draggable(True)
+        cv_leg=self.ax_cv.legend(loc="best",fontsize=10,frameon=False,shadow=True)
+        cv_leg.draggable(True)
+        self.canvas.draw()
+
+    def reset_chkboxes(self):
+        self.chk_l.SetValue(False)
+        self.chk_mc.SetValue(False)
+        self.chk_t.SetValue(False)
+    def draw_plot(self, item='M1'):
+        """Redraws the plot
+        """
+        # self.ax_mag.cla()
+        # self.ax_cv.cla()
+        self.reset_chkboxes()
+        print self.cmb_pfiles.GetValue().split(os.path.sep)[-1]
+        
         
         
         fmt =fmt_cycle.next()
-        line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
+        self.error_line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
                              y=self.data.ix[item + 'avg'],
-                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',label=lbl)
+                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none')
+        
+        self.semilog_line = self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
+                             % item],fmt,fillstyle='none')[0]
 
-        mag_leg=self.ax_mag.legend(loc="best",fontsize=10,frameon=False,shadow=True)
-        mag_leg.draggable(True)
-        self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
-                             % item],fmt,label =lbl,fillstyle='none')
-        cv_leg=self.ax_cv.legend(loc="best",fontsize=10,frameon=False,shadow=True)
-        cv_leg.draggable(True)
+        
 
         self.ax_mag.set_xscale('log')
         self.ax_cv.grid(True, color='red', linestyle=':')
         self.ax_mag.grid(True, color='red', linestyle=':')
         self.ax_cv.set_xlabel('Number of lattice sweeps', size=10)
         self.ax_mag.set_xlabel('Number of lattice sweeps',size=10)
-        self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s^%s}\rangle$'
-                               % (item[0],item[1]))
-        self.ax_mag.set_ylabel(r'$\langle{%s^%s}\rangle$' % (item[0],item[1]))
+        # ne znam da li ovo moze bolje. najbolje bi bilo da izmenim kako se zapisuju
+        # ustvari. sta ce nam M1. Samo sto ce onda sve menjati. Onda  bi bio i lepsi
+        # combobox. Combobox bi svakako trebao da bude lepsi za ove vrednosti. hm.
+        # kako se uopste ugradjuje support za tex . mogla bih to da uradim za cmb box
+        mlanglerangle = "%s^%s" %(item[0],item[1]) if int(item[1])!=1 else "%s" % item[0]
+        self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s}\rangle$'
+                               % mlanglerangle)
+        self.ax_mag.set_ylabel(r'$\langle{%s}\rangle$' % (mlanglerangle))
         pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_mag.get_yticklabels(), fontsize=5)
         pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
         
         self.canvas.draw()
+        self.chk_l.Enable(True)
+        self.chk_t.Enable(True)
+        self.chk_mc.Enable(True)
 
 
 def matDictEmpty():
@@ -559,6 +605,7 @@ class AggPanel(wx.Panel):
         
     def on_clear_button(self,event):
         self.ax_agg.cla()
+        self.reset_chkboxes()
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
         self.canvas.draw()
