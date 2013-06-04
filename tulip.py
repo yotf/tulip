@@ -120,7 +120,34 @@ class ScatterPanel(wx.Panel):
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
         
         print DEBUG,"self.ts reversed",self.ts
-   
+
+
+
+    def save_figure(self, *args):
+        filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
+        default_file = self.canvas.get_default_filename()
+        dlg = wx.FileDialog(self, "Save to file", "", default_file,
+                            filetypes,
+                            wx.SAVE|wx.OVERWRITE_PROMPT)
+        dlg.SetFilterIndex(filter_index)
+        if dlg.ShowModal() == wx.ID_OK:
+            dirname  = dlg.GetDirectory()
+            filename = dlg.GetFilename()
+            format = exts[dlg.GetFilterIndex()]
+            basename, ext = os.path.splitext(filename)
+            if ext.startswith('.'):
+                ext = ext[1:]
+            if ext in ('svg', 'pdf', 'ps', 'eps', 'png') and format!=ext:
+                #looks like they forgot to set the image type drop
+                #down, going with the extension.
+                warnings.warn('extension %s did not match the selected image type %s; going with %s'%(ext, format, ext), stacklevel=0)
+                format = ext
+            try:
+                self.canvas.print_figure(
+                    os.path.join(dirname, filename), format=format)
+            except Exception as e:
+                pass
+
     def on_figure_enter(self,event):
         self.tooltip.Enable(True)
         print "entered figure"
@@ -136,12 +163,16 @@ class ScatterPanel(wx.Panel):
         # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
         self.vbox.Add(self.canvas)
        
-        self.draw_button = wx.Button(self, -1, 'next')
+        self.draw_button = wx.Button(self, -1, 'Next')
+        self.save_button = wx.Button(self, -1, 'Save')
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
+        self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)

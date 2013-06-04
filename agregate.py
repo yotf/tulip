@@ -166,9 +166,10 @@ def main(mat_dict,simd):
         #uvek cemo imati samo jednu kolonu, naravno
         agg_mat = sorted(agg_mat, key=lambda x: int(x.columns[0][1:]))
         print agg_mat
-
-        agg_mat = pd.concat(agg_mat, axis=1)
-        agg(agg_mat,join(simd,"%s.aplot" % l ))
+        
+        if(tdict.items()):
+            agg_mat = pd.concat(agg_mat, axis=1)
+            agg(agg_mat,join(simd,"%s.aplot" % l ))
 
 
         
