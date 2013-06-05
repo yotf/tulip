@@ -1023,10 +1023,12 @@ class ListCtrlTherm(wx.ListCtrl):
         for t in sorted(get_mtherms(L=l,T=t),key=lambda x: int(x[5:])):
             self.InsertStringItem(cntr,t)
             print t
-            print best_mat_dict[l][self.t]
-            if re.match(r"^%s%s%sMC\d+\.mat$" % (self.l,self.t,t), best_mat_dict[self.l][self.t].split(os.path.sep)[-1]):
-                MakeBold(self,self.GetItem(cntr))
-                getSiblingByName(self,"ListControlMC").LoadData(therm=t,l=self.l,t=self.t)
+            try:
+                if re.match(r"^%s%s%sMC\d+\.mat$" % (self.l,self.t,t), best_mat_dict[self.l][self.t].split(os.path.sep)[-1]):
+                    MakeBold(self,self.GetItem(cntr))
+                    getSiblingByName(self,"ListControlMC").LoadData(therm=t,l=self.l,t=self.t)
+            except Exception:
+                pass
             cntr = cntr + 1
 
 
@@ -1053,8 +1055,11 @@ class ListCtrlMC(wx.ListCtrl):
         cntr=0
         for mc in sorted(get_mmcs(L=l,T=t,therms=therm),key=lambda x: int(x[2:])):
             self.InsertStringItem(cntr,mc)
-            if '%s%s%s%s.mat' % (l,t,therm,mc) == best_mat_dict[l][t].split(os.path.sep)[-1].strip():
-                MakeBold(self,self.GetItem(cntr))
+            try:
+                if '%s%s%s%s.mat' % (l,t,therm,mc) == best_mat_dict[l][t].split(os.path.sep)[-1].strip():
+                    MakeBold(self,self.GetItem(cntr))
+            except Exception:
+                pass
             cntr = cntr + 1
 
     def OnSelect(self,event):
