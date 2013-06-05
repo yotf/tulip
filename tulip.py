@@ -239,7 +239,21 @@ def load_best_mat_dict():
            fcontent = defaultdict(dict)
     print "best mat dict",fcontent
     return fcontent
-   
+
+def clean_mat_dict():
+    """Gleda koji unosi u dict nemaju vrednost
+    tj. samo su dodati zbog defaultdict svojstva
+    i skida ih. Ovo ce se samo desiti u mat chooseru
+    tako da ovo tada samo treba da zovem"""
+    # ovo ce proci posto mi ne iteriramo kroz sam dict
+    # a skidamo sa samog dicta. ova lista items nece biti
+    # vise up to date, ali to nam nije bitno, posto nije
+    # ciklicna
+    for key,value in best_mat_dict.items():
+        if not value:
+            best_mat_dict.pop(key)
+    serialize_mat()
+        
 def add_to_mat_dict(l,t,therm,mc):
     """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
     u status baru, i cuva novo stanje best_mat_dict-a na disk"""
@@ -249,6 +263,9 @@ def add_to_mat_dict(l,t,therm,mc):
     best_mat_dict[l][t]=best_mat[0]
     print "BEST MAT DICT:",best_mat_dict
 #    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
+    serialize_mat()
+
+def serialize_mat():
     with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
         pickle.dump(dict(best_mat_dict),matdictfile)
             
@@ -258,8 +275,9 @@ class ThermPanel(wx.Panel):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.init_plot()
+
         self.mc_txt = wx.SpinCtrl(self, size = (80,-1))
-        self.add_button = wx.Button(self,-1,'Gen stat for this MC')
+        self.add_button = wx.Button(self,-1,'Generate .plot')
         self.clear_button = wx.Button(self,-1,"Clear")
         self.draw_button = wx.Button(self,-1,"Draw")
         self.draw_button.Enable(False)
@@ -269,7 +287,7 @@ class ThermPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
         self.chk_l = wx.CheckBox(self,-1,"Lattice size", size=(-1, 30))
         self.chk_t = wx.CheckBox(self,-1,"Temperature",size=(-1, 30))
-        self.chk_mc = wx.CheckBox(self,-1,"MC steps",size=(-1, 30))
+        self.chk_mc = wx.CheckBox(self,-1,"SP",size=(-1, 30))
         self.chk_l.Enable(False)
         self.chk_t.Enable(False)
         self.chk_mc.Enable(False)
@@ -347,6 +365,7 @@ class ThermPanel(wx.Panel):
    
    
     def on_clear_button(self,event):
+        self.reset_chkboxes()
         self.chk_l.Enable(False)
         self.chk_t.Enable(False)
         self.chk_mc.Enable(False)
@@ -452,7 +471,7 @@ class ThermPanel(wx.Panel):
         
     def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
-        lbl_mc ="%s=%s" %(lbl_mc[:2],lbl_mc[2:])
+        lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
         lbl_t ="%s=%s" %(self.cmb_T.GetValue()[0],self.cmb_T.GetValue()[1:])
         lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
         lchk  = self.chk_l.IsChecked()
@@ -599,6 +618,8 @@ class AggPanel(wx.Panel):
     def on_chooser(self,event):
         self.chooser = Reader(self,-1,"Chooser")
         self.chooser.ShowModal()
+        clean_mat_dict()
+        print "BEST MAT DICT", best_mat_dict
         self.chooser.Destroy()
         self.agregate_btn.Enable(not matDictEmpty())
         
@@ -636,7 +657,7 @@ class AggPanel(wx.Panel):
         
     def on_clear_button(self,event):
         self.ax_agg.cla()
-        self.reset_chkboxes()
+        
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
         self.canvas.draw()
@@ -806,12 +827,13 @@ def handle_simfiles(dir_md5):
         
 def getmd5(d):
     """Izracunava md5 za direktorijum cija
-    je apsolutna putanja prosledjena"""
+    je apsolutna putanja prosledjena. Za svaki
+    fajl iz tog direktorijuma gleda kad je
+    izmenjem, i te vrednosti stavlja u md5"""
     import hashlib
     m = hashlib.md5()
     for f in glob.glob(join(d,"*")):
-        for line in  open(f,"rb").readlines():
-            m.update(line)
+        m.update(str(os.path.getmtime(f)))
     return m.hexdigest()
         
 

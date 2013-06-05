@@ -167,9 +167,9 @@ def main(mat_dict,simd):
         agg_mat = sorted(agg_mat, key=lambda x: int(x.columns[0][1:]))
         print agg_mat
         
-        if(tdict.items()):
-            agg_mat = pd.concat(agg_mat, axis=1)
-            agg(agg_mat,join(simd,"%s.aplot" % l ))
+        
+        agg_mat = pd.concat(agg_mat, axis=1)
+        agg(agg_mat,join(simd,"%s.aplot" % l ))
 
 
         
