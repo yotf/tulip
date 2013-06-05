@@ -1,5 +1,4 @@
 
-
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
@@ -121,7 +120,34 @@ class ScatterPanel(wx.Panel):
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
         
         print DEBUG,"self.ts reversed",self.ts
-   
+
+
+
+    def save_figure(self, *args):
+        filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
+        default_file = self.canvas.get_default_filename()
+        dlg = wx.FileDialog(self, "Save to file", "", default_file,
+                            filetypes,
+                            wx.SAVE|wx.OVERWRITE_PROMPT)
+        dlg.SetFilterIndex(filter_index)
+        if dlg.ShowModal() == wx.ID_OK:
+            dirname  = dlg.GetDirectory()
+            filename = dlg.GetFilename()
+            format = exts[dlg.GetFilterIndex()]
+            basename, ext = os.path.splitext(filename)
+            if ext.startswith('.'):
+                ext = ext[1:]
+            if ext in ('svg', 'pdf', 'ps', 'eps', 'png') and format!=ext:
+                #looks like they forgot to set the image type drop
+                #down, going with the extension.
+                warnings.warn('extension %s did not match the selected image type %s; going with %s'%(ext, format, ext), stacklevel=0)
+                format = ext
+            try:
+                self.canvas.print_figure(
+                    os.path.join(dirname, filename), format=format)
+            except Exception as e:
+                pass
+
     def on_figure_enter(self,event):
         self.tooltip.Enable(True)
         print "entered figure"
@@ -137,12 +163,16 @@ class ScatterPanel(wx.Panel):
         # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
         self.vbox.Add(self.canvas)
        
-        self.draw_button = wx.Button(self, -1, 'next')
+        self.draw_button = wx.Button(self, -1, 'Next')
+        self.save_button = wx.Button(self, -1, 'Save')
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
+        self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
@@ -173,7 +203,7 @@ class ScatterPanel(wx.Panel):
         
         "Initial drawing of scatter plot"
         from matplotlib import cm
-        self.cbar=False
+   
         self.step("dummy")
    
     def step(self,event):
@@ -188,11 +218,7 @@ class ScatterPanel(wx.Panel):
                 
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
-        if self.cbar :
-            self.cbar.draw_all()
-        else:
-            self.cbar = self.fig.colorbar(self.scat)  
-        
+             
         self.ax_3d.set_title(t)
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
@@ -213,23 +239,62 @@ def load_best_mat_dict():
            fcontent = defaultdict(dict)
     print "best mat dict",fcontent
     return fcontent
-   
+
+def clean_mat_dict():
+    """Gleda koji unosi u dict nemaju vrednost
+    tj. samo su dodati zbog defaultdict svojstva
+    i skida ih. Ovo ce se samo desiti u mat chooseru
+    tako da ovo tada samo treba da zovem"""
+    # ovo ce proci posto mi ne iteriramo kroz sam dict
+    # a skidamo sa samog dicta. ova lista items nece biti
+    # vise up to date, ali to nam nije bitno, posto nije
+    # ciklicna
+    for key,value in best_mat_dict.items():
+        if not value:
+            best_mat_dict.pop(key)
+    serialize_mat()
+        
+def add_to_mat_dict(l,t,therm,mc):
+    """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
+    u status baru, i cuva novo stanje best_mat_dict-a na disk"""
+    best_mat = get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
+    # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
+    assert len(best_mat)==1
+    best_mat_dict[l][t]=best_mat[0]
+    print "BEST MAT DICT:",best_mat_dict
+#    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
+    serialize_mat()
+
+def serialize_mat():
+    with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
+        pickle.dump(dict(best_mat_dict),matdictfile)
+            
 class ThermPanel(wx.Panel):
    
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.init_plot()
+
         self.mc_txt = wx.SpinCtrl(self, size = (80,-1))
-        self.add_button = wx.Button(self,-1,'Gen stat for this MC')
-        self.bestmat_button=wx.Button(self,-1,"Choose best .mats ...")
-        self.clear_button = wx.Button(self,-1,"Clear plot")
-        self.Bind(wx.EVT_BUTTON, self.on_chooser,self.bestmat_button)
+        self.add_button = wx.Button(self,-1,'Generate .plot')
+        self.clear_button = wx.Button(self,-1,"Clear")
+        self.draw_button = wx.Button(self,-1,"Draw")
+        self.draw_button.Enable(False)
+  
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
+        self.Bind(wx.EVT_BUTTON, self.on_draw_button,self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
         self.chk_l = wx.CheckBox(self,-1,"Lattice size", size=(-1, 30))
         self.chk_t = wx.CheckBox(self,-1,"Temperature",size=(-1, 30))
-        self.chk_mc = wx.CheckBox(self,-1,"MC steps",size=(-1, 30))
+        self.chk_mc = wx.CheckBox(self,-1,"SP",size=(-1, 30))
+        self.chk_l.Enable(False)
+        self.chk_t.Enable(False)
+        self.chk_mc.Enable(False)
+        self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_l)
+        self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_t)
+        self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_mc)
+        
         plot_choices = ['M1', 'M2', 'M4']
         self.cmb_plots = wx.ComboBox(self, size=(100, -1),
                 choices=plot_choices, style=wx.CB_READONLY,
@@ -264,7 +329,11 @@ class ThermPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_plots, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-   
+
+
+        self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+
         self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
@@ -272,8 +341,7 @@ class ThermPanel(wx.Panel):
         self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
    
-        self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
+        
         
    
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
@@ -297,28 +365,18 @@ class ThermPanel(wx.Panel):
    
    
     def on_clear_button(self,event):
+        self.reset_chkboxes()
+        self.chk_l.Enable(False)
+        self.chk_t.Enable(False)
+        self.chk_mc.Enable(False)
         self.ax_cv.cla()
         self.ax_mag.cla()
       #  self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
        # self.ax_cv.set_title('Coefficient of Variation',fontsize=10,family='monospace')
         self.canvas.draw()
    
-    def on_chooser(self,event):
-        self.chooser = Reader(self,-1,"Chooser")
-        self.chooser.ShowModal()
-        self.chooser.Destroy()
+  
         
-    def add_to_mat_dict(self,l,t,therm,mc):
-        """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
-        u status baru, i cuva novo stanje best_mat_dict-a na disk"""
-        best_mat = get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
-        # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
-        assert len(best_mat)==1
-        best_mat_dict[l][t]=best_mat[0]
-        print "BEST MAT DICT:",best_mat_dict
-        self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
-        with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
-            pickle.dump(dict(best_mat_dict),matdictfile)
         
     def on_add_button(self,event):
         """Pravi novi .plot fajl u zeljenom direktorijumu
@@ -336,6 +394,11 @@ class ThermPanel(wx.Panel):
     def on_select_T(self,event="dummy"):
         self.cmb_pfiles.SetItems(self.get_files())
         self.cmb_pfiles.SetValue('<Choose plot file>')
+        self.draw_button.Enable(False)
+        self.reset_chkboxes()
+        # treba i checkboxovi da su disabled dok god nije nacrtan plot
+        # znaci kad se pozove draw onda se enable-uju a kad se cler pozove onda
+        # se disejbluju. valjda su to svi slucajevi 
         # trazimo najveci mc od svih .all fajlova.  inace
         # nece se desiti nista pri odabiru generisanja za taj mc
         uplimit = get_mtherms(L=self.cmb_L.GetValue(),T=self.cmb_T.GetValue(),igroup=1,ext="*.all")
@@ -399,17 +462,16 @@ class ThermPanel(wx.Panel):
         self.toolbar.Realize()
 
     def on_select(self, event):
-        item = self.cmb_plots.GetValue()
-        self.draw_plot(item=item)
+        # item = self.cmb_plots.GetValue()
+        # self.draw_plot(item=item)
+        self.draw_button.Enable(True)
 
-    def draw_plot(self, item='M1'):
-        """Redraws the plot
-        """
-        # self.ax_mag.cla()
-        # self.ax_cv.cla()
-        print self.cmb_pfiles.GetValue().split(os.path.sep)[-1]
+    def on_draw_button(self,event):
+        self.draw_plot(self.cmb_plots.GetValue())
+        
+    def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
-        lbl_mc ="%s=%s" %(lbl_mc[:2],lbl_mc[2:])
+        lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
         lbl_t ="%s=%s" %(self.cmb_T.GetValue()[0],self.cmb_T.GetValue()[1:])
         lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
         lchk  = self.chk_l.IsChecked()
@@ -417,36 +479,72 @@ class ThermPanel(wx.Panel):
         tchk  = self.chk_t.IsChecked()
         lbl = "%s %s %s" %(lbl_l if lchk else "", lbl_t if tchk else "",lbl_mc if mcchk else "")
         print lbl
+
+
+        error_line = self.ax_mag.get_lines()[-1]
+        semilog_line = self.ax_cv.get_lines()[-1]
+        error_line.set_label(lbl)
+        semilog_line.set_label(lbl)
+        mag_leg=self.ax_mag.legend(loc="best",fontsize=10,frameon=False,shadow=True)
+        mag_leg.draggable(True)
+        cv_leg=self.ax_cv.legend(loc="best",fontsize=10,frameon=False,shadow=True)
+        cv_leg.draggable(True)
+        self.canvas.draw()
+
+    def reset_chkboxes(self):
+        self.chk_l.SetValue(False)
+        self.chk_mc.SetValue(False)
+        self.chk_t.SetValue(False)
+    def draw_plot(self, item='M1'):
+        """Redraws the plot
+        """
+        # self.ax_mag.cla()
+        # self.ax_cv.cla()
+        self.reset_chkboxes()
+        print self.cmb_pfiles.GetValue().split(os.path.sep)[-1]
+        
         
         
         fmt =fmt_cycle.next()
-        line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
+        self.error_line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
                              y=self.data.ix[item + 'avg'],
-                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',label=lbl)
+                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none')
+        
+        self.semilog_line = self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
+                             % item],fmt,fillstyle='none')[0]
 
-        mag_leg=self.ax_mag.legend(loc="best",fontsize=10,frameon=False,shadow=True)
-        mag_leg.draggable(True)
-        self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
-                             % item],fmt,label =lbl,fillstyle='none')
-        cv_leg=self.ax_cv.legend(loc="best",fontsize=10,frameon=False,shadow=True)
-        cv_leg.draggable(True)
+        
 
         self.ax_mag.set_xscale('log')
         self.ax_cv.grid(True, color='red', linestyle=':')
         self.ax_mag.grid(True, color='red', linestyle=':')
         self.ax_cv.set_xlabel('Number of lattice sweeps', size=10)
         self.ax_mag.set_xlabel('Number of lattice sweeps',size=10)
-        self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s^%s}\rangle$'
-                               % (item[0],item[1]))
-        self.ax_mag.set_ylabel(r'$\langle{%s^%s}\rangle$' % (item[0],item[1]))
+        # ne znam da li ovo moze bolje. najbolje bi bilo da izmenim kako se zapisuju
+        # ustvari. sta ce nam M1. Samo sto ce onda sve menjati. Onda  bi bio i lepsi
+        # combobox. Combobox bi svakako trebao da bude lepsi za ove vrednosti. hm.
+        # kako se uopste ugradjuje support za tex . mogla bih to da uradim za cmb box
+        mlanglerangle = "%s^%s" %(item[0],item[1]) if int(item[1])!=1 else "%s" % item[0]
+        self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s}\rangle$'
+                               % mlanglerangle)
+        self.ax_mag.set_ylabel(r'$\langle{%s}\rangle$' % (mlanglerangle))
         pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_mag.get_yticklabels(), fontsize=5)
         pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
         
         self.canvas.draw()
+        self.chk_l.Enable(True)
+        self.chk_t.Enable(True)
+        self.chk_mc.Enable(True)
 
 
+def matDictEmpty():
+    for key in best_mat_dict.keys():
+        if best_mat_dict[key]:
+            return False
+    return True
+    
 class AggPanel(wx.Panel):
 
     name_dict = {'susc':r"Magnetic Susceptibility",'Tcap':'Tcap???????','T':'Temperature',
@@ -459,7 +557,10 @@ class AggPanel(wx.Panel):
         self.init_gui()        
         
     def init_gui(self):
+        self.bestmat_button=wx.Button(self,-1,"Choose best .mats ...")
+        self.Bind(wx.EVT_BUTTON, self.on_chooser,self.bestmat_button)
         self.agregate_btn = wx.Button(self,-1,"Aggregate!")
+        self.agregate_btn.Enable( not matDictEmpty())
         self.Bind(wx.EVT_BUTTON,self.on_agg_button,self.agregate_btn)
         self.cmb_L = wx.ComboBox(
             self,
@@ -488,8 +589,10 @@ class AggPanel(wx.Panel):
                   self.clear_button)
         
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL) 
         self.hbox1.Add(self.agregate_btn, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
+                       | wx.ALIGN_CENTER_VERTICAL) 
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
@@ -503,15 +606,23 @@ class AggPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
         self.toolhbox.Add(self.toolbar)
-        
-        
+
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1,  wx.EXPAND)
         self.vbox.Add(self.toolhbox)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
-
+        
+        
+    def on_chooser(self,event):
+        self.chooser = Reader(self,-1,"Chooser")
+        self.chooser.ShowModal()
+        clean_mat_dict()
+        print "BEST MAT DICT", best_mat_dict
+        self.chooser.Destroy()
+        self.agregate_btn.Enable(not matDictEmpty())
+        
     def on_agg_button(self,event):
         agregate.main(dict(best_mat_dict),SIM_DIR)
         self.aggd = load_agg()
@@ -546,6 +657,7 @@ class AggPanel(wx.Panel):
         
     def on_clear_button(self,event):
         self.ax_agg.cla()
+        
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
         pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
         self.canvas.draw()
@@ -715,12 +827,13 @@ def handle_simfiles(dir_md5):
         
 def getmd5(d):
     """Izracunava md5 za direktorijum cija
-    je apsolutna putanja prosledjena"""
+    je apsolutna putanja prosledjena. Za svaki
+    fajl iz tog direktorijuma gleda kad je
+    izmenjem, i te vrednosti stavlja u md5"""
     import hashlib
     m = hashlib.md5()
     for f in glob.glob(join(d,"*")):
-        for line in  open(f,"rb").readlines():
-            m.update(line)
+        m.update(str(os.path.getmtime(f)))
     return m.hexdigest()
         
 
@@ -766,6 +879,13 @@ def get_choices():
         dct[l].append(t)
 
     return dct
+
+
+def MakeBold(self,item):
+        font = item.GetFont()
+        font.SetWeight(wx.FONTWEIGHT_BOLD)
+        item.SetFont(font)
+        self.SetItem(item)
         
 class ListCtrlLattice(wx.ListCtrl):
     def __init__(self, parent, id):
@@ -777,24 +897,39 @@ class ListCtrlLattice(wx.ListCtrl):
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
         self.InsertColumn(0, '')
-        for l in sorted(lt_dict.keys(), key = lambda x: int(x[1:]),reverse=True):
-            self.InsertStringItem(0,l)
-      
+        cntr = 0
+        for l in sorted(lt_dict.keys(), key = lambda x: int(x[1:])):
+            self.InsertStringItem(cntr,l)
+            
+            if l in best_mat_dict.keys() and best_mat_dict[l]:
+                #ako je vec izabran
+                #6f92a4
+                #2b434f
+#                self.SetItemBackgroundColour(cntr,'#d0dae0')
+                item = self.GetItem(cntr)
+                MakeBold(self,item)
+
+                
+            cntr = cntr+1    
+
+    
+        
     def OnSize(self, event):
         size = self.parent.GetSize()
         self.SetColumnWidth(0, size.x-5)
         event.Skip()
 
+    
     def OnSelect(self, event):
         print "parent of window is ",self.parent
         print "grand parent of window is",self.parent.GetGrandParent()
-        window = self.parent.GetGrandParent().FindWindowByName('ListControlTemperature')
         selected = event.GetIndex()
-        print "first selected",selected
+        
+        self.window = getSiblingByName(self,"ListControlTemperature")
         self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlTherm').DeleteAllItems()
         self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
         self.parent.GetGrandParent().GetGrandParent().disable_choose()
-        window.LoadData(self.GetItemText(selected))
+        self.window.LoadData(self.GetItemText(selected))
 
     def OnDeSelect(self, event):
         index = event.GetIndex()
@@ -802,6 +937,10 @@ class ListCtrlLattice(wx.ListCtrl):
 
     def OnFocus(self, event):
         self.SetItemBackgroundColour(0, 'red')
+
+def getSiblingByName(listctrl,name):
+    return listctrl.parent.GetGrandParent().FindWindowByName(name)
+    
 
 class ListCtrlTempr(wx.ListCtrl):
     def __init__(self, parent, id):
@@ -831,13 +970,19 @@ class ListCtrlTempr(wx.ListCtrl):
         print "first selected",selected
         self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
         self.parent.GetGrandParent().GetGrandParent().disable_choose()
+        
         window.LoadData(self.GetItemText(selected),self.l)
+        print "selected item",self.GetItemText(selected)
 
     def LoadData(self, item):
         self.DeleteAllItems()
         self.l = item
-        for t in sorted(lt_dict[item],key=lambda x: int(x[1:]),reverse=True):
-            self.InsertStringItem(0,t)
+        cntr = 0
+        for t in sorted(lt_dict[item],key=lambda x: int(x[1:])):
+            self.InsertStringItem(cntr,t)
+            if t in best_mat_dict[item].keys():
+                MakeBold(self,self.GetItem(cntr))
+            cntr = cntr+1
 
 
 class ListCtrlTherm(wx.ListCtrl):
@@ -874,8 +1019,15 @@ class ListCtrlTherm(wx.ListCtrl):
         self.t = t
         self.l = l
         print "gparent",self.parent.GetGrandParent().GetGrandParent().GetParent()
-        for t in sorted(get_mtherms(L=l,T=t),key=lambda x: int(x[5:]),reverse=True):
-            self.InsertStringItem(0,t)
+        cntr = 0
+        for t in sorted(get_mtherms(L=l,T=t),key=lambda x: int(x[5:])):
+            self.InsertStringItem(cntr,t)
+            print t
+            print best_mat_dict[l][self.t]
+            if re.match(r"^%s%s%sMC\d+\.mat$" % (self.l,self.t,t), best_mat_dict[self.l][self.t].split(os.path.sep)[-1]):
+                MakeBold(self,self.GetItem(cntr))
+                getSiblingByName(self,"ListControlMC").LoadData(therm=t,l=self.l,t=self.t)
+            cntr = cntr + 1
 
 
 class ListCtrlMC(wx.ListCtrl):
@@ -898,8 +1050,12 @@ class ListCtrlMC(wx.ListCtrl):
 
     def LoadData(self,therm,l,t):
         self.DeleteAllItems()
-        for t in sorted(get_mmcs(L=l,T=t,therms=therm),key=lambda x: int(x[2:]),reverse=True):
-            self.InsertStringItem(0,t)
+        cntr=0
+        for mc in sorted(get_mmcs(L=l,T=t,therms=therm),key=lambda x: int(x[2:])):
+            self.InsertStringItem(cntr,mc)
+            if '%s%s%s%s.mat' % (l,t,therm,mc) == best_mat_dict[l][t].split(os.path.sep)[-1].strip():
+                MakeBold(self,self.GetItem(cntr))
+            cntr = cntr + 1
 
     def OnSelect(self,event):
         self.parent.GetGrandParent().GetGrandParent().enable_choose()
@@ -1032,8 +1188,8 @@ class Reader(wx.Dialog):
         therm =self.listTherm.GetItemText(self.listTherm.GetFirstSelected())
         mc =self.listMC.GetItemText(self.listMC.GetFirstSelected())
 
-        self.GetParent().add_to_mat_dict(l=l,t = t,therm=therm,mc=mc)
-
+        add_to_mat_dict(l=l,t = t,therm=therm,mc=mc)
+        self.GetGrandParent().flash_status_message("Best .mat for %s%s selected" % (l,t))
     def ExitApp(self, event):
         self.Close()
        
