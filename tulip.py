@@ -219,7 +219,7 @@ class ScatterPanel(wx.Panel):
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
              
-        self.ax_3d.set_title(t)
+        self.ax_3d.set_title("T = %.1f" % (float(t[1:])/100))
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
         self.ax_3d.set_xlabel(self.xlabel)
@@ -418,6 +418,8 @@ class ThermPanel(wx.Panel):
         self.chk_mc.Enable(False)
         self.ax_cv.cla()
         self.ax_mag.cla()
+        self.set_labelfontsize(self.xylbl_slider.GetValue())
+        self.set_ticklabelfontsize(self.lbl_slider.GetValue())
       #  self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
        # self.ax_cv.set_title('Coefficient of Variation',fontsize=10,family='monospace')
         self.canvas.draw()
@@ -519,7 +521,7 @@ class ThermPanel(wx.Panel):
     def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
         lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
-        lbl_t ="%s=%s" %(self.cmb_T.GetValue()[0],self.cmb_T.GetValue()[1:])
+        lbl_t ="%s=%.1f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/100)
         lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
@@ -593,7 +595,7 @@ def matDictEmpty():
 class AggPanel(wx.Panel):
 
     name_dict = {'susc':r"$\mathcal{X}$",'Tcap':'$C_V$','T':'$T$',
-                 'M1avg':r"Average value of $\langle{M}\rangle$",'M2avg':r"Average value of $\langle{M^2}\rangle$",'M4avg':r"Average value of $\langle{M^4}\rangle$",'Eavg':r"Average value of $\langle{E}\rangle$",'E2avg':r"Average value of $\langle{E^2}\rangle$",'U':r'U$_{L}$'}
+                 'M1avg':r"$\langle{M}\rangle$",'M2avg':r"$\langle{M^2}\rangle$",'M4avg':r"$\langle{M^4}\rangle$",'Eavg':r"$\langle{H}\rangle$",'E2avg':r"$\langle{H^2}\rangle$",'U':r'$U_{L}$'}
     def __init__(self, parent):
 
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -632,6 +634,17 @@ class AggPanel(wx.Panel):
         self.clear_button.Enable(True)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
                   self.clear_button)
+
+
+        self.tick_txt = wx.StaticText(self,label="ticks")
+        self.label_txt = wx.StaticText(self,label="labels")
+        self.lbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
+                                    minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
+
+        self.xylbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
+                                    minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
+        self.lbl_slider.Bind(wx.EVT_SCROLL,self.on_slider_scroll)
+        self.xylbl_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
         
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
@@ -651,6 +664,14 @@ class AggPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
         self.toolhbox.Add(self.toolbar)
+        self.toolhbox.Add(self.tick_txt, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.lbl_slider, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.label_txt, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)        
+        self.toolhbox.Add(self.xylbl_slider, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
 
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1,  wx.EXPAND)
@@ -658,7 +679,19 @@ class AggPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
-        
+
+
+    def set_ticklabelfontsize(self,size):
+        pylab.setp(self.ax_agg.get_xticklabels(), fontsize=size)
+
+        pylab.setp(self.ax_agg.get_yticklabels(), fontsize=size)
+
+        self.canvas.draw()
+
+    def set_labelfontsize(self,size):
+        pylab.setp(self.ax_agg.xaxis.get_label(), fontsize=size)
+        pylab.setp(self.ax_agg.yaxis.get_label(), fontsize=size)
+        self.canvas.draw()
         
     def on_chooser(self,event):
         self.chooser = Reader(self,-1,"Chooser")
@@ -683,6 +716,16 @@ class AggPanel(wx.Panel):
         self.cmb_mag.SetItems(self.mag_choices)
         self.cmb_mag.SetValue(self.mag_choices[0])
         self.draw_button.Enable(True)
+
+    def on_xyslider_scroll(self,e):
+        fontsize = e.GetEventObject().GetValue()
+        print "FONTSIZE", fontsize
+        self.set_labelfontsize(fontsize)
+        
+    def on_slider_scroll(self,e):
+        fontsize = e.GetEventObject().GetValue()
+        print "FONTSIZE", fontsize
+        self.set_ticklabelfontsize(fontsize)
         
     def on_draw_button(self, event):
         L_select = self.cmb_L.GetValue()
@@ -695,16 +738,17 @@ class AggPanel(wx.Panel):
         self.ax_agg.set_xlim(right=1.55)
         leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
         leg.draggable(True)
-        self.ax_agg.set_xlabel("Temperature",size=10)
-        self.ax_agg.set_ylabel(self.name_dict[mag_select],size=10)
+        self.ax_agg.set_xlabel("$T$")
+        self.ax_agg.set_ylabel(self.name_dict[mag_select])
+        self.set_labelfontsize(self.xylbl_slider.GetValue())
+        self.set_ticklabelfontsize(self.lbl_slider.GetValue())
         self.ax_agg.grid(True, color='red', linestyle=':')
         self.canvas.draw()
         
     def on_clear_button(self,event):
         self.ax_agg.cla()
-        
-        pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
-        pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
+        self.set_labelfontsize(self.xylbl_slider.GetValue())
+        self.set_ticklabelfontsize(self.lbl_slider.GetValue())
         self.canvas.draw()
         
     def init_plot(self):
@@ -715,8 +759,7 @@ class AggPanel(wx.Panel):
         self.ax_agg = self.fig.add_subplot(111)
         
 #        self.ax_agg.set_title('Aggregate')
-        pylab.setp(self.ax_agg.get_xticklabels(), fontsize=5)
-        pylab.setp(self.ax_agg.get_yticklabels(), fontsize=5)
+      
         self.canvas = FigCanvas(self, -1, self.fig)
         self.toolbar = NavigationToolbar(self.canvas)
         tw,th = self.toolbar.GetSizeTuple()
@@ -1267,7 +1310,7 @@ if __name__ == '__main__':
 
     ########################################
     ############ INIT #####################
-    hfpath = join(LATTICE_MC,"md5_hash.dict")
+    hfpath = join(SIM_DIR,"md5_hash.dict")
     dir_md5  = read_hashf(hfpath)
     assert type(dir_md5) is defaultdict
     handle_simfiles(dir_md5)
