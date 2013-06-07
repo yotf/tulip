@@ -291,6 +291,19 @@ class ThermPanel(wx.Panel):
         self.chk_l.Enable(False)
         self.chk_t.Enable(False)
         self.chk_mc.Enable(False)
+
+        #mm, moram obezbediti da ovi imaju istu x i y. valjda samo zajedno
+        # da ih uvek zovem, ili da namestim ono sharex i sharey. mada mozda to nece
+        # neko hteti da ima
+        self.tick_txt = wx.StaticText(self,label="ticks")
+        self.label_txt = wx.StaticText(self,label="labels")
+        self.lbl_slider = wx.Slider(self,value = self.ax_mag.xaxis.get_ticklabels()[0].get_fontsize(),
+                                    minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
+
+        self.xylbl_slider = wx.Slider(self,value = self.ax_mag.xaxis.get_ticklabels()[0].get_fontsize(),
+                                    minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
+        self.lbl_slider.Bind(wx.EVT_SCROLL,self.on_slider_scroll)
+        self.xylbl_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
         self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_l)
         self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_t)
         self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_mc)
@@ -353,6 +366,14 @@ class ThermPanel(wx.Panel):
         self.toolhbox.Add(self.chk_l,5, wx.TOP,3)
         self.toolhbox.Add(self.chk_t,5,wx.TOP,3)
         self.toolhbox.Add(self.chk_mc,5,wx.TOP,3)
+        self.toolhbox.Add(self.tick_txt, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.lbl_slider, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.label_txt, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)        
+        self.toolhbox.Add(self.xylbl_slider, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
    
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
@@ -360,8 +381,34 @@ class ThermPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
-    
-   
+
+
+
+    def set_ticklabelfontsize(self,size):
+        pylab.setp(self.ax_mag.get_xticklabels(), fontsize=size)
+        pylab.setp(self.ax_cv.get_xticklabels(), fontsize=size)
+        pylab.setp(self.ax_mag.get_yticklabels(), fontsize=size)
+        pylab.setp(self.ax_cv.get_yticklabels(), fontsize=size)
+        self.canvas.draw()
+
+    def set_labelfontsize(self,size):
+        pylab.setp(self.ax_mag.xaxis.get_label(), fontsize=size)
+        pylab.setp(self.ax_cv.xaxis.get_label(), fontsize=size)
+        pylab.setp(self.ax_mag.yaxis.get_label(), fontsize=size)
+        pylab.setp(self.ax_cv.yaxis.get_label(), fontsize=size)
+        self.canvas.draw()
+        
+
+    def on_xyslider_scroll(self,e):
+        fontsize = e.GetEventObject().GetValue()
+        print "FONTSIZE", fontsize
+        self.set_labelfontsize(fontsize)
+        
+    def on_slider_scroll(self,e):
+        fontsize = e.GetEventObject().GetValue()
+        print "FONTSIZE", fontsize
+        self.set_ticklabelfontsize(fontsize)
+        
    
    
     def on_clear_button(self,event):
@@ -450,10 +497,10 @@ class ThermPanel(wx.Panel):
         # self.ax_mag.set_title('Magnetisation',fontsize=10,family='monospace')
         # self.ax_cv.set_title('Coefficient of Variation',fontsize=10,family='monospace')
 
-        pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
-        pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
-        pylab.setp(self.ax_mag.get_yticklabels(), fontsize=5)
-        pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
+        # pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
+        # pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
+        # pylab.setp(self.ax_mag.get_yticklabels(), fontsize=5)
+        # pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
         self.canvas = FigCanvas(self, -1, self.fig)
         self.toolbar = NavigationToolbar(self.canvas)
         tw,th = self.toolbar.GetSizeTuple()
@@ -518,8 +565,8 @@ class ThermPanel(wx.Panel):
         self.ax_mag.set_xscale('log')
         self.ax_cv.grid(True, color='red', linestyle=':')
         self.ax_mag.grid(True, color='red', linestyle=':')
-        self.ax_cv.set_xlabel('Number of lattice sweeps', size=10)
-        self.ax_mag.set_xlabel('Number of lattice sweeps',size=10)
+        self.ax_cv.set_xlabel('Number of lattice sweeps')
+        self.ax_mag.set_xlabel('Number of lattice sweeps')
         # ne znam da li ovo moze bolje. najbolje bi bilo da izmenim kako se zapisuju
         # ustvari. sta ce nam M1. Samo sto ce onda sve menjati. Onda  bi bio i lepsi
         # combobox. Combobox bi svakako trebao da bude lepsi za ove vrednosti. hm.
@@ -528,10 +575,8 @@ class ThermPanel(wx.Panel):
         self.ax_cv.set_ylabel(r'Coefficient of variation for $\langle{%s}\rangle$'
                                % mlanglerangle)
         self.ax_mag.set_ylabel(r'$\langle{%s}\rangle$' % (mlanglerangle))
-        pylab.setp(self.ax_mag.get_xticklabels(), fontsize=5)
-        pylab.setp(self.ax_mag.get_yticklabels(), fontsize=5)
-        pylab.setp(self.ax_cv.get_xticklabels(), fontsize=5)
-        pylab.setp(self.ax_cv.get_yticklabels(), fontsize=5)
+        self.set_labelfontsize(self.xylbl_slider.GetValue())
+        self.set_ticklabelfontsize(self.lbl_slider.GetValue())
         
         self.canvas.draw()
         self.chk_l.Enable(True)
@@ -547,8 +592,8 @@ def matDictEmpty():
     
 class AggPanel(wx.Panel):
 
-    name_dict = {'susc':r"Magnetic Susceptibility",'Tcap':'Tcap???????','T':'Temperature',
-                 'M1avg':r"Average value of $\langle{M}\rangle$",'M2avg':r"Average value of $\langle{M^2}\rangle$",'M4avg':r"Average value of $\langle{M^4}\rangle$",'Eavg':r"Average value of $\langle{E}\rangle$",'E2avg':r"Average value of $\langle{E^2}\rangle$",'U':r'Binder Cumulant U$_{L}$'}
+    name_dict = {'susc':r"$\mathcal{X}$",'Tcap':'$C_V$','T':'$T$',
+                 'M1avg':r"Average value of $\langle{M}\rangle$",'M2avg':r"Average value of $\langle{M^2}\rangle$",'M4avg':r"Average value of $\langle{M^4}\rangle$",'Eavg':r"Average value of $\langle{E}\rangle$",'E2avg':r"Average value of $\langle{E^2}\rangle$",'U':r'U$_{L}$'}
     def __init__(self, parent):
 
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
