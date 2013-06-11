@@ -219,7 +219,7 @@ class ScatterPanel(wx.Panel):
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
              
-        self.ax_3d.set_title("T = %.1f" % (float(t[1:])/100))
+        self.ax_3d.set_title("T = %.2f" % (float(t[1:])/100))
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
         self.ax_3d.set_xlabel(self.xlabel)
@@ -363,9 +363,12 @@ class ThermPanel(wx.Panel):
         self.toolhbox.AddSpacer(20)
       
         self.toolhbox.AddSpacer(20)
-        self.toolhbox.Add(self.chk_l,5, wx.TOP,3)
-        self.toolhbox.Add(self.chk_t,5,wx.TOP,3)
-        self.toolhbox.Add(self.chk_mc,5,wx.TOP,3)
+        self.toolhbox.Add(self.chk_l, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.chk_t, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.chk_mc, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox.Add(self.tick_txt, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox.Add(self.lbl_slider, border=5, flag=wx.ALL
@@ -521,7 +524,7 @@ class ThermPanel(wx.Panel):
     def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
         lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
-        lbl_t ="%s=%.1f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/100)
+        lbl_t ="%s=%.2f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/100)
         lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
@@ -968,10 +971,22 @@ def get_choices():
 
     return dct
 
-
+def IsBold(item):
+    """Proverava da li je item u listi bold
+    ili ne"""
+    font = item.GetFont()
+    print "checking if font '{}' is bold or not...".format(font)
+    return font.GetWeight()==wx.FONTWEIGHT_BOLD
+    
 def MakeBold(self,item):
         font = item.GetFont()
         font.SetWeight(wx.FONTWEIGHT_BOLD)
+        item.SetFont(font)
+        self.SetItem(item)
+        
+def UnBold(self,item):
+        font = item.GetFont()
+        font.SetWeight(wx.FONTWEIGHT_NORMAL)
         item.SetFont(font)
         self.SetItem(item)
         
@@ -1018,6 +1033,7 @@ class ListCtrlLattice(wx.ListCtrl):
         self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
         self.parent.GetGrandParent().GetGrandParent().disable_choose()
         self.window.LoadData(self.GetItemText(selected))
+        self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(False);
 
     def OnDeSelect(self, event):
         index = event.GetIndex()
@@ -1054,10 +1070,12 @@ class ListCtrlTempr(wx.ListCtrl):
         print "grand parent of window is",self.parent.GetGrandParent().GetParent()
         window = self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlTherm')
         print "window",window
-        selected = event.GetIndex()
+#        selected = event.GetIndex()
+        selected = self.GetFirstSelected()
         print "first selected",selected
         self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
         self.parent.GetGrandParent().GetGrandParent().disable_choose()
+        self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(IsBold(self.GetItem(selected)));
         
         window.LoadData(self.GetItemText(selected),self.l)
         print "selected item",self.GetItemText(selected)
@@ -1070,6 +1088,8 @@ class ListCtrlTempr(wx.ListCtrl):
             self.InsertStringItem(cntr,t)
             if t in best_mat_dict[item].keys():
                 MakeBold(self,self.GetItem(cntr))
+
+                
             cntr = cntr+1
 
 
@@ -1095,6 +1115,7 @@ class ListCtrlTherm(wx.ListCtrl):
         selected = event.GetIndex()
         print "first selected",selected
         self.parent.GetGrandParent().GetGrandParent().disable_choose()
+        self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(False);
         window.LoadData(self.GetItemText(selected),self.l,self.t)
     
     def OnSize(self, event):
@@ -1152,6 +1173,7 @@ class ListCtrlMC(wx.ListCtrl):
 
     def OnSelect(self,event):
         self.parent.GetGrandParent().GetGrandParent().enable_choose()
+        self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(False);
 
 
 
@@ -1252,14 +1274,18 @@ class Reader(wx.Dialog):
         
         splitter.SplitHorizontally(leftSplitter,rightSplitter)
         self.button_choose = wx.Button(self,-1,"Choose",size=(70,30))
+        self.button_unchoose = wx.Button(self,-1,"UnChoose",size=(100,30))
         self.button_choose.Enable(False)
+        self.button_unchoose.Enable(False)
         self.button_done = wx.Button(self,-1,"Done",size=(70,30))
         self.Bind(wx.EVT_BUTTON, self.on_choose_button,self.button_choose)
+        self.Bind(wx.EVT_BUTTON, self.on_unchoose_button,self.button_unchoose)
         self.Bind(wx.EVT_BUTTON, self.on_done_button,self.button_done)
         vbox.Add(splitter, 1,  wx.EXPAND | wx.TOP | wx.BOTTOM, 5 )
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.AddStretchSpacer()
         hbox.Add(self.button_choose,1, wx.BOTTOM,5)
+        hbox.Add(self.button_unchoose,1, wx.BOTTOM,5)
         hbox.Add(self.button_done,1,wx.BOTTOM,5)
         vbox.Add(hbox,flag=wx.ALIGN_RIGHT|wx.RIGHT,border=10)
         self.SetSizer(vbox)
@@ -1272,6 +1298,16 @@ class Reader(wx.Dialog):
         self.button_choose.Enable(False)
     def enable_choose(self):
         self.button_choose.Enable(True)
+    def unchoose_enabled(self,is_enabled):
+        self.button_unchoose.Enable(is_enabled)
+    def on_unchoose_button(self,event):
+        l = self.listL.GetItemText(self.listL.GetFirstSelected())
+        t = self.listT.GetItemText(self.listT.GetFirstSelected())
+        print "deleting '{}' from dictionary...".format(best_mat_dict[l][t])
+        del best_mat_dict[l][t]
+        UnBold(self.listT, self.listT.GetItem(self.listT.GetFirstSelected()))
+        self.listT.OnSelect("dummY")
+        
     def on_done_button(self,event):
         self.SetReturnCode(wx.ID_OK)
         self.Close()
