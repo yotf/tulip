@@ -7,8 +7,8 @@ Opis aplikacije....
 =================================================================
    
 Usage:
-    gui_tabbed.py [SIMDIR]
-    gui_tabbed.py -h | --help
+    tulip.py [SIMDIR]
+    tulip.py -h | --help
 Arguments:
     SIMDIR     Path to sim directory
 Options:
@@ -252,6 +252,8 @@ def clean_mat_dict():
     for key,value in best_mat_dict.items():
         if not value:
             best_mat_dict.pop(key)
+            print "removing {}.aplot".format(key)
+            os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
     serialize_mat()
         
 def add_to_mat_dict(l,t,therm,mc):
@@ -648,6 +650,9 @@ class AggPanel(wx.Panel):
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
         self.lbl_slider.Bind(wx.EVT_SCROLL,self.on_slider_scroll)
         self.xylbl_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
+        self.chk_ann = wx.CheckBox(self,-1,"Annotate", size=(-1,30))
+        self.chk_ann.Enable(False)
+        self.Bind(wx.EVT_CHECKBOX, self.on_chk_ann, self.chk_ann)
         
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
@@ -675,7 +680,8 @@ class AggPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)        
         self.toolhbox.Add(self.xylbl_slider, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-
+        self.toolhbox.Add(self.chk_ann, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1,  wx.EXPAND)
         self.vbox.Add(self.toolhbox)
@@ -684,6 +690,10 @@ class AggPanel(wx.Panel):
         self.vbox.Fit(self)
 
 
+    def on_chk_ann(self,event):
+        for ann in self.annotations:
+            ann.set_visible(self.chk_ann.IsChecked())
+        self.canvas.draw()
     def set_ticklabelfontsize(self,size):
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=size)
 
@@ -735,9 +745,17 @@ class AggPanel(wx.Panel):
         mag_select = self.cmb_mag.GetValue()
         print L_select, mag_select
         lbl = "$%s_{%s}$" %(L_select[0],L_select[1:])
-        print self.aggd[L_select].ix['T']
+        print  self.aggd[L_select].ix['T'].index
         self.ax_agg.plot(self.aggd[L_select].ix['T'],
                          self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none')
+        self.annotations = list()
+        for t,m in zip(self.aggd[L_select].ix['T'].index,self.aggd[L_select].ix[mag_select]):
+            self.annotations.append(self.ax_agg.annotate('$THERM={groups[0]}$\n $SP={groups[1]}$'.format(groups=
+                re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[L_select][t].split(os.path.sep)[-1]).groups()),xy=(float(t[1:])/100,m),xytext=(float(t[1:])/100,m), visible=False,fontsize=10))
+
+        self.chk_ann.SetValue(False)
+        self.chk_ann.Enable(True)
+        
         self.ax_agg.set_xlim(right=1.55)
         leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
         leg.draggable(True)
@@ -752,6 +770,9 @@ class AggPanel(wx.Panel):
         self.ax_agg.cla()
         self.set_labelfontsize(self.xylbl_slider.GetValue())
         self.set_ticklabelfontsize(self.lbl_slider.GetValue())
+        self.chk_ann.SetValue(False)
+        self.chk_ann.Enable(False)
+        
         self.canvas.draw()
         
     def init_plot(self):
@@ -856,11 +877,18 @@ def remove_old_calcs(d):
     """Posto je utvrdio da je direktorijum sa simulacijama
     izmenjem, izbrise sva prethodna izracunavanja. Ovo treba
     da napravim na nivou pojedinacnih LT direktorijuma"""
-    
+    import fnmatch
     os.chdir(d)
     # ovo kad smislis sta ces sa agregatima
     #os.system("rm *.aplot")
-    os.system("rm -f *.mat *.stat *.raw *.cv *.plot ")
+    # sranje sto ne rade brace ekspanzije . tek od pajtona 3.3, mozda?
+    oldies = [f for f in os.listdir(os.getcwd()) if fnmatch.fnmatch(f,"*.mat") or fnmatch.fnmatch(f,"*.stat") or fnmatch.fnmatch(f,"*.raw") or fnmatch.fnmatch(f,"*.cv") or fnmatch.fnmatch(f,"*.plot") ]
+    print "removing files in {} directory...".format(os.getcwd())
+    
+    for f in oldies:
+        print "removing {}...".format(f)
+        os.remove(f)
+#    os.system("rm -f *.mat *.stat *.raw *.cv *.plot ")
     
 def handle_simfiles(dir_md5):
     """Za svaki folder iz sim foldera on proverava da li stari
@@ -1274,7 +1302,7 @@ class Reader(wx.Dialog):
         
         splitter.SplitHorizontally(leftSplitter,rightSplitter)
         self.button_choose = wx.Button(self,-1,"Choose",size=(70,30))
-        self.button_unchoose = wx.Button(self,-1,"UnChoose",size=(100,30))
+        self.button_unchoose = wx.Button(self,-1,"Remove",size=(100,30))
         self.button_choose.Enable(False)
         self.button_unchoose.Enable(False)
         self.button_done = wx.Button(self,-1,"Done",size=(70,30))
@@ -1293,6 +1321,9 @@ class Reader(wx.Dialog):
       
         self.Centre()
         self.Show(True)
+
+    
+        
 
     def disable_choose(self):
         self.button_choose.Enable(False)
