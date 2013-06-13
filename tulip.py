@@ -91,7 +91,6 @@ class ScatterPanel(wx.Panel):
         self.parent = parent
         self.tooltip = wx.ToolTip("Press 'd' for next T, scroll to zoom")
         self.tooltip.Enable(False)
-        self.load_data()
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
@@ -111,15 +110,9 @@ class ScatterPanel(wx.Panel):
    
         self.ax_3d.mouse_init()
         self.init_gui()
+        self.load_data(l=self.cmb_l.GetValue())
         
-        self.ts = self.all_data.keys()
-        key = lambda x: int(x[1:])
-        self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
-        self.temprs = cycle(self.ts)
-        self.setup_plot()
-        self.canvas.mpl_connect('draw_event',self.forceUpdate)
         
-        print DEBUG,"self.ts reversed",self.ts
 
 
 
@@ -162,13 +155,20 @@ class ScatterPanel(wx.Panel):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
         self.vbox.Add(self.canvas)
-       
+        self.cmb_l = wx.ComboBox(self, size=(70, -1),
+                                 choices=sorted(lt_dict.keys(),key=lambda x: int(x[1:])),
+                                 style=wx.CB_READONLY,
+                                 value=lt_dict.keys()[0])
+
         self.draw_button = wx.Button(self, -1, 'Next')
         self.save_button = wx.Button(self, -1, 'Save')
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
+        self.Bind(wx.EVT_COMBOBOX,self.on_selectl,self.cmb_l)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        
+
+        self.hbox1.Add(self.cmb_l, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
@@ -176,13 +176,20 @@ class ScatterPanel(wx.Panel):
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
+
+    def on_selectl(self,event):
+        print "Loading data for {}...".format(self.cmb_l.GetValue())
+        self.load_data(l=self.cmb_l.GetValue())
+        self.setup_plot()
    
     
    
-    def load_data(self):
+    def load_data(self,l="L10"):
         """Ucitava podatke za animaciju"""
         import os
-        flist=glob.glob(join(SIM_DIR,"L10T*"))
+        flist=glob.glob(join(SIM_DIR,"{}T*".format(l)))
+        
+        
         flist = [f for f in flist if os.path.isdir(f)]
         print DEBUG,"flist",flist
    
@@ -195,10 +202,19 @@ class ScatterPanel(wx.Panel):
             data = pd.read_table(allf,delim_whitespace=True,nrows=1000, names=['seed', 'e', 'x', 'y', 'z'])
             data.pop('seed')
             data.set_index(np.arange(1000),inplace=True)
-            temp =re.match(r".*L10(T\d{2,4})$",f).groups()[0]
+            temp =re.match(r".*%s(T\d{2,4})$" % l,f).groups()[0]
             self.all_data[temp] = data
    
         self.data = pd.concat(self.all_data,axis=0)
+
+        self.ts = self.all_data.keys()
+        key = lambda x: int(x[1:])
+        self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
+        self.temprs = cycle(self.ts)
+        self.setup_plot()
+        self.canvas.mpl_connect('draw_event',self.forceUpdate)
+        
+        print DEBUG,"self.ts reversed",self.ts
     def setup_plot(self):
         
         "Initial drawing of scatter plot"
