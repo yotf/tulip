@@ -1027,12 +1027,13 @@ def get_choices():
 
     return dct
 
-def IsBold(item):
+def IsBold(l,itemText):
     """Proverava da li je item u listi bold
     ili ne"""
-    font = item.GetFont()
-    print "checking if font '{}' is bold or not...".format(font)
-    return font.GetWeight()==wx.FONTWEIGHT_BOLD
+#    font = item.GetFont()
+    print "checking if item '{}' is bold or not...".format(itemText)
+    print "or is in {}".format(best_mat_dict[l].keys())
+    return itemText in best_mat_dict[l].keys()
     
 def MakeBold(self,item):
         font = item.GetFont()
@@ -1131,7 +1132,7 @@ class ListCtrlTempr(wx.ListCtrl):
         print "first selected",selected
         self.parent.GetGrandParent().GetParent().FindWindowByName('rightSplitter').FindWindowByName('ListControlMC').DeleteAllItems()
         self.parent.GetGrandParent().GetGrandParent().disable_choose()
-        self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(IsBold(self.GetItem(selected)));
+        self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(IsBold(self.l,self.GetItemText(selected)));
         
         window.LoadData(self.GetItemText(selected),self.l)
         print "selected item",self.GetItemText(selected)
