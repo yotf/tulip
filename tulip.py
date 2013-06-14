@@ -88,6 +88,7 @@ class ScatterPanel(wx.Panel):
         
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
         self.parent = parent
+        logging.basicConfig(level=logging.DEBUG)
         self.log = logging.getLogger("ScatterPanel")
         self.tooltip = wx.ToolTip("Press 'd' for next T, scroll to zoom")
     
@@ -193,7 +194,7 @@ class ScatterPanel(wx.Panel):
    
     
    
-    def load_data(self,l="L10"):
+    def load_data(self,l="L10",n=1000):
         """Ucitava podatke za animaciju"""
         import os
         flist=glob.glob(join(SIM_DIR,"{}T*".format(l)))
@@ -206,14 +207,28 @@ class ScatterPanel(wx.Panel):
             temp =re.match(r".*%s(T\d{2,4})" % l,f.split(os.path.sep)[-1]).groups()[0]
             self.log.debug("Loading data for tempearture {}".format(temp))
             self.log.debug("Loading data from file %s.all" % f[:-4])
-            data = pd.read_table("%s.all" % f[:-4],delim_whitespace=True,nrows=1000, names=['seed', 'e', 'x', 'y', 'z'])
+            # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
+            data = pd.read_table("%s.all" % f[:-4],delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
             data.pop('seed')
-            data.set_index(np.arange(1000),inplace=True)
+            print data.count()
+            data.set_index(np.arange(data.e.count()),inplace=True)
             self.all_data[temp] = data
+
+            
+
+
+
+        # self.mags=dict();
+        # for t,df in self.all_data.items():
+        #     self.mags[t]=pd.DataFrame(np.sqrt( df.x ** 2 + df.y ** 2 + df.z ** 2),columns=[t])
+
+        #     print "Magnitudes {}".format( self.mags[t])
+
+        # self.mag_df = pd.concat(self.mags,axis=0)
 
         
         self.data = pd.concat(self.all_data,axis=0)
-
+        
         self.ts = self.all_data.keys()
         key = lambda x: int(x[1:])
         self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
@@ -238,13 +253,16 @@ class ScatterPanel(wx.Panel):
    
         self.ax_3d.cla()
         self.ax_hist.cla()
+        
                 
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
         title ="T={:.2f}\nTHERM={groups[0]}\n SP={groups[1]}".format(\
             (float(t[1:])/100),groups=re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[self.cmb_l.GetValue()][t].split(os.path.sep)[-1]).groups())
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
-        self.ax_hist.set_ylim(0,40)
+        self.log.debug("Maksimum magt je {}".format(magt.max()))
+#        self.ax_hist.set_ylim(0,magt.max()*1000)
+        self.log.debug(magt)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
         self.ax_3d.set_xlabel(self.xlabel)
         self.ax_3d.set_ylabel(self.ylabel)
