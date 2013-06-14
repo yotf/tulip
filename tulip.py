@@ -19,11 +19,11 @@ Options:
 import wx
 import pandas as pd
 import os
-from docopt import docopt
 from os.path import join
 import glob
 import re
 import pickle
+import logging
    
 from collections import defaultdict
 import itertools
@@ -84,17 +84,17 @@ class ScatterPanel(wx.Panel):
     ylabel = 'My'
     zlabel = 'Mz'
     all_data = dict()
-    
     def __init__(self,parent):
         
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
         self.parent = parent
+        self.log = logging.getLogger("ScatterPanel")
         self.tooltip = wx.ToolTip("Press 'd' for next T, scroll to zoom")
+    
         self.tooltip.Enable(False)
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi
         fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
-        #self.fig = Figure((fig_width, fig_height), dpi=self.dpi)
    
         self.fig = Figure(figsize=(20,7),facecolor='#595454')
         # self.ax = Axes3D(self.fig)
@@ -112,10 +112,6 @@ class ScatterPanel(wx.Panel):
         self.init_gui()
         self.load_data(l=self.cmb_l.GetValue())
         
-        
-
-
-
     def save_figure(self, *args):
         filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
         default_file = self.canvas.get_default_filename()
@@ -155,19 +151,24 @@ class ScatterPanel(wx.Panel):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
         self.vbox.Add(self.canvas)
+        
         self.cmb_l = wx.ComboBox(self, size=(70, -1),
-                                 choices=sorted(lt_dict.keys(),key=lambda x: int(x[1:])),
+                                 choices=sorted(best_mat_dict.keys(),key=lambda x: int(x[1:])),
                                  style=wx.CB_READONLY,
-                                 value=lt_dict.keys()[0])
+                                 value=best_mat_dict.keys()[0])
 
+        self.reload_button = wx.Button(self, -1, 'Reload')
         self.draw_button = wx.Button(self, -1, 'Next')
         self.save_button = wx.Button(self, -1, 'Save')
+        self.Bind(wx.EVT_BUTTON, self.on_reload_button, self.reload_button)
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
         self.Bind(wx.EVT_COMBOBOX,self.on_selectl,self.cmb_l)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 
         self.hbox1.Add(self.cmb_l, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.reload_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
@@ -176,6 +177,14 @@ class ScatterPanel(wx.Panel):
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
+
+    def on_reload_button(self,event):
+        choices = sorted(best_mat_dict.keys(),key=lambda x: int(x[1:]))
+        self.cmb_l.SetItems(choices)
+        self.cmb_l.SetValue(choices[0])
+        self.load_data(l=choices[0])
+        
+        
 
     def on_selectl(self,event):
         print "Loading data for {}...".format(self.cmb_l.GetValue())
@@ -188,23 +197,21 @@ class ScatterPanel(wx.Panel):
         """Ucitava podatke za animaciju"""
         import os
         flist=glob.glob(join(SIM_DIR,"{}T*".format(l)))
-        
+        self.all_data= dict()
         
         flist = [f for f in flist if os.path.isdir(f)]
-        print DEBUG,"flist",flist
-   
-        for f in flist:
-            print glob.glob(join(f,"*THERM1000MC*.all"))
-            try:
-                allf= glob.glob(join(f,"*THERM1000MC*.all"))[0]
-            except Exception, e:
-                continue
-            data = pd.read_table(allf,delim_whitespace=True,nrows=1000, names=['seed', 'e', 'x', 'y', 'z'])
+        self.log.debug("file list: %s " %flist)
+
+        for f in best_mat_dict[l].values():
+            temp =re.match(r".*%s(T\d{2,4})" % l,f.split(os.path.sep)[-1]).groups()[0]
+            self.log.debug("Loading data for tempearture {}".format(temp))
+            self.log.debug("Loading data from file %s.all" % f[:-4])
+            data = pd.read_table("%s.all" % f[:-4],delim_whitespace=True,nrows=1000, names=['seed', 'e', 'x', 'y', 'z'])
             data.pop('seed')
             data.set_index(np.arange(1000),inplace=True)
-            temp =re.match(r".*%s(T\d{2,4})$" % l,f).groups()[0]
             self.all_data[temp] = data
-   
+
+        
         self.data = pd.concat(self.all_data,axis=0)
 
         self.ts = self.all_data.keys()
@@ -234,8 +241,9 @@ class ScatterPanel(wx.Panel):
                 
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
-             
-        self.ax_3d.set_title("T = %.2f" % (float(t[1:])/100))
+        title ="T={:.2f}\nTHERM={groups[0]}\n SP={groups[1]}".format(\
+            (float(t[1:])/100),groups=re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[self.cmb_l.GetValue()][t].split(os.path.sep)[-1]).groups())
+        self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         self.ax_hist.set_ylim(0,40)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
         self.ax_3d.set_xlabel(self.xlabel)
@@ -269,7 +277,11 @@ def clean_mat_dict():
         if not value:
             best_mat_dict.pop(key)
             print "removing {}.aplot".format(key)
-            os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
+            try:
+                os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
+            except Exception:
+                print "...NOT"
+                pass
     serialize_mat()
         
 def add_to_mat_dict(l,t,therm,mc):
@@ -1373,6 +1385,7 @@ class Reader(wx.Dialog):
     
 if __name__ == '__main__':
     import sys
+    from docopt import docopt
     args = docopt(__doc__)
     SIM_DIR = args['SIMDIR']
     print SIM_DIR 
