@@ -15,7 +15,7 @@ Options:
     -h --help
 """
 
-from voluptuous import All, Range, Schema, Invalid, Coerce
+
 from docopt import docopt
 import sys
 import pandas as pd
@@ -198,6 +198,7 @@ def main(ltdir,n=None):
 
 
 if __name__=="__main__":
+    from voluptuous import All, Range, Schema, Invalid, Coerce
     schema = Schema({'N': All(Coerce(int), Range(min=1))}, extra=True)
 
     args = docopt(__doc__, version='0')
