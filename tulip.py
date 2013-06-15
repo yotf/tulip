@@ -84,6 +84,8 @@ class ScatterPanel(wx.Panel):
     ylabel = 'My'
     zlabel = 'Mz'
     all_data = dict()
+    ylim = None
+    xlim = None
     def __init__(self,parent):
         
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
@@ -161,6 +163,10 @@ class ScatterPanel(wx.Panel):
         self.reload_button = wx.Button(self, -1, 'Reload')
         self.draw_button = wx.Button(self, -1, 'Next')
         self.save_button = wx.Button(self, -1, 'Save')
+        self.chk_ylim = wx.CheckBox(self,-1,"Global ylim",size=(-1,30))
+        self.chk_xlim = wx.CheckBox(self,-1,"Global xlim",size=(-1,30))
+        self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_ylim)
+        self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_xlim)
         self.Bind(wx.EVT_BUTTON, self.on_reload_button, self.reload_button)
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
@@ -175,9 +181,21 @@ class ScatterPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.chk_ylim, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.chk_xlim, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
+
+    def on_chk_lim(self,event):
+        self.ylim = self.global_ylim if self.chk_ylim.IsChecked() else self.local_ylim
+        self.xlim = self.global_xlim if self.chk_xlim.IsChecked() else self.local_xlim
+        self.log.debug("Setting ylim:{} and xlim:{}".format(self.ylim,self.xlim))
+        self.ax_hist.set_ylim(0,self.ylim)
+        self.ax_hist.set_xlim(0,self.xlim)
+        self.canvas.draw()
 
     def on_reload_button(self,event):
         choices = sorted(best_mat_dict.keys(),key=lambda x: int(x[1:]))
@@ -213,23 +231,26 @@ class ScatterPanel(wx.Panel):
             print data.count()
             data.set_index(np.arange(data.e.count()),inplace=True)
             self.all_data[temp] = data
-
-            
-
-
-
-        # self.mags=dict();
-        # for t,df in self.all_data.items():
-        #     self.mags[t]=pd.DataFrame(np.sqrt( df.x ** 2 + df.y ** 2 + df.z ** 2),columns=[t])
-
-        #     print "Magnitudes {}".format( self.mags[t])
-
-        # self.mag_df = pd.concat(self.mags,axis=0)
-
         
         self.data = pd.concat(self.all_data,axis=0)
         
         self.ts = self.all_data.keys()
+        ylims = list()
+        xlims = list()
+        for t in self.ts:
+            x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
+            magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
+            self.ax_hist.hist(magt,bins=100,normed=1)
+            ylims.append(self.ax_hist.get_ylim()[1])
+            xlims.append(self.ax_hist.get_xlim()[1])
+            self.log.debug("ylim for {} is {}".format(t,self.ax_hist.get_ylim()[1]))
+            self.log.debug("xlim for {} is {}".format(t,self.ax_hist.get_xlim()[1]))
+        self.global_ylim = max(ylims)
+        self.global_xlim = max(xlims)
+        self.log.debug("Global maximum for {} is {}".format(l,self.global_ylim))
+        self.log.debug("Global maximum for {} is {}".format(l,self.global_xlim))
+            
+
         key = lambda x: int(x[1:])
         self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
         self.temprs = cycle(self.ts)
@@ -264,6 +285,12 @@ class ScatterPanel(wx.Panel):
 #        self.ax_hist.set_ylim(0,magt.max()*1000)
         self.log.debug(magt)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
+        self.local_ylim = self.ax_hist.get_ylim()[1]
+        self.local_xlim = self.ax_hist.get_xlim()[1]
+        self.log.debug("local xlim: {} local ylim: {}")
+        self.on_chk_lim("dummy")
+        self.ax_hist.set_ylim(0,self.ylim)
+        self.ax_hist.set_xlim(0,self.xlim)
         self.ax_3d.set_xlabel(self.xlabel)
         self.ax_3d.set_ylabel(self.ylabel)
         self.ax_3d.set_zlabel(self.zlabel)
