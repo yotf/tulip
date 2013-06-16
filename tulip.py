@@ -86,6 +86,8 @@ class ScatterPanel(wx.Panel):
     all_data = dict()
     ylim = None
     xlim = None
+    chk_mc_txt = "Show first %d SPs"
+    firstn = 1000
     def __init__(self,parent):
         
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
@@ -113,7 +115,10 @@ class ScatterPanel(wx.Panel):
    
         self.ax_3d.mouse_init()
         self.init_gui()
-        self.load_data(l=self.cmb_l.GetValue())
+        # mozda da napravim da svakako mora load?
+        # ma kakvi. ovo je ok za sada
+        if best_mat_dict.keys():
+            self.load_data(l=self.cmb_l.GetValue())
         
     def save_figure(self, *args):
         filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
@@ -152,21 +157,28 @@ class ScatterPanel(wx.Panel):
    
     def init_gui(self):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
-        # self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP)
-        self.vbox.Add(self.canvas)
         
+        self.vbox.Add(self.canvas)
+        value = "" if not best_mat_dict.keys() else best_mat_dict.keys()[0]
         self.cmb_l = wx.ComboBox(self, size=(70, -1),
                                  choices=sorted(best_mat_dict.keys(),key=lambda x: int(x[1:])),
                                  style=wx.CB_READONLY,
-                                 value=best_mat_dict.keys()[0])
+                                 value=value)
 
         self.reload_button = wx.Button(self, -1, 'Reload')
         self.draw_button = wx.Button(self, -1, 'Next')
         self.save_button = wx.Button(self, -1, 'Save')
         self.chk_ylim = wx.CheckBox(self,-1,"Global ylim",size=(-1,30))
         self.chk_xlim = wx.CheckBox(self,-1,"Global xlim",size=(-1,30))
+        self.chk_mcs = wx.CheckBox(self,-1,self.chk_mc_txt %1000 ,size=(-1,30))
+        self.chk_mcs.SetValue(True)
+        self.mc_txt = wx.SpinCtrl(self,size=(80,-1))
+        self.load_button = wx.Button(self,-1,'Load')
+        
+        self.Bind(wx.EVT_CHECKBOX,self.on_chk_mcs, self.chk_mcs)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_ylim)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_xlim)
+        self.Bind(wx.EVT_BUTTON, self.on_load_button, self.load_button)
         self.Bind(wx.EVT_BUTTON, self.on_reload_button, self.reload_button)
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
@@ -185,9 +197,31 @@ class ScatterPanel(wx.Panel):
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.chk_xlim, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.load_button, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.chk_mcs, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
+
+    def on_load_button(self,event):
+        """Ucita n zadatih i stavi checkbox
+        na odredjen tekst i otkaci ga posto pp.
+        da ce neko ako vec ide na load, hteti odmah
+        da vidi rezultate, a posle ga moze uncheck"""
+        self.chk_mcs.SetValue(True)
+        self.chk_mcs.SetLabel(self.chk_mc_txt % self.mc_txt.GetValue())
+        self.firstn = self.mc_txt.GetValue()
+        self.load_data(l=self.cmb_l.GetValue(),n=self.firstn)
+        
+
+    def on_chk_mcs(self,event):
+        firstn = self.firstn if self.chk_mcs.IsChecked() else None
+        self.log.debug("Loading first {} sp for {}".format(firstn,None))
+        self.load_data(l=self.cmb_l.GetValue(),n = firstn)
 
     def on_chk_lim(self,event):
         self.ylim = self.global_ylim if self.chk_ylim.IsChecked() else self.local_ylim
@@ -209,8 +243,6 @@ class ScatterPanel(wx.Panel):
         print "Loading data for {}...".format(self.cmb_l.GetValue())
         self.load_data(l=self.cmb_l.GetValue())
         self.setup_plot()
-   
-    
    
     def load_data(self,l="L10",n=1000):
         """Ucitava podatke za animaciju"""
@@ -250,12 +282,14 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Global maximum for {} is {}".format(l,self.global_ylim))
         self.log.debug("Global maximum for {} is {}".format(l,self.global_xlim))
             
+        self.mc_txt.SetRange(0,getmaxmc(l))
 
         key = lambda x: int(x[1:])
         self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
         self.temprs = cycle(self.ts)
         self.setup_plot()
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
+
         
         print DEBUG,"self.ts reversed",self.ts
     def setup_plot(self):
@@ -278,8 +312,9 @@ class ScatterPanel(wx.Panel):
                 
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
-        title ="T={:.2f}\nTHERM={groups[0]}\n SP={groups[1]}".format(\
-            (float(t[1:])/100),groups=re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[self.cmb_l.GetValue()][t].split(os.path.sep)[-1]).groups())
+        therm,sp = getthermmc(self.cmb_l.GetValue(),t)
+        #self.updateUI(therm,sp)
+        title ="T={:.2f}\nTHERM={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         self.log.debug("Maksimum magt je {}".format(magt.max()))
 #        self.ax_hist.set_ylim(0,magt.max()*1000)
@@ -295,10 +330,20 @@ class ScatterPanel(wx.Panel):
         self.ax_3d.set_ylabel(self.ylabel)
         self.ax_3d.set_zlabel(self.zlabel)
         self.canvas.draw()
-            
+
+               
     def forceUpdate(self,event):
         self.scat.changed()
-   
+
+
+def getmaxmc(l):
+    mcs = list()
+    for t in best_mat_dict[l].keys():
+        mcs.append(int(getthermmc(l,t)[1]))
+    return max(mcs)
+    
+def getthermmc(l,t):
+    return re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[l][t].split(os.path.sep)[-1]).groups()
    
 def load_best_mat_dict():
     with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
