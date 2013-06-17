@@ -1,4 +1,3 @@
-
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
@@ -16,6 +15,8 @@ Options:
 """
    
 #import pdb
+import wxversion
+wxversion.select('2.8')
 import wx
 import pandas as pd
 import os
@@ -24,7 +25,6 @@ import glob
 import re
 import pickle
 import logging
-   
 from collections import defaultdict
 import itertools
 import unify
@@ -32,11 +32,13 @@ import agregate
 import compose
 import statmat
 import matplotlib
-   
+from matplotlib import widgets   
 #PRETPOSTAVKA: SVI SKRIPTOVI SE NALAZE U ISTOM DIREKTORIJUMU
 # PRETPOSTAVKA : OVAJ (GLANI) SKRIPT SE UVEK POKRECE IZ DIREKTORIJUMA
 # U KOM SE NALAZI
-   
+
+
+
    
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
@@ -99,14 +101,19 @@ class ScatterPanel(wx.Panel):
         self.tooltip.Enable(False)
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi
-        fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
-   
-        self.fig = Figure(figsize=(20,7),facecolor='#595454')
+        fig_height = (self.parent.GetParent().height / self.dpi) * 3.2 / 4.0
+        self.log.debug("fig width:{} fig height:{}".format(fig_width,fig_height))
+        
+        self.fig = Figure(figsize=(fig_width,fig_height),dpi=self.dpi,facecolor='#595454')
+        self.canvas = FigCanvas(self,-1,self.fig)
         # self.ax = Axes3D(self.fig)
-        self.ax_3d = self.fig.add_subplot(121,projection="3d")
+        #self.ax_3d = self.fig.add_subplot(121,projection="3d")
+        self.ax_3d = self.fig.add_axes([0,0,0.5,1],projection="3d")
         print type(self.ax_3d)
         self.ax_hist = self.fig.add_subplot(122)
-        self.canvas = FigCanvas(self,-1,self.fig)
+        # self.ax_btn = self.fig.add_axes([0.6,0.75,0.05,0.07], aspect='equal')
+        # self.nextbtn = widgets.CheckButtons(self.ax_btn,("global xlim","global ylim"),(False,False))
+#        self.nextbtn.on_clicked(self.step)
         self.canvas.SetToolTip(self.tooltip)
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
         # self.canvas.mpl_connect('button_press_event',self.on_button_press)
@@ -114,8 +121,7 @@ class ScatterPanel(wx.Panel):
         self.zoomf = zoom_factory(self.ax_3d,self.canvas)
    
         self.ax_3d.mouse_init()
-        self.init_gui()
-        # mozda da napravim da svakako mora load?
+        self.init_gui()        # mozda da napravim da svakako mora load?
         # ma kakvi. ovo je ok za sada
         if best_mat_dict.keys():
             self.load_data(l=self.cmb_l.GetValue())
@@ -227,8 +233,8 @@ class ScatterPanel(wx.Panel):
         self.ylim = self.global_ylim if self.chk_ylim.IsChecked() else self.local_ylim
         self.xlim = self.global_xlim if self.chk_xlim.IsChecked() else self.local_xlim
         self.log.debug("Setting ylim:{} and xlim:{}".format(self.ylim,self.xlim))
-        self.ax_hist.set_ylim(0,self.ylim)
-        self.ax_hist.set_xlim(0,self.xlim)
+        self.ax_hist.set_ylim(self.ylim)
+        self.ax_hist.set_xlim(self.xlim)
         self.canvas.draw()
 
     def on_reload_button(self,event):
@@ -270,15 +276,18 @@ class ScatterPanel(wx.Panel):
         ylims = list()
         xlims = list()
         for t in self.ts:
+            self.ax_hist.cla()
             x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
             magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
-            self.ax_hist.hist(magt,bins=100,normed=1)
-            ylims.append(self.ax_hist.get_ylim()[1])
-            xlims.append(self.ax_hist.get_xlim()[1])
-            self.log.debug("ylim for {} is {}".format(t,self.ax_hist.get_ylim()[1]))
-            self.log.debug("xlim for {} is {}".format(t,self.ax_hist.get_xlim()[1]))
-        self.global_ylim = max(ylims)
-        self.global_xlim = max(xlims)
+            self.ax_hist.hist(magt,bins=100, normed=1)
+            ylims.append(self.ax_hist.get_ylim())
+            xlims.append(self.ax_hist.get_xlim())
+            self.log.debug("ylim for {} is {}".format(t,self.ax_hist.get_ylim()))
+            self.log.debug("xlim for {} is {}".format(t,self.ax_hist.get_xlim()))
+        print zip(*ylims)
+        self.log.debug("xlims: {}".format(xlims))
+        self.global_ylim = (min(zip(*ylims)[0]), max(zip(*ylims)[1]))
+        self.global_xlim = (min(zip(*xlims)[0]), max(zip(*xlims)[1]))
         self.log.debug("Global maximum for {} is {}".format(l,self.global_ylim))
         self.log.debug("Global maximum for {} is {}".format(l,self.global_xlim))
             
@@ -305,9 +314,16 @@ class ScatterPanel(wx.Panel):
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
         magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
         colors = np.where(magt>np.mean(magt),'r','b')
-   
+        
         self.ax_3d.cla()
         self.ax_hist.cla()
+        pylab.setp(self.ax_3d.get_xticklabels(),fontsize=8, color='#666666')
+        pylab.setp(self.ax_3d.get_yticklabels(),fontsize=8, color='#666666')
+        pylab.setp(self.ax_3d.get_zticklabels(),fontsize=8, color='#666666')
+        self.ax_3d.set_xlabel(self.xlabel, fontsize=8)
+        self.ax_3d.set_ylabel(self.ylabel,fontsize=8)
+        self.ax_3d.set_zlabel(self.zlabel,fontsize=8)
+        self.log.debug("Magt has {} elements".format(magt.count()))
         
                 
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
@@ -316,19 +332,19 @@ class ScatterPanel(wx.Panel):
         #self.updateUI(therm,sp)
         title ="T={:.2f}\nTHERM={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
+        
         self.log.debug("Maksimum magt je {}".format(magt.max()))
 #        self.ax_hist.set_ylim(0,magt.max()*1000)
         self.log.debug(magt)
         self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
-        self.local_ylim = self.ax_hist.get_ylim()[1]
-        self.local_xlim = self.ax_hist.get_xlim()[1]
-        self.log.debug("local xlim: {} local ylim: {}")
+        self.local_ylim = self.ax_hist.get_ylim()
+        self.local_xlim = self.ax_hist.get_xlim()
+        self.log.debug("local xlim: {} local ylim: {}".format(self.local_ylim, self.local_xlim))
         self.on_chk_lim("dummy")
-        self.ax_hist.set_ylim(0,self.ylim)
-        self.ax_hist.set_xlim(0,self.xlim)
-        self.ax_3d.set_xlabel(self.xlabel)
-        self.ax_3d.set_ylabel(self.ylabel)
-        self.ax_3d.set_zlabel(self.zlabel)
+        self.ax_hist.set_ylim(self.ylim)
+        self.ax_hist.set_xlim(self.xlim)
+        
+        
         self.canvas.draw()
 
                
@@ -390,11 +406,13 @@ def serialize_mat():
         pickle.dump(dict(best_mat_dict),matdictfile)
             
 class ThermPanel(wx.Panel):
-   
     def __init__(self, parent):
+        self.tooltip=wx.ToolTip("r:color to red\ng:color to green\n")
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.init_plot()
+        self.canvas.SetToolTip(self.tooltip)
+       
 
         self.mc_txt = wx.SpinCtrl(self, size = (80,-1))
         self.add_button = wx.Button(self,-1,'Generate .plot')
@@ -610,7 +628,7 @@ class ThermPanel(wx.Panel):
     def init_plot(self):
         self.dpi = 100
         fig_width = (self.parent.GetParent().width / self.dpi) 
-        fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
+        fig_height = self.parent.GetParent().height / self.dpi * 3 / 4
 
         self.fig = Figure((fig_width, fig_height), dpi=self.dpi,facecolor='w')
 
@@ -632,6 +650,40 @@ class ThermPanel(wx.Panel):
         fw,fh = self.canvas.GetSizeTuple()
         self.toolbar.SetSize(wx.Size(fw,20))
         self.toolbar.Realize()
+
+        self.canvas.mpl_connect('key_press_event',self.on_key_press)
+        self.canvas.mpl_connect('pick_event', self.on_pick)
+
+    def on_pick(self,event):
+        artist = event.artist
+        artist.set_color(np.random.random(3))
+        print "pick"
+        self.canvas.draw()
+
+    def on_key_press(self,event):
+        if event.key in 'rgbcmyk':
+            self.error_line.get_children()[0].set_color(event.key)
+            self.semilog_line.set_color(event.key)
+        elif event.key in "-.," :
+            self.error_line.get_children()[0].set_linestyle(event.key)
+            self.semilog_line.set_linestyle(event.key)
+        elif event.key in "ov^<>1234s*hHDd|":
+            self.error_line.get_children()[0].set_marker(event.key)
+            self.semilog_line.set_marker(event.key)
+        elif event.key =="+":
+            self.semilog_line.set_linewidth(self.semilog_line.get_linewidth()+0.1)
+        elif event.key =="-":
+            self.semilog_line.set_linewidth(self.semilog_line.get_linewidth()-0.1)
+        elif event.key=="p":
+            print "pp"
+            self.multi=widgets.MultiCursor(self.canvas,[self.ax_mag,self.ax_cv],useblit=True,color='gray',lw=1)
+        elif event.key=="x":
+            del self.multi
+                              
+                              
+        self.canvas.draw()
+
+        
 
     def on_select(self, event):
         # item = self.cmb_plots.GetValue()
@@ -680,10 +732,11 @@ class ThermPanel(wx.Panel):
         fmt =fmt_cycle.next()
         self.error_line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
                              y=self.data.ix[item + 'avg'],
-                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none')
+                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',
+                                           picker=5)
         
         self.semilog_line = self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
-                             % item],fmt,fillstyle='none')[0]
+                             % item],fmt,fillstyle='none',picker=5)[0]
 
         
 
@@ -896,7 +949,7 @@ class AggPanel(wx.Panel):
     def init_plot(self):
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi
-        fig_height = self.parent.GetParent().height / self.dpi * (3 / 4)
+        fig_height = self.parent.GetParent().height / self.dpi * 3 / 4
         self.fig = Figure((fig_width, fig_height), dpi=self.dpi,facecolor='w')
         self.ax_agg = self.fig.add_subplot(111)
         
