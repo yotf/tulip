@@ -61,6 +61,36 @@ DEBUGG = False
 LATTICE_MC = os.getcwd()
 fmt_strings = ['g+-','r*-','bo-','y+-']
 fmt_cycle = itertools.cycle(fmt_strings)
+
+class twoway_cycle():
+    """Uzima iterable, i na zvanje prev i next
+    vraca odgovarajuce clanove. ovo je verovatno
+    moglo lepse preko nekih dekoratora, generatora
+    nesto """
+    def __init__(self,it):
+        if not np.iterable(it):
+            raise ValueError("Must be an iterable")
+        
+        self.log=logging.getLogger("twoway_cycle")
+        self.it=it
+        self.i=0
+    def next(self):
+        self.i = self.i+1
+        self.i = 0 if self.i==len(self.it) else self.i
+        return self.it[self.i]
+
+    def prev(self):
+        self.i = len(self.it) if self.i==0 else self.i
+        self.i = self.i-1
+        return self.it[self.i]
+
+    def curr(self):
+        self.log.debug("returning curr element:{}".format(self.it[self.i]))
+        return self.it[self.i]
+            
+        
+
+
 def debug():
     if(DEBUGG):
         pdb.set_trace()
@@ -96,7 +126,7 @@ class ScatterPanel(wx.Panel):
         self.parent = parent
         logging.basicConfig(level=logging.DEBUG)
         self.log = logging.getLogger("ScatterPanel")
-        self.tooltip = wx.ToolTip("Press 'd' for next T, scroll to zoom")
+        self.tooltip = wx.ToolTip("'n':next\n'p':previous\nscroll:zoom")
     
         self.tooltip.Enable(False)
         self.dpi = 100
@@ -111,12 +141,9 @@ class ScatterPanel(wx.Panel):
         self.ax_3d = self.fig.add_axes([0,0,0.5,1],projection="3d")
         print type(self.ax_3d)
         self.ax_hist = self.fig.add_subplot(122)
-        # self.ax_btn = self.fig.add_axes([0.6,0.75,0.05,0.07], aspect='equal')
-        # self.nextbtn = widgets.CheckButtons(self.ax_btn,("global xlim","global ylim"),(False,False))
-#        self.nextbtn.on_clicked(self.step)
+
         self.canvas.SetToolTip(self.tooltip)
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
-        # self.canvas.mpl_connect('button_press_event',self.on_button_press)
         self.canvas.mpl_connect('figure_enter_event',self.on_figure_enter)
         self.zoomf = zoom_factory(self.ax_3d,self.canvas)
    
@@ -154,12 +181,12 @@ class ScatterPanel(wx.Panel):
     def on_figure_enter(self,event):
         self.tooltip.Enable(True)
         print "entered figure"
-        
-    def on_button_press(self,event):
-        self.step(event)
+    
     def on_key_press(self,event):
-        if event.key =='d':
+        if event.key =='n':
             self.step(event)
+        elif event.key =='p':
+            self.step(event,backwards=True)
    
     def init_gui(self):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -172,7 +199,8 @@ class ScatterPanel(wx.Panel):
                                  value=value)
 
         self.reload_button = wx.Button(self, -1, 'Reload')
-        self.draw_button = wx.Button(self, -1, 'Next')
+        self.draw_button = wx.Button(self, -1, '>', size=(40,-1))
+        self.prev_button = wx.Button(self, -1, '<',size=(40,-1))
         self.save_button = wx.Button(self, -1, 'Save')
         self.chk_ylim = wx.CheckBox(self,-1,"Global ylim",size=(-1,30))
         self.chk_xlim = wx.CheckBox(self,-1,"Global xlim",size=(-1,30))
@@ -187,6 +215,7 @@ class ScatterPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.on_load_button, self.load_button)
         self.Bind(wx.EVT_BUTTON, self.on_reload_button, self.reload_button)
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
+        self.Bind(wx.EVT_BUTTON, self.on_prev_press, self.prev_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
         self.Bind(wx.EVT_COMBOBOX,self.on_selectl,self.cmb_l)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -195,23 +224,31 @@ class ScatterPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.reload_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
+        self.hbox1.Add(self.prev_button, border=5, flag=wx.BOTTOM | wx.TOP | wx.LEFT
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.draw_button, border=5, flag=wx.BOTTOM | wx.TOP | wx.RIGHT
+                       | wx.ALIGN_CENTER_VERTICAL)
+
         self.hbox1.Add(self.save_button, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.chk_ylim, border=5, flag=wx.ALL
-               | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.chk_xlim, border=5, flag=wx.ALL
-               | wx.ALIGN_CENTER_VERTICAL)
+       
         self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.load_button, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.chk_mcs, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.chk_ylim, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.chk_xlim, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
+        self.vbox.Fit(self)
+
+    def on_prev_press(self,event):
+        self.step("dumm",backwards=True)
 
     def on_load_button(self,event):
         """Ucita n zadatih i stavi checkbox
@@ -221,13 +258,13 @@ class ScatterPanel(wx.Panel):
         self.chk_mcs.SetValue(True)
         self.chk_mcs.SetLabel(self.chk_mc_txt % self.mc_txt.GetValue())
         self.firstn = self.mc_txt.GetValue()
-        self.load_data(l=self.cmb_l.GetValue(),n=self.firstn)
+        self.on_chk_mcs("dummy")
         
 
     def on_chk_mcs(self,event):
         firstn = self.firstn if self.chk_mcs.IsChecked() else None
         self.log.debug("Loading first {} sp for {}".format(firstn,None))
-        self.load_data(l=self.cmb_l.GetValue(),n = firstn)
+        self.load_data(l=self.cmb_l.GetValue(),n = firstn,keep=True)
 
     def on_chk_lim(self,event):
         self.ylim = self.global_ylim if self.chk_ylim.IsChecked() else self.local_ylim
@@ -250,7 +287,7 @@ class ScatterPanel(wx.Panel):
         self.load_data(l=self.cmb_l.GetValue())
         self.setup_plot()
    
-    def load_data(self,l="L10",n=1000):
+    def load_data(self,l="L10",n=1000, keep=False):
         """Ucitava podatke za animaciju"""
         import os
         flist=glob.glob(join(SIM_DIR,"{}T*".format(l)))
@@ -279,7 +316,7 @@ class ScatterPanel(wx.Panel):
             self.ax_hist.cla()
             x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
             magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
-            self.ax_hist.hist(magt,bins=100, normed=1)
+            self.ax_hist.hist(magt,bins=100)
             ylims.append(self.ax_hist.get_ylim())
             xlims.append(self.ax_hist.get_xlim())
             self.log.debug("ylim for {} is {}".format(t,self.ax_hist.get_ylim()))
@@ -295,22 +332,26 @@ class ScatterPanel(wx.Panel):
 
         key = lambda x: int(x[1:])
         self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
-        self.temprs = cycle(self.ts)
-        self.setup_plot()
+        self.temprs = self.temprs if keep else twoway_cycle(self.ts)
+        self.setup_plot(curr=True)
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
 
         
         print DEBUG,"self.ts reversed",self.ts
-    def setup_plot(self):
+    def setup_plot(self,curr=False):
         
         "Initial drawing of scatter plot"
         from matplotlib import cm
    
-        self.step("dummy")
-   
-    def step(self,event):
-        import time
-        t=self.temprs.next()
+        self.step("dummy",curr=curr)
+
+
+
+    
+    def step(self,event, backwards=False,curr=False):
+        """Crta za sledece, proslo ili trenutno t"""
+        t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
+        print "magic t",t
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
         magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
         colors = np.where(magt>np.mean(magt),'r','b')
@@ -325,18 +366,18 @@ class ScatterPanel(wx.Panel):
         self.ax_3d.set_zlabel(self.zlabel,fontsize=8)
         self.log.debug("Magt has {} elements".format(magt.count()))
         
-                
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
-        # self.scat=self.ax_3d.scatter3D(x,y,z,s=10,c=colors)
         therm,sp = getthermmc(self.cmb_l.GetValue(),t)
-        #self.updateUI(therm,sp)
+
         title ="T={:.2f}\nTHERM={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(magt.max()))
 #        self.ax_hist.set_ylim(0,magt.max()*1000)
         self.log.debug(magt)
-        self.ax_hist.hist(magt,bins=100,normed=1,facecolor='green',alpha=0.75)
+        z = self.ax_hist.hist(magt,bins=100,facecolor='green',alpha=0.75)
+        print "zz\n",z
+        print "size of z is{}".format(len(z[0]))
         self.local_ylim = self.ax_hist.get_ylim()
         self.local_xlim = self.ax_hist.get_xlim()
         self.log.debug("local xlim: {} local ylim: {}".format(self.local_ylim, self.local_xlim))
@@ -1532,8 +1573,10 @@ if __name__ == '__main__':
     from docopt import docopt
     args = docopt(__doc__)
     SIM_DIR = args['SIMDIR']
-    print SIM_DIR 
+    print SIM_DIR
+    logging.basicConfig(level=logging.DEBUG)
     app = wx.PySimpleApp()
+    
 
     # ok, mozda bi bolje bilo da koristim dirpickerctrl???
     # mm, ifovi. Ako nije prosledjen argument, ili nije validan
