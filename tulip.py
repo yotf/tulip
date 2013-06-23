@@ -51,8 +51,9 @@ import pylab
 from mpl_toolkits.mplot3d import Axes3D
 from simp_zoom import zoom_factory
 from itertools import cycle
-   
-   
+from scipy import stats   
+from matplotlib.widgets import RadioButtons
+
 regexf = re.compile(r'^(L\d{1,3}).aplot$')
    
 SIM_DIR = ""
@@ -135,13 +136,27 @@ class ScatterPanel(wx.Panel):
         fig_height = (self.parent.GetParent().height / self.dpi) * 3.2 / 4.0
         self.log.debug("fig width:{} fig height:{}".format(fig_width,fig_height))
         
-        self.fig = Figure(figsize=(fig_width,fig_height),dpi=self.dpi,facecolor='#595454')
+        self.fig = Figure(figsize=(fig_width,fig_height),dpi=self.dpi,facecolor='white')
         self.canvas = FigCanvas(self,-1,self.fig)
         # self.ax = Axes3D(self.fig)
         #self.ax_3d = self.fig.add_subplot(121,projection="3d")
         self.ax_3d = self.fig.add_axes([0,0,0.5,1],projection="3d")
         print type(self.ax_3d)
-        self.ax_hist = self.fig.add_subplot(122)
+        self.ax_hist = self.fig.add_axes([0.53,0.55,0.40,0.43])
+        self.ax_qq = self.fig.add_axes([0.53,0.05,0.40,0.43])
+        # self.ax_hist_only = self.fig.add_subplot(112)
+        # self.ax_qq_only = self.fig.add_subplot(112)
+        self.ax_radio = self.fig.add_axes([0.93,0.25,0.07,0.1])
+        self.ax_radio.axis('off')
+       
+       
+        self.radio = RadioButtons(self.ax_radio,("norm","uniform"),activecolor='black')
+        self.radio.labels[0].set_fontsize(9)
+        self.radio.labels[1].set_fontsize(9)
+        self.radio.on_clicked(self.change_dist)
+        # self.ax_hist_only.set_visible(False)
+        # self.ax_qq_only.set_visible(False)
+        
 
         self.canvas.SetToolTip(self.tooltip)
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
@@ -153,6 +168,14 @@ class ScatterPanel(wx.Panel):
         # ma kakvi. ovo je ok za sada
         if best_mat_dict.keys():
             self.load_data(l=self.cmb_l.GetValue())
+    def change_dist(self,dist):
+        self.ax_qq.cla()
+        (x,y),(slope,inter,cor) = stats.probplot(self.magt,dist=dist)
+        self.ax_qq.plot(x,y,',')
+        
+        
+        self.canvas.draw()
+        
         
     def save_figure(self, *args):
         filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
@@ -192,7 +215,7 @@ class ScatterPanel(wx.Panel):
     def init_gui(self):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         
-        self.vbox.Add(self.canvas)
+        self.vbox.Add(self.canvas,1,wx.EXPAND)
         value = "" if not best_mat_dict.keys() else best_mat_dict.keys()[0]
         self.cmb_l = wx.ComboBox(self, size=(70, -1),
                                  choices=sorted(best_mat_dict.keys(),key=lambda x: int(x[1:])),
@@ -207,10 +230,17 @@ class ScatterPanel(wx.Panel):
         self.chk_xlim = wx.CheckBox(self,-1,"Global xlim",size=(-1,30))
         self.chk_mcs = wx.CheckBox(self,-1,self.chk_mc_txt %1000 ,size=(-1,30))
         self.chk_mcs.SetValue(True)
+
+        self.chk_hist = wx.CheckBox(self,-1,"Histogram",size=(-1,30))
+        self.chk_qq = wx.CheckBox(self,-1,"QQPlot",size=(-1,30))
+        self.chk_hist.SetValue(True)
+        self.chk_qq.SetValue(True)
         self.mc_txt = wx.SpinCtrl(self,size=(80,-1))
         self.load_button = wx.Button(self,-1,'Load')
         
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_mcs, self.chk_mcs)
+        self.Bind(wx.EVT_CHECKBOX,self.on_chk_qqhist, self.chk_qq)
+        self.Bind(wx.EVT_CHECKBOX,self.on_chk_qqhist, self.chk_hist)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_ylim)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_xlim)
         self.Bind(wx.EVT_BUTTON, self.on_load_button, self.load_button)
@@ -247,6 +277,23 @@ class ScatterPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
+
+    def on_chk_qqhist(self,event):
+        checked = 1 * self.chk_qq.IsChecked() + 3 * self.chk_hist.IsChecked()
+        if checked==0:
+            for ax in fig.get_axes()[1:]:
+                ax.set_visible(True)
+        elif checked==1:
+            self.ax_qq_only.set_visible(True)
+            self.ax_hist_only.set_visible(True)
+            self.ax_hist.set_visible(True)
+            self.ax_qq.set_visible(True)
+        elif checked==3:
+            self.ax_qq_only.set_visible(True)
+            self.ax_hist_only.set_visible(True)
+            self.ax_hist.set_visible(True)
+            self.ax_qq.set_visible(True)
+            
 
     def on_prev_press(self,event):
         self.step("dumm",backwards=True)
@@ -356,29 +403,37 @@ class ScatterPanel(wx.Panel):
         t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
         print "magic t",t
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
-        magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
-        colors = np.where(magt>np.mean(magt),'r','b')
+        self.magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
+        colors = np.where(self.magt>np.mean(self.magt),'r','b')
         
         self.ax_3d.cla()
         self.ax_hist.cla()
+        self.ax_qq.cla()
         pylab.setp(self.ax_3d.get_xticklabels(),fontsize=8, color='#666666')
         pylab.setp(self.ax_3d.get_yticklabels(),fontsize=8, color='#666666')
         pylab.setp(self.ax_3d.get_zticklabels(),fontsize=8, color='#666666')
+
+        pylab.setp(self.ax_qq.get_xticklabels(),fontsize=10)
+        pylab.setp(self.ax_qq.get_yticklabels(),fontsize=10)
+
+        pylab.setp(self.ax_hist.get_xticklabels(),fontsize=10)
+        pylab.setp(self.ax_hist.get_yticklabels(),fontsize=10)
+        
         self.ax_3d.set_xlabel(self.xlabel, fontsize=8)
         self.ax_3d.set_ylabel(self.ylabel,fontsize=8)
         self.ax_3d.set_zlabel(self.zlabel,fontsize=8)
-        self.log.debug("Magt has {} elements".format(magt.count()))
+        self.log.debug("Magt has {} elements".format(self.magt.count()))
         
-        self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
+        self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
         therm,sp = getthermmc(self.cmb_l.GetValue(),t)
 
         title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
-        self.log.debug("Maksimum magt je {}".format(magt.max()))
+        self.log.debug("Maksimum magt je {}".format(self.magt.max()))
 #        self.ax_hist.set_ylim(0,magt.max()*1000)
-        self.log.debug(magt)
-        z = self.ax_hist.hist(magt,bins=100,facecolor='green',alpha=0.75)
+        self.log.debug(self.magt)
+        z = self.ax_hist.hist(self.magt,bins=100,facecolor='green',alpha=0.75)
         print "zz\n",z
         print "size of z is{}".format(len(z[0]))
         self.local_ylim = self.ax_hist.get_ylim()
@@ -387,6 +442,9 @@ class ScatterPanel(wx.Panel):
         self.on_chk_lim("dummy")
         self.ax_hist.set_ylim(self.ylim)
         self.ax_hist.set_xlim(self.xlim)
+
+        (x,y),(slope,inter,cor) = stats.probplot(self.magt,dist='norm')
+        self.ax_qq.plot(x,y,',')
         
         
         self.canvas.draw()
@@ -394,6 +452,7 @@ class ScatterPanel(wx.Panel):
                
     def forceUpdate(self,event):
         self.scat.changed()
+    
 
 
 def getmaxmc(l):
