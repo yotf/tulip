@@ -6,7 +6,7 @@ Nalazi sve simulacije koje imaju isti L T i THERM i spaja njihove
 MC korake u jednu datoteku. 
 =================================================================
 
-Usage: util.py 
+Usage: unify.py 
 
 
 """
@@ -15,7 +15,6 @@ import pandas as pd
 import sys
 import os
 from os.path import join
-from unittest import TestCase
 import re
 from docopt import docopt
 
@@ -33,9 +32,6 @@ MC(\d+)     #Poklapam MC sa bilo kojim int broje posle
                , re.VERBOSE)
 
 mcregex = r'%sMC\d+.*?\.dat'
-
-
-
 
 def check_seeds(seeds):
     """Checks if first column of a whitespace seperated file
@@ -65,9 +61,8 @@ def main(ltdir):
         with open(ofName, 'a') as of:
             for sim_file in value:
                 with open(sim_file) as f:
-                    for l in f:
-                        if l[0] != '#':
-                            of.write(l)
+                    of.write("".join(l for l in f if not l.strip().startswith("#")))
+                os.remove(sim_file)
 
         # Proveri da li je fajl ispravan (bar donekle):
         # ako je neka od simulacija proizvela neispravan simulation output
@@ -78,12 +73,6 @@ def main(ltdir):
                                    dtype={'seed':np.int64})
         check_seeds(all_frame.seed)
         
-        
-        
-        
-
-
 if __name__=="__main__":
     docopt(__doc__)
-
     main(os.getcwd())

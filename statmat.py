@@ -170,8 +170,7 @@ glregex = \
 ^           #Pocetak stringa poklapam
 (L\d+       #L i bilo koji int posle
 T\d+        #T sa bilo kojim int brojem posle
-THERM(\d+)  #THERM sa bilo kojim int brojem posle
-MC)(\d+)    #MC sa bilo kojim int broje posle
+THERM(\d+))  #THERM sa bilo kojim int brojem posle
 \.all$      #uzimamo .all fajlove
 """
                , re.VERBOSE)
@@ -181,15 +180,15 @@ def main(ltdir,n=None):
 
     for u in unified:
         print 'Unified:  ', u
-        base_name, therm_count, mc_count = glregex.match(u).groups()
-        mc_count=int(mc_count)
+        base_name, therm_count = glregex.match(u).groups()        
+        mc_count=int(len(open(join(ltdir,u)).readlines()))
         # jedino ako nije prosledjeno n ili ako je prosledjeno n
         # koje je manje ili jednako broj mc koraka u fajlu ima
         # smisla da bilo sta radimo
         if n is None or n<=mc_count:
             mc_count = n or mc_count
             print mc_count
-            agregate = base_name + str(mc_count)
+            agregate = "{}MC{}".format(base_name,str(mc_count))
             print "Aggregate: ", agregate
             # hm, verovatno postoji bolji nacin odbacivanja prve kolone
             #proveri da li moze beline da gleda za separator

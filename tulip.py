@@ -107,6 +107,7 @@ def get_mtherms(L,T,therms="THERM\d+",igroup=0,ext="*.mat"):
     """za sve moguce .mat fajlove za dato L i T
     vraca parove mc ili therm u zavisnosti od igroup parametra)"""
     return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in get_files(l=L,t=T,ext=ext)]
+    
 def get_mmcs(L,T,therms):
     
     return get_mtherms(L=L,T=T,therms=therms,igroup=1,ext="*%sMC*.mat" %therms)
@@ -297,11 +298,13 @@ class ScatterPanel(wx.Panel):
         self.log.debug("file list: %s " %flist)
 
         for f in best_mat_dict[l].values():
-            temp =re.match(r".*%s(T\d{2,4})" % l,f.split(os.path.sep)[-1]).groups()[0]
+            fname,temp =re.match(r"(.*%s(T\d{2,4})THERM\d+)" % l,f).groups()
+            print f
+            
             self.log.debug("Loading data for tempearture {}".format(temp))
-            self.log.debug("Loading data from file %s.all" % f[:-4])
+            self.log.debug("Loading data from file %s.all" % fname)
             # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
-            data = pd.read_table("%s.all" % f[:-4],delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
+            data = pd.read_table("%s.all" % fname,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
             data.pop('seed')
             print data.count()
             data.set_index(np.arange(data.e.count()),inplace=True)
@@ -369,7 +372,7 @@ class ScatterPanel(wx.Panel):
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = magt,cmap=cm.RdYlBu)
         therm,sp = getthermmc(self.cmb_l.GetValue(),t)
 
-        title ="T={:.2f}\nTHERM={}\n SP={}".format((float(t[1:])/100),therm,sp)
+        title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(magt.max()))
@@ -632,7 +635,7 @@ class ThermPanel(wx.Panel):
         # se disejbluju. valjda su to svi slucajevi 
         # trazimo najveci mc od svih .all fajlova.  inace
         # nece se desiti nista pri odabiru generisanja za taj mc
-        uplimit = get_mtherms(L=self.cmb_L.GetValue(),T=self.cmb_T.GetValue(),igroup=1,ext="*.all")
+        uplimit = get_mtherms(L=self.cmb_L.GetValue(),T=self.cmb_T.GetValue(),igroup=1,ext="*.mat")
         uplimit = int(sorted(uplimit,key=lambda x: int(x[2:]))[-1][2:])
         print "uplimit",uplimit
         self.mc_txt.SetRange(0,uplimit)
@@ -844,10 +847,10 @@ class AggPanel(wx.Panel):
 #            choices=mag_choices,
             style=wx.CB_READONLY,
             )
-        self.draw_button = wx.Button(self, -1, 'Draw plot')
+        self.draw_button = wx.Button(self, -1, 'Draw')
         self.draw_button.Enable(False)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
-        self.clear_button = wx.Button(self, -1, 'Clear plot')
+        self.clear_button = wx.Button(self, -1, 'Clear')
         self.clear_button.Enable(True)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
                   self.clear_button)
@@ -962,8 +965,8 @@ class AggPanel(wx.Panel):
                          self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none')
         self.annotations = list()
         for t,m in zip(self.aggd[L_select].ix['T'].index,self.aggd[L_select].ix[mag_select]):
-            self.annotations.append(self.ax_agg.annotate('$THERM={groups[0]}$\n $SP={groups[1]}$'.format(groups=
-                re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[L_select][t].split(os.path.sep)[-1]).groups()),xy=(float(t[1:])/100,m),xytext=(float(t[1:])/100,m), visible=False,fontsize=10))
+            self.annotations.append(self.ax_agg.annotate('LS={groups[0]}\nSP={groups[1]}'.format(groups=
+                re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[L_select][t].split(os.path.sep)[-1]).groups()),xy=(float(t[1:])/100,m),xytext=(float(t[1:])/100,m), visible=False,fontsize=8))
 
         self.chk_ann.SetValue(False)
         self.chk_ann.Enable(True)
@@ -1096,11 +1099,12 @@ def remove_old_calcs(d):
     # sranje sto ne rade brace ekspanzije . tek od pajtona 3.3, mozda?
     oldies = [f for f in os.listdir(os.getcwd()) if fnmatch.fnmatch(f,"*.mat") or fnmatch.fnmatch(f,"*.stat") or fnmatch.fnmatch(f,"*.raw") or fnmatch.fnmatch(f,"*.cv") or fnmatch.fnmatch(f,"*.plot") ]
     print "removing files in {} directory...".format(os.getcwd())
-    
+    print oldies
     for f in oldies:
         print "removing {}...".format(f)
         os.remove(f)
 #    os.system("rm -f *.mat *.stat *.raw *.cv *.plot ")
+    print "done"
     
 def handle_simfiles(dir_md5):
     """Za svaki folder iz sim foldera on proverava da li stari
@@ -1136,25 +1140,20 @@ def handle_simfiles(dir_md5):
         print dir_md5[d]
         if dir_md5[d]!=hashmd5:
             remove_old_calcs(d)
+            print "updating progress bar"
+            print d.split(os.path.sep)[-1]
+            print prbar
             prbar.Update(count.next(),d.split(os.path.sep)[-1])
+            print "running unify"
             unify.main(d)
+            print "running statmat"
             statmat.main(d)
+            print "running compose"
             compose.main(d)
-            
-            #ponovo se racuna hash, mada mozda je ovo prebrzo
-            # posto ce korisnici mozda generisati nove .mat fajlove
-            # ali dobro, otom potom
-            # pa da, sa ovim dictom ce sada to biti lakse, posto stalno
-            # moze biti u memoriji, pa kad se dodaju novi fajlovi, ponovo se racuna
-            # dictovi su kul
-   
-            # stavljamo novu vrednost
-            # mislim da sacuvam ipak ovaj dict na pocetku
-            # ako se desi do nekog prekida programa, da ipak sacuvamo
-            dir_md5[d] = getmd5(d)
-    #izracunato sve
+            dir_md5[d]=getmd5(d)
     writemd5hash(dir_md5)
     prbar.Destroy()
+            
         
 def getmd5(d):
     """Izracunava md5 za direktorijum cija
