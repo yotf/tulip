@@ -146,14 +146,14 @@ class ScatterPanel(wx.Panel):
         self.ax_qq = self.fig.add_axes([0.53,0.05,0.40,0.43])
         # self.ax_hist_only = self.fig.add_subplot(112)
         # self.ax_qq_only = self.fig.add_subplot(112)
-        self.ax_radio = self.fig.add_axes([0.93,0.25,0.07,0.1])
-        self.ax_radio.axis('off')
+       # self.ax_radio = self.fig.add_axes([0.93,0.25,0.07,0.1])
+       # self.ax_radio.axis('off')
        
        
-        self.radio = RadioButtons(self.ax_radio,("norm","uniform"),activecolor='black')
-        self.radio.labels[0].set_fontsize(9)
-        self.radio.labels[1].set_fontsize(9)
-        self.radio.on_clicked(self.change_dist)
+        #self.radio = RadioButtons(self.ax_radio,("norm","uniform"),activecolor='black',active=1)
+        # self.radio.labels[0].set_fontsize(9)
+        # self.radio.labels[1].set_fontsize(9)
+        # self.radio.on_clicked(self.change_dist)
         # self.ax_hist_only.set_visible(False)
         # self.ax_qq_only.set_visible(False)
         
@@ -168,12 +168,26 @@ class ScatterPanel(wx.Panel):
         # ma kakvi. ovo je ok za sada
         if best_mat_dict.keys():
             self.load_data(l=self.cmb_l.GetValue())
-    def change_dist(self,dist):
+
+
+    
+    def change_dist(self,event):
+        print type(event)
+        
+        dist= event.GetEventObject().GetLabel()
+        self.radio_selected=dist;
+        self.plot_qq(dist)
+
+    def plot_qq(self,dist):
         self.ax_qq.cla()
         (x,y),(slope,inter,cor) = stats.probplot(self.magt,dist=dist)
-        self.ax_qq.plot(x,y,',')
-        
-        
+        self.log.debug("type of x is %s" %type(x))
+        pylab.setp(self.ax_qq.get_xticklabels(),fontsize=10)
+        pylab.setp(self.ax_qq.get_yticklabels(),fontsize=10)
+        osmf = x.take([0, -1])  # endpoints
+        osrf = slope * osmf + inter
+        lines = self.ax_qq.plot(osmf,osrf,'-', linewidth=0.2)
+        lines = self.ax_qq.plot(x,y,',')
         self.canvas.draw()
         
         
@@ -194,7 +208,7 @@ class ScatterPanel(wx.Panel):
             if ext in ('svg', 'pdf', 'ps', 'eps', 'png') and format!=ext:
                 #looks like they forgot to set the image type drop
                 #down, going with the extension.
-                warnings.warn('extension %s did not match the selected image type %s; going with %s'%(ext, format, ext), stacklevel=0)
+                #warnings.warn('extension %s did not match the selected image type %s; going with %s'%(ext, format, ext), stacklevel=0)
                 format = ext
             try:
                 self.canvas.print_figure(
@@ -235,12 +249,20 @@ class ScatterPanel(wx.Panel):
         self.chk_qq = wx.CheckBox(self,-1,"QQPlot",size=(-1,30))
         self.chk_hist.SetValue(True)
         self.chk_qq.SetValue(True)
+
+        self.rb_norm = wx.RadioButton(self, -1, 'norm', (10, 10), style=wx.RB_GROUP)
+        self.rb_uniform = wx.RadioButton(self, -1, 'uniform', (10, 30))
+
+        self.rb_norm.Bind(wx.EVT_RADIOBUTTON,self.change_dist)
+        self.rb_uniform.Bind(wx.EVT_RADIOBUTTON,self.change_dist)
+        self.radio_selected = "norm"
+
         self.mc_txt = wx.SpinCtrl(self,size=(80,-1))
         self.load_button = wx.Button(self,-1,'Load')
         
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_mcs, self.chk_mcs)
-        self.Bind(wx.EVT_CHECKBOX,self.on_chk_qqhist, self.chk_qq)
-        self.Bind(wx.EVT_CHECKBOX,self.on_chk_qqhist, self.chk_hist)
+        #self.Bind(wx.EVT_CHECKBOX,self.on_chk_qqhist, self.chk_qq)
+        #self.Bind(wx.EVT_CHECKBOX,self.on_chk_qqhist, self.chk_hist)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_ylim)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_xlim)
         self.Bind(wx.EVT_BUTTON, self.on_load_button, self.load_button)
@@ -273,26 +295,32 @@ class ScatterPanel(wx.Panel):
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.chk_xlim, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
+
+        self.hbox1.Add(self.rb_norm, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.rb_uniform, border=5, flag=wx.ALL
+               | wx.ALIGN_CENTER_VERTICAL)
+        
         self.hbox1.AddSpacer(20)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
 
-    def on_chk_qqhist(self,event):
-        checked = 1 * self.chk_qq.IsChecked() + 3 * self.chk_hist.IsChecked()
-        if checked==0:
-            for ax in fig.get_axes()[1:]:
-                ax.set_visible(True)
-        elif checked==1:
-            self.ax_qq_only.set_visible(True)
-            self.ax_hist_only.set_visible(True)
-            self.ax_hist.set_visible(True)
-            self.ax_qq.set_visible(True)
-        elif checked==3:
-            self.ax_qq_only.set_visible(True)
-            self.ax_hist_only.set_visible(True)
-            self.ax_hist.set_visible(True)
-            self.ax_qq.set_visible(True)
+    # def on_chk_qqhist(self,event):
+    #     checked = 1 * self.chk_qq.IsChecked() + 3 * self.chk_hist.IsChecked()
+    #     if checked==0:
+    #         for ax in fig.get_axes()[1:]:
+    #             ax.set_visible(True)
+    #     elif checked==1:
+    #         self.ax_qq_only.set_visible(True)
+    #         self.ax_hist_only.set_visible(True)
+    #         self.ax_hist.set_visible(True)
+    #         self.ax_qq.set_visible(True)
+    #     elif checked==3:
+    #         self.ax_qq_only.set_visible(True)
+    #         self.ax_hist_only.set_visible(True)
+    #         self.ax_hist.set_visible(True)
+    #         self.ax_qq.set_visible(True)
             
 
     def on_prev_press(self,event):
@@ -408,13 +436,10 @@ class ScatterPanel(wx.Panel):
         
         self.ax_3d.cla()
         self.ax_hist.cla()
-        self.ax_qq.cla()
         pylab.setp(self.ax_3d.get_xticklabels(),fontsize=8, color='#666666')
         pylab.setp(self.ax_3d.get_yticklabels(),fontsize=8, color='#666666')
         pylab.setp(self.ax_3d.get_zticklabels(),fontsize=8, color='#666666')
 
-        pylab.setp(self.ax_qq.get_xticklabels(),fontsize=10)
-        pylab.setp(self.ax_qq.get_yticklabels(),fontsize=10)
 
         pylab.setp(self.ax_hist.get_xticklabels(),fontsize=10)
         pylab.setp(self.ax_hist.get_yticklabels(),fontsize=10)
@@ -443,10 +468,7 @@ class ScatterPanel(wx.Panel):
         self.ax_hist.set_ylim(self.ylim)
         self.ax_hist.set_xlim(self.xlim)
 
-        (x,y),(slope,inter,cor) = stats.probplot(self.magt,dist='norm')
-        self.ax_qq.plot(x,y,',')
-        
-        
+        self.plot_qq(self.radio_selected)
         self.canvas.draw()
 
                
@@ -521,13 +543,15 @@ class ThermPanel(wx.Panel):
         self.add_button = wx.Button(self,-1,'Generate .plot')
         self.clear_button = wx.Button(self,-1,"Clear")
         self.draw_button = wx.Button(self,-1,"Draw")
+        self.btn_savesep = wx.Button(self,-1,"Save Axes")
         self.draw_button.Enable(False)
   
         self.Bind(wx.EVT_BUTTON, self.on_add_button,self.add_button)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button,self.draw_button)
+        self.Bind(wx.EVT_BUTTON, self.on_save_button,self.btn_savesep)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
-        self.chk_l = wx.CheckBox(self,-1,"Lattice size", size=(-1, 30))
-        self.chk_t = wx.CheckBox(self,-1,"Temperature",size=(-1, 30))
+        self.chk_l = wx.CheckBox(self,-1,"LS", size=(-1, 30))
+        self.chk_t = wx.CheckBox(self,-1,"T",size=(-1, 30))
         self.chk_mc = wx.CheckBox(self,-1,"SP",size=(-1, 30))
         self.chk_l.Enable(False)
         self.chk_t.Enable(False)
@@ -603,12 +627,13 @@ class ThermPanel(wx.Panel):
         self.toolhbox.Add(self.toolbar)
         self.toolhbox.AddSpacer(20)
       
+#        self.toolhbox.Add(self.btn_savesep, border=5, flag=wx.ALL
+ #                      | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox.AddSpacer(20)
-        self.toolhbox.Add(self.chk_l, border=5, flag=wx.ALL
+        self.toolhbox.Add(self.chk_l, border=5, flag=wx.LEFT | wx.BOTTOM | wx.TOP
                        | wx.ALIGN_CENTER_VERTICAL)
-        self.toolhbox.Add(self.chk_t, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-        self.toolhbox.Add(self.chk_mc, border=5, flag=wx.ALL
+        self.toolhbox.Add(self.chk_t, border=5, flag=wx.TOP | wx.BOTTOM| wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.chk_mc, border=5, flag=wx.RIGHT | wx.BOTTOM | wx.TOP
                        | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox.Add(self.tick_txt, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
@@ -627,6 +652,33 @@ class ThermPanel(wx.Panel):
         self.vbox.Fit(self)
 
 
+    def on_save_button(self,event):
+        filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
+        default_file = self.canvas.get_default_filename()
+        dlg = wx.FileDialog(self, "Save to file", "", default_file,
+                            filetypes,
+                            wx.SAVE|wx.OVERWRITE_PROMPT)
+        dlg.SetFilterIndex(filter_index)
+        if dlg.ShowModal() == wx.ID_OK:
+            dirname  = dlg.GetDirectory()
+            filename = dlg.GetFilename()
+            format = exts[dlg.GetFilterIndex()]
+            basename, ext = os.path.splitext(filename)
+            if ext.startswith('.'):
+                ext = ext[1:]
+            if ext in ('svg', 'pdf', 'ps', 'eps', 'png') and format!=ext:
+                #looks like they forgot to set the image type drop
+                #down, going with the extension.
+                #warnings.warn('extension %s did not match the selected image type %s; going with %s'%(ext, format, ext), stacklevel=0)
+                format = ext
+               
+            try:
+                extent_mag = self.ax_mag.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+                extent_cv = self.ax_cv.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted()) 
+                self.fig.savefig(os.path.join(dirname,filename+"_mag"),format=format,bbox_inches=extent_mag.expanded(1.2,1.5))
+                self.fig.savefig(os.path.join(dirname,filename+"_cv"),format=format,bbox_inches=extent_cv.expanded(1.2,1.5))
+            except Exception as e:
+                raise e
 
     def set_ticklabelfontsize(self,size):
         pylab.setp(self.ax_mag.get_xticklabels(), fontsize=size)
