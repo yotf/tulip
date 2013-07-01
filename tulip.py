@@ -90,12 +90,6 @@ class twoway_cycle():
         return self.it[self.i]
             
         
-
-
-def debug():
-    if(DEBUGG):
-        pdb.set_trace()
-        
 def get_files(l,t,ext="*.plot"):
     """Vraca sve plot fajlove u zadatom folderu (L i T))"""
 
@@ -173,7 +167,6 @@ class ScatterPanel(wx.Panel):
     
     def change_dist(self,event):
         print type(event)
-        
         dist= event.GetEventObject().GetLabel()
         self.radio_selected=dist;
         self.plot_qq(dist)
@@ -306,25 +299,10 @@ class ScatterPanel(wx.Panel):
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
 
-    # def on_chk_qqhist(self,event):
-    #     checked = 1 * self.chk_qq.IsChecked() + 3 * self.chk_hist.IsChecked()
-    #     if checked==0:
-    #         for ax in fig.get_axes()[1:]:
-    #             ax.set_visible(True)
-    #     elif checked==1:
-    #         self.ax_qq_only.set_visible(True)
-    #         self.ax_hist_only.set_visible(True)
-    #         self.ax_hist.set_visible(True)
-    #         self.ax_qq.set_visible(True)
-    #     elif checked==3:
-    #         self.ax_qq_only.set_visible(True)
-    #         self.ax_hist_only.set_visible(True)
-    #         self.ax_hist.set_visible(True)
-    #         self.ax_qq.set_visible(True)
-            
+  
 
     def on_prev_press(self,event):
-        self.step("dumm",backwards=True)
+        self.step("dummy",backwards=True)
 
     def on_load_button(self,event):
         """Ucita n zadatih i stavi checkbox
@@ -356,8 +334,6 @@ class ScatterPanel(wx.Panel):
         self.cmb_l.SetValue(choices[0])
         self.load_data(l=choices[0])
         
-        
-
     def on_selectl(self,event):
         print "Loading data for {}...".format(self.cmb_l.GetValue())
         self.load_data(l=self.cmb_l.GetValue())
@@ -365,7 +341,6 @@ class ScatterPanel(wx.Panel):
    
     def load_data(self,l="L10",n=1000, keep=False):
         """Ucitava podatke za animaciju"""
-        import os
         flist=glob.glob(join(SIM_DIR,"{}T*".format(l)))
         self.all_data= dict()
         
@@ -373,20 +348,19 @@ class ScatterPanel(wx.Panel):
         self.log.debug("file list: %s " %flist)
 
         for f in best_mat_dict[l].values():
-            fname,temp =re.match(r"(.*%s(T\d{2,4})THERM\d+)" % l,f).groups()
+            fname,t =re.match(r"(.*%s(T\d{2,4})THERM\d+)" % l,f).groups()
             print f
             
-            self.log.debug("Loading data for tempearture {}".format(temp))
+            self.log.debug("Loading data for tempearture {}".format(t))
             self.log.debug("Loading data from file %s.all" % fname)
             # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
             data = pd.read_table("%s.all" % fname,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
             data.pop('seed')
-            print data.count()
+            self.log.debug("rows read: %s" % data.e.count())
             data.set_index(np.arange(data.e.count()),inplace=True)
-            self.all_data[temp] = data
+            self.all_data[t] = data
         
         self.data = pd.concat(self.all_data,axis=0)
-        
         self.ts = self.all_data.keys()
         ylims = list()
         xlims = list()
@@ -413,23 +387,19 @@ class ScatterPanel(wx.Panel):
         self.temprs = self.temprs if keep else twoway_cycle(self.ts)
         self.setup_plot(curr=True)
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
-
         
         print DEBUG,"self.ts reversed",self.ts
+
     def setup_plot(self,curr=False):
-        
         "Initial drawing of scatter plot"
         from matplotlib import cm
-   
         self.step("dummy",curr=curr)
-
-
 
     
     def step(self,event, backwards=False,curr=False):
         """Crta za sledece, proslo ili trenutno t"""
         t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
-        print "magic t",t
+        self.log.debug("t u step-u je ispalo :{}".format(t))
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
         self.magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
         colors = np.where(self.magt>np.mean(self.magt),'r','b')
@@ -451,15 +421,14 @@ class ScatterPanel(wx.Panel):
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
         therm,sp = getthermmc(self.cmb_l.GetValue(),t)
-
         title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
 #        self.ax_hist.set_ylim(0,magt.max()*1000)
-        self.log.debug(self.magt)
+        self.log.debug("MAGT:\n %s"% self.magt)
         z = self.ax_hist.hist(self.magt,bins=100,facecolor='green',alpha=0.75)
-        print "zz\n",z
+        print "ret. histograma\n",z
         print "size of z is{}".format(len(z[0]))
         self.local_ylim = self.ax_hist.get_ylim()
         self.local_xlim = self.ax_hist.get_xlim()
@@ -467,10 +436,8 @@ class ScatterPanel(wx.Panel):
         self.on_chk_lim("dummy")
         self.ax_hist.set_ylim(self.ylim)
         self.ax_hist.set_xlim(self.xlim)
-
         self.plot_qq(self.radio_selected)
         self.canvas.draw()
-
                
     def forceUpdate(self,event):
         self.scat.changed()
@@ -1676,7 +1643,103 @@ class Reader(wx.Dialog):
     def ExitApp(self, event):
         self.Close()
        
-    
+
+def gen_mats(ltdir,n=None):
+    """U direktorijumu ltdir trazi sve izgenerisane .all fajlove
+    i vrsi statisticke racunice, izbacuje jednu datoteku koja sadrzi
+    rezultate karakteristicne za odredjeni LTTherm. Dve kolone, jedan
+    nazivi vrednosti a drugi rezultati. Sve skalari. Ako se prosledi
+    n onda uzima samo prvih n rezultata u slucaju da rezultata ima vise
+    nego sto je n, u suprotnom ne radi nista"""
+    unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
+
+    for u in unified:
+        print 'Unified:  ', u
+        base_name, tmc = glregex.match(u).groups()        
+        mc_count=int(len(open(join(ltdir,u)).readlines()))
+        if n>mc_count:
+            #samo se vracamo u slucaju
+            # da je prosledjen n i da je on veci
+            # od mc_count
+            return 
+        mc_count = n or mc_count
+        print mc_count
+        base = "{}MC{}".format(base_name,str(mc_count))
+        print "Aggregate: ", base
+        # hm, verovatno postoji bolji nacin odbacivanja prve kolone
+        #proveri da li moze beline da gleda za separator
+        data = pd.read_table(join(ltdir,u), nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])
+        print "MATDATA-BOOLED\n",data.loc[booli]
+        data.pop('seed')
+        N = len(data.index)
+        Eavg = data.E.mean()
+        stdE = data.E.std()
+        stdMeanE = stdE / np.sqrt(N)
+        E2 = data.E ** 2
+        E2avg = E2.mean()
+        stdE2 = E2.std()
+        stdMeanE2 = stdE2 / np.sqrt(N)
+        MAG = data[['Mx', 'My', 'Mz']]
+        MAG2 = MAG ** 2
+        M2 = MAG2.Mx + MAG2.My + MAG2.Mz
+        M1 = np.sqrt(M2)
+        M4 = M2 ** 2
+        M2avg = M2.mean()
+        M1avg = M1.mean()
+        M4avg = M4.mean()
+        stdM1 = M1.std()
+        stdM2 = M2.std()
+        stdM4 = M4.std()
+        stdMeanM1 = stdM1 / np.sqrt(N)
+        stdMeanM2 = stdM2 / np.sqrt(N)
+        stdMeanM4 = stdM4 / np.sqrt(N)
+        val_names = [
+            'THERM',
+            'Eavg',
+            'stdE',
+            'stdMeanE',
+            'E2avg',
+            'stdE2',
+            'stdMeanE2',
+            'M1avg',
+            'stdM1',
+            'stdMeanM1',
+            'M2avg',
+            'stdM2',
+            'stdMeanM2',
+            'M4avg',
+            'stdM4',
+            'stdMeanM4',
+        ]
+        values = pd.Series([
+            tmc,
+            Eavg,
+            stdE,
+            stdMeanE,
+            E2avg,
+            stdE2,
+            stdMeanE2,
+            M1avg,
+            stdM1,
+            stdMeanM1,
+            M2avg,
+            stdM2,
+            stdMeanM2,
+            M4avg,
+            stdM4,
+            stdMeanM4,
+        ], index=val_names)
+        #mozda da napravim da ovo bude odvojeno
+        # tj. da pri inicijalnom generisanju
+        # pozovemo ovo a i save, a onda kada
+        # ovu zovemo iz programa mozemo da napravimo
+        # da mora eksplicitno da se sacuva
+        # znaci sta ce biti rad. bice rad da se selektuju
+        # falicni rezultati i da dobijemo bool array losih rezultata
+        # i onda na osnovu njega da izbacimo iz ovog mata odredjene rezultate
+        # znaci to je sve ovaj magt, on kontorlise sve 
+        #values.to_csv(join(ltdir,base) + '.mat', sep=' ')
+
     
 if __name__ == '__main__':
     import sys
