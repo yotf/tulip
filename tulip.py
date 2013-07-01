@@ -52,7 +52,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from simp_zoom import zoom_factory
 from itertools import cycle
 from scipy import stats   
-from matplotlib.widgets import RadioButtons
+from matplotlib.widgets import RectangleSelector
 
 regexf = re.compile(r'^(L\d{1,3}).aplot$')
    
@@ -156,6 +156,12 @@ class ScatterPanel(wx.Panel):
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
         self.canvas.mpl_connect('figure_enter_event',self.on_figure_enter)
         self.zoomf = zoom_factory(self.ax_3d,self.canvas)
+
+        self.selector = RectangleSelector(self.ax_hist, self.selector_callback,
+                             drawtype='box', useblit=True,
+                             button=[1,3], # don't use middle button
+                             minspanx=5, minspany=5,
+                             spancoords='pixels')
    
         self.ax_3d.mouse_init()
         self.init_gui()        # mozda da napravim da svakako mora load?
@@ -163,7 +169,27 @@ class ScatterPanel(wx.Panel):
         if best_mat_dict.keys():
             self.load_data(l=self.cmb_l.GetValue())
 
-
+    def selector_callback(self,eclick,erelease):
+        x_begin = eclick.xdata
+        x_end = erelease.xdata
+        if x_begin > x_end:
+            x_begin,x_end = x_end,x_begin
+        # znaci bice true ako se ne nalazi u ovoj regiji
+        self.log.debug("x_begin {} x_end {}".format(x_begin,x_end))
+        print self.magt
+                       
+        booli = [ not (mag>=x_begin and mag<=x_end) for mag in self.magt ]
+        self.log.debug("booli:\n",booli)
+        #znaci prosledjujemo mu za sta da generise mat
+        curr_t = self.temprs.curr()
+        curr_l = self.cmb_l.GetValue()
+        print "AGGPANEL.aggd\n", AggPanel.aggd[curr_l][curr_t]
+        curr_mat = best_mat_dict[curr_l][curr_t]
+        fname,t,curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % curr_l,curr_mat).groups()
+        mat=make_mat("%s.all" % fname,curr_tmc,booli=booli)
+        print "NEW MAT",mat
+        self.step("dummy",curr=True,booli=booli)
+        
     
     def change_dist(self,event):
         print type(event)
@@ -348,13 +374,14 @@ class ScatterPanel(wx.Panel):
         self.log.debug("file list: %s " %flist)
 
         for f in best_mat_dict[l].values():
-            fname,t =re.match(r"(.*%s(T\d{2,4})THERM\d+)" % l,f).groups()
+            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % l,f).groups()
             print f
             
             self.log.debug("Loading data for tempearture {}".format(t))
-            self.log.debug("Loading data from file %s.all" % fname)
+            self.curr_all = '%s.all' % fname
+            self.log.debug("Loading data from file %s" % self.curr_all)
             # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
-            data = pd.read_table("%s.all" % fname,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
+            data = pd.read_table(self.curr_all,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
             data.pop('seed')
             self.log.debug("rows read: %s" % data.e.count())
             data.set_index(np.arange(data.e.count()),inplace=True)
@@ -396,7 +423,7 @@ class ScatterPanel(wx.Panel):
         self.step("dummy",curr=curr)
 
     
-    def step(self,event, backwards=False,curr=False):
+    def step(self,event, backwards=False,curr=False,booli=False):
         """Crta za sledece, proslo ili trenutno t"""
         t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
         self.log.debug("t u step-u je ispalo :{}".format(t))
@@ -404,6 +431,12 @@ class ScatterPanel(wx.Panel):
         self.magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
         colors = np.where(self.magt>np.mean(self.magt),'r','b')
         
+        if booli:
+            x=x[booli]
+            y=y[booli]
+            z=z[booli]
+            self.magt = self.magt[booli]
+                
         self.ax_3d.cla()
         self.ax_hist.cla()
         pylab.setp(self.ax_3d.get_xticklabels(),fontsize=8, color='#666666')
@@ -413,6 +446,8 @@ class ScatterPanel(wx.Panel):
 
         pylab.setp(self.ax_hist.get_xticklabels(),fontsize=10)
         pylab.setp(self.ax_hist.get_yticklabels(),fontsize=10)
+        pylab.setp(self.ax_qq.get_xticklabels(),fontsize=10)
+        pylab.setp(self.ax_qq.get_yticklabels(),fontsize=10)
         
         self.ax_3d.set_xlabel(self.xlabel, fontsize=8)
         self.ax_3d.set_ylabel(self.ylabel,fontsize=8)
@@ -699,7 +734,8 @@ class ThermPanel(wx.Panel):
         # i radimo compose nad novim .mat fajlovima
         mcs_dir =join(SIM_DIR,self.cmb_L.GetValue()+self.cmb_T.GetValue())
         print "Making new plot files in dir %s for %d MCs" % (mcs_dir,mcs)
-        statmat.main(mcs_dir,mcs)
+#        statmat.main(mcs_dir,mcs)
+        gen_mats(mcs_dir,mcs,save=True)
         compose.main(mcs_dir,mcs)
         self.cmb_pfiles.SetItems(self.get_files())
       
@@ -1009,19 +1045,29 @@ class AggPanel(wx.Panel):
         
     def on_agg_button(self,event):
         agregate.main(dict(best_mat_dict),SIM_DIR)
-        self.aggd = load_agg()
-        self.L_choices = zip(*self.aggd.columns)[0]
+        #nek bude globalna, trebace nam
+        # ili da napravimo da je staticka??
+
+        aggd = load_agg()
+        # stavljamo ovde kao staticku variablu
+        # valjda je ovo ok
+        self.L_choices = zip(*aggd.columns)[0]
         print self.L_choices
         
         self.L_choices = list(set(self.L_choices))
         print self.L_choices
         
-        self.mag_choices = list(self.aggd.index)
+        self.mag_choices = list(aggd.index)
         self.cmb_L.SetItems(self.L_choices)
         self.cmb_L.SetValue(self.L_choices[0])
         self.cmb_mag.SetItems(self.mag_choices)
         self.cmb_mag.SetValue(self.mag_choices[0])
         self.draw_button.Enable(True)
+        #ovome ce moci da se pristupi i preko self i to
+        # samo sto ako ga prebrisemo, nece biti dobro
+        # samo nam je potrebno da ponovo izracunamo za jedno
+        # L i T mat i to je to
+        AggPanel.aggd = aggd;
 
     def on_xyslider_scroll(self,e):
         fontsize = e.GetEventObject().GetValue()
@@ -1224,15 +1270,60 @@ def handle_simfiles(dir_md5):
             prbar.Update(count.next(),d.split(os.path.sep)[-1])
             print "running unify"
             unify.main(d)
-            print "running statmat"
-            statmat.main(d)
+            print "generating mats"
+            gen_mats(d)
             print "running compose"
             compose.main(d)
             dir_md5[d]=getmd5(d)
     writemd5hash(dir_md5)
     prbar.Destroy()
-            
-        
+
+
+def compose(ltdir,mcsteps="\d+",save=False):
+    """Po thermovima redja vrednosti iz matova,
+    ako treba da gledamo samo za odredjen broj mc-ova, onda
+    prosledjujemo parametar mcsteps (inace se svi citaju), ako
+    hocemo da cuvamo rezultat onda stavljamo save na True. Samo prvi
+    put ce save biti true, ovo ostalo nece biti volataile, vec samo da
+    se gleda"""
+    glregex = \
+        re.compile(r"^(L\d+)(T\d+)THERM\d+(MC%s)\.mat$" % mcsteps)
+    file_list = [f for f in os.listdir(ltdir) if glregex.match(f)]
+    plots = list(set([glregex.match(f).groups() for f in file_list]))
+    df= "nesto"
+    for plot in plots:
+        data = dict()
+        for mat in re.findall("^%s%sTHERM.*%s\.mat$" % plot,
+                              '\n'.join(file_list), re.MULTILINE):
+            ser = pd.read_csv(join(ltdir,mat), sep=' ', index_col=0, names=['t'])['t']
+            data[ser.ix['THERM']] = ser
+
+        base = '%s%s%s_THERM' % plot
+        plotf = base + '.plot'
+        print "making",plotf,"..."
+        df = pd.DataFrame(data)
+
+        out = { 'abs(cv(E1))':abs(df.ix['stdMeanE'] / df.ix['Eavg']),
+                'cv(E2)':df.ix['stdMeanE2']/df.ix['E2avg'],
+                'cv(M1)':df.ix['stdMeanM1']/df.ix['M1avg'],
+                'cv(M2)':df.ix['stdMeanM2']/df.ix['M2avg'],
+                'cv(M4)':df.ix['stdMeanM4']/df.ix['M4avg']}
+        out = pd.DataFrame(out)
+        out = pd.concat([df,out.T])
+
+        if save:
+            out.to_csv(join(ltdir,plotf))
+        return out
+
+#ili je mozda umesto ovih save-ova bolje da imam neki temp
+# folder, nisam sigurna, posto mm, brze ce ici ako se ne cuva
+# fazon jeste sto ce to samo trebati da se radi za odredjeno
+# t, za pocetak, shvatas? znaci mi cemo praviti samo za jedno t
+# i onda njega ubacivati sa ostalim agregatima hmmmmmmmmmmmmmmmmm
+# ti aplot fajlovi mi onako nisu nesto vazni a ovi compose ustvari
+# nam ni ne trebaju. posto aggregate radi za mat fajlovima da
+# ok, sta je fazon, fazon je sto nam trebaju novi matovi za odredjeno
+# t i onda da zamenimo agregat sa tim. znaci kad kliknemo aggregate da
 def getmd5(d):
     """Izracunava md5 za direktorijum cija
     je apsolutna putanja prosledjena. Za svaki
@@ -1642,8 +1733,86 @@ class Reader(wx.Dialog):
         self.GetGrandParent().flash_status_message("Best .mat for %s%s selected" % (l,t))
     def ExitApp(self, event):
         self.Close()
-       
 
+        
+def make_mat(fname,tmc,mc_count=None,booli=False):
+    data = pd.read_table(fname, nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])
+    data.pop('seed')
+    # ako je prosledjen booli njega koristimo kao boolean index
+    #u suprotnom koristimo bool index gde su svi True - sve rezultate
+    N = len(data.index)
+    booli = booli if booli else [True] * N
+    print "MATDATA-BOOLED\n",data.loc[booli]
+    
+    Eavg = data.E.mean()
+    stdE = data.E.std()
+    stdMeanE = stdE / np.sqrt(N)
+    E2 = data.E ** 2
+    E2avg = E2.mean()
+    stdE2 = E2.std()
+    stdMeanE2 = stdE2 / np.sqrt(N)
+    MAG = data[['Mx', 'My', 'Mz']]
+    MAG2 = MAG ** 2
+    M2 = MAG2.Mx + MAG2.My + MAG2.Mz
+    M1 = np.sqrt(M2)
+    M4 = M2 ** 2
+    M2avg = M2.mean()
+    M1avg = M1.mean()
+    M4avg = M4.mean()
+    stdM1 = M1.std()
+    stdM2 = M2.std()
+    stdM4 = M4.std()
+    stdMeanM1 = stdM1 / np.sqrt(N)
+    stdMeanM2 = stdM2 / np.sqrt(N)
+    stdMeanM4 = stdM4 / np.sqrt(N)
+    val_names = [
+        'THERM',
+        'Eavg',
+        'stdE',
+        'stdMeanE',
+        'E2avg',
+        'stdE2',
+        'stdMeanE2',
+        'M1avg',
+        'stdM1',
+        'stdMeanM1',
+        'M2avg',
+        'stdM2',
+        'stdMeanM2',
+        'M4avg',
+        'stdM4',
+        'stdMeanM4',
+    ]
+    values = pd.Series([
+        tmc,
+        Eavg,
+        stdE,
+        stdMeanE,
+        E2avg,
+        stdE2,
+        stdMeanE2,
+        M1avg,
+        stdM1,
+        stdMeanM1,
+        M2avg,
+        stdM2,
+        stdMeanM2,
+        M4avg,
+        stdM4,
+        stdMeanM4,
+    ], index=val_names)
+
+    return values
+       
+#!!!!Znaci u principu treba da uzmem ove 'raw' rezultate agg-a,tj ovo pre nego
+#sto ih pretvori u format pogodan za cuvanje aplotova. .hmmmmmmmmmmm.
+# Mozda da napravim da ovi .aplot fajlovi ustvari budu ovi raw podaci
+# i onda se ovde u tulipu agregiraju preko neke funkcije. tako da onda radim
+# sa raw-om, sve dok ga ne napunim. ok, onda se agregiranje radi opet preko
+# one funkcije, samo sto ce se jos dodati sta ce ona raditi, a ovde ce se
+#zameniti ovaj mat i pozvati funkcija za agregiranje. OKKKKK
+    
+        
 def gen_mats(ltdir,n=None):
     """U direktorijumu ltdir trazi sve izgenerisane .all fajlove
     i vrsi statisticke racunice, izbacuje jednu datoteku koja sadrzi
@@ -1668,67 +1837,11 @@ def gen_mats(ltdir,n=None):
         print "Aggregate: ", base
         # hm, verovatno postoji bolji nacin odbacivanja prve kolone
         #proveri da li moze beline da gleda za separator
-        data = pd.read_table(join(ltdir,u), nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])
-        print "MATDATA-BOOLED\n",data.loc[booli]
-        data.pop('seed')
-        N = len(data.index)
-        Eavg = data.E.mean()
-        stdE = data.E.std()
-        stdMeanE = stdE / np.sqrt(N)
-        E2 = data.E ** 2
-        E2avg = E2.mean()
-        stdE2 = E2.std()
-        stdMeanE2 = stdE2 / np.sqrt(N)
-        MAG = data[['Mx', 'My', 'Mz']]
-        MAG2 = MAG ** 2
-        M2 = MAG2.Mx + MAG2.My + MAG2.Mz
-        M1 = np.sqrt(M2)
-        M4 = M2 ** 2
-        M2avg = M2.mean()
-        M1avg = M1.mean()
-        M4avg = M4.mean()
-        stdM1 = M1.std()
-        stdM2 = M2.std()
-        stdM4 = M4.std()
-        stdMeanM1 = stdM1 / np.sqrt(N)
-        stdMeanM2 = stdM2 / np.sqrt(N)
-        stdMeanM4 = stdM4 / np.sqrt(N)
-        val_names = [
-            'THERM',
-            'Eavg',
-            'stdE',
-            'stdMeanE',
-            'E2avg',
-            'stdE2',
-            'stdMeanE2',
-            'M1avg',
-            'stdM1',
-            'stdMeanM1',
-            'M2avg',
-            'stdM2',
-            'stdMeanM2',
-            'M4avg',
-            'stdM4',
-            'stdMeanM4',
-        ]
-        values = pd.Series([
-            tmc,
-            Eavg,
-            stdE,
-            stdMeanE,
-            E2avg,
-            stdE2,
-            stdMeanE2,
-            M1avg,
-            stdM1,
-            stdMeanM1,
-            M2avg,
-            stdM2,
-            stdMeanM2,
-            M4avg,
-            stdM4,
-            stdMeanM4,
-        ], index=val_names)
+        fname = join(ltdir,u)
+        values = make_mat(fname,mc_count=mc_count)
+
+        values.to_csv(join(ltdir,base),tmc)
+   
         #mozda da napravim da ovo bude odvojeno
         # tj. da pri inicijalnom generisanju
         # pozovemo ovo a i save, a onda kada
