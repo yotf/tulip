@@ -184,10 +184,29 @@ class ScatterPanel(wx.Panel):
         curr_t = self.temprs.curr()
         curr_l = self.cmb_l.GetValue()
         print "AGGPANEL.aggd\n", AggPanel.aggd[curr_l][curr_t]
+
         curr_mat = best_mat_dict[curr_l][curr_t]
         fname,t,curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % curr_l,curr_mat).groups()
+        #menjamo best_mat_dict, bez povratka!!!
+        mc = sum(booli)
+        print "Neodstranjenih rezultata ima:\n", mc
+        #!!!stavi ovde da bude statmat!!!
+        #!!! posto necemo da dupliciramo kod
+        #!!! tj, promenices statmat
         mat=make_mat("%s.all" % fname,curr_tmc,booli=booli)
+        newmatfname = "%s%sTHERM%sMC%s.mat" % (curr_l,curr_t,curr_tmc,mc)
+        print "newmatfname",newmatfname
+        tmpdir = join(SIM_DIR,"tmp")
+        if not os.path.exists(tmpdir):
+            os.makedirs(tmpdir)
+        mat.to_csv(join(tmpdir,newmatfname), sep=' ')
+        global repaired_dict
+        print "repaired dict",repaired_dict
+        
+        repaired_dict[curr_l][curr_t]=join(tmpdir,newmatfname)
+        print "repaired dict",repaired_dict
         print "NEW MAT",mat
+        print "BEST MAT DICT",best_mat_dict
         self.step("dummy",curr=True,booli=booli)
         
     
@@ -735,7 +754,7 @@ class ThermPanel(wx.Panel):
         mcs_dir =join(SIM_DIR,self.cmb_L.GetValue()+self.cmb_T.GetValue())
         print "Making new plot files in dir %s for %d MCs" % (mcs_dir,mcs)
 #        statmat.main(mcs_dir,mcs)
-        gen_mats(mcs_dir,mcs,save=True)
+        statmat.main(mcs_dir,mcs)
         compose.main(mcs_dir,mcs)
         self.cmb_pfiles.SetItems(self.get_files())
       
@@ -943,6 +962,10 @@ class AggPanel(wx.Panel):
         self.agregate_btn = wx.Button(self,-1,"Aggregate!")
         self.agregate_btn.Enable( not matDictEmpty())
         self.Bind(wx.EVT_BUTTON,self.on_agg_button,self.agregate_btn)
+
+        self.alt_btn = wx.Button(self,-1,"Alt agg!")
+#        self.alt_btn.Enable( not matDictEmpty())
+        self.Bind(wx.EVT_BUTTON,self.on_alt_button,self.alt_btn)
         self.cmb_L = wx.ComboBox(
             self,
             -1,
@@ -987,6 +1010,8 @@ class AggPanel(wx.Panel):
         self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL) 
         self.hbox1.Add(self.agregate_btn, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.alt_btn, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL) 
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
@@ -1044,9 +1069,20 @@ class AggPanel(wx.Panel):
         self.agregate_btn.Enable(not matDictEmpty())
         
     def on_agg_button(self,event):
-        agregate.main(dict(best_mat_dict),SIM_DIR)
-        #nek bude globalna, trebace nam
-        # ili da napravimo da je staticka??
+        self.agregate(best_mat_dict)
+
+    def on_alt_button(self,event):
+        import copy
+        altm = copy.deepcopy(best_mat_dict)
+        print "REPAIRED DICT:\n",repaired_dict
+        for l,val in repaired_dict.items():
+            for t,path in val.items():
+                altm[l][t] = path
+        #!!! smisli pametniji nacin
+        self.agregate(altm)
+        
+    def agregate(self,bmatdict):
+        agregate.main(dict(bmatdict),SIM_DIR)
 
         aggd = load_agg()
         # stavljamo ovde kao staticku variablu
@@ -1271,7 +1307,8 @@ def handle_simfiles(dir_md5):
             print "running unify"
             unify.main(d)
             print "generating mats"
-            gen_mats(d)
+            statmat.main(d)
+#            gen_mats(d)
             print "running compose"
             compose.main(d)
             dir_md5[d]=getmd5(d)
@@ -1279,41 +1316,41 @@ def handle_simfiles(dir_md5):
     prbar.Destroy()
 
 
-def compose(ltdir,mcsteps="\d+",save=False):
-    """Po thermovima redja vrednosti iz matova,
-    ako treba da gledamo samo za odredjen broj mc-ova, onda
-    prosledjujemo parametar mcsteps (inace se svi citaju), ako
-    hocemo da cuvamo rezultat onda stavljamo save na True. Samo prvi
-    put ce save biti true, ovo ostalo nece biti volataile, vec samo da
-    se gleda"""
-    glregex = \
-        re.compile(r"^(L\d+)(T\d+)THERM\d+(MC%s)\.mat$" % mcsteps)
-    file_list = [f for f in os.listdir(ltdir) if glregex.match(f)]
-    plots = list(set([glregex.match(f).groups() for f in file_list]))
-    df= "nesto"
-    for plot in plots:
-        data = dict()
-        for mat in re.findall("^%s%sTHERM.*%s\.mat$" % plot,
-                              '\n'.join(file_list), re.MULTILINE):
-            ser = pd.read_csv(join(ltdir,mat), sep=' ', index_col=0, names=['t'])['t']
-            data[ser.ix['THERM']] = ser
+# def compose(ltdir,mcsteps="\d+",save=False):
+#     """Po thermovima redja vrednosti iz matova,
+#     ako treba da gledamo samo za odredjen broj mc-ova, onda
+#     prosledjujemo parametar mcsteps (inace se svi citaju), ako
+#     hocemo da cuvamo rezultat onda stavljamo save na True. Samo prvi
+#     put ce save biti true, ovo ostalo nece biti volataile, vec samo da
+#     se gleda"""
+#     glregex = \
+#         re.compile(r"^(L\d+)(T\d+)THERM\d+(MC%s)\.mat$" % mcsteps)
+#     file_list = [f for f in os.listdir(ltdir) if glregex.match(f)]
+#     plots = list(set([glregex.match(f).groups() for f in file_list]))
+#     df= "nesto"
+#     for plot in plots:
+#         data = dict()
+#         for mat in re.findall("^%s%sTHERM.*%s\.mat$" % plot,
+#                               '\n'.join(file_list), re.MULTILINE):
+#             ser = pd.read_csv(join(ltdir,mat), sep=' ', index_col=0, names=['t'])['t']
+#             data[ser.ix['THERM']] = ser
 
-        base = '%s%s%s_THERM' % plot
-        plotf = base + '.plot'
-        print "making",plotf,"..."
-        df = pd.DataFrame(data)
+#         base = '%s%s%s_THERM' % plot
+#         plotf = base + '.plot'
+#         print "making",plotf,"..."
+#         df = pd.DataFrame(data)
 
-        out = { 'abs(cv(E1))':abs(df.ix['stdMeanE'] / df.ix['Eavg']),
-                'cv(E2)':df.ix['stdMeanE2']/df.ix['E2avg'],
-                'cv(M1)':df.ix['stdMeanM1']/df.ix['M1avg'],
-                'cv(M2)':df.ix['stdMeanM2']/df.ix['M2avg'],
-                'cv(M4)':df.ix['stdMeanM4']/df.ix['M4avg']}
-        out = pd.DataFrame(out)
-        out = pd.concat([df,out.T])
+#         out = { 'abs(cv(E1))':abs(df.ix['stdMeanE'] / df.ix['Eavg']),
+#                 'cv(E2)':df.ix['stdMeanE2']/df.ix['E2avg'],
+#                 'cv(M1)':df.ix['stdMeanM1']/df.ix['M1avg'],
+#                 'cv(M2)':df.ix['stdMeanM2']/df.ix['M2avg'],
+#                 'cv(M4)':df.ix['stdMeanM4']/df.ix['M4avg']}
+#         out = pd.DataFrame(out)
+#         out = pd.concat([df,out.T])
 
-        if save:
-            out.to_csv(join(ltdir,plotf))
-        return out
+#         if save:
+#             out.to_csv(join(ltdir,plotf))
+#         return out
 
 #ili je mozda umesto ovih save-ova bolje da imam neki temp
 # folder, nisam sigurna, posto mm, brze ce ici ako se ne cuva
@@ -1734,6 +1771,45 @@ class Reader(wx.Dialog):
     def ExitApp(self, event):
         self.Close()
 
+
+def raw_agg(mat_dict,simd):
+    """Prima za parametar dict koji sadrzi apsolutne
+    putanje do izabranih .mat fajlova"""
+    #za svako L ce imati vise T-ova, znaci vise foldera
+    # za odredjeno L, i za svaki od tih izabran mat
+    # prebaci ga u regularni dict pre nego sto ga prosledis
+    agg_dict = dict()
+    for l,tdict in mat_dict.items():
+        agg_mat = list()
+        for t,path in tdict.items():
+            data_mat = pd.read_table(path,index_col=0,delim_whitespace=True,names=[t])
+            data_mat.rename(index={'THERM': 'T'},inplace=True)
+            data_mat.ix['T']=int(t[1:])
+            agg_mat.append(data_mat)
+        #uvek cemo imati samo jednu kolonu, naravno
+        agg_mat = sorted(agg_mat, key=lambda x: int(x.columns[0][1:]))
+        print agg_mat
+
+        agg_mat = pd.concat(agg_mat, axis=1)
+        # SORTIRANJE, OBRATI PAZNJU !!!
+        agg_dict[l] = agg_mat
+    raw_agg = pd.concat(agg,axis=1)
+    raw_agg.columns.names=['L','T']
+    #sranje malo. znaci ovo ce biti u memoriji to je sve ok
+    # ne mozda nece morati, mozda samo da se ovo prosledjuje u agregate
+    # i onda da se pravi, ali hm, onda svaki put da se generise novi svaki put
+    # kad nam treba, nije uputno. Ne znam da li je puno trosenja memorije.
+    # enivej, o tome kasnije da rasmislis. za sada drzimo taj raw, kao sto smo drzali
+    # onaj. a ne raw_agg ce biti lokalan za agg
+    # sranje, ovo ce malo biti preveliko ne??? JOJ PA STA DA RADIM???
+    print "RAWAGG:\n",raw_agg
+    return raw_agg
+
+    
+        
+        #nista ne cuvam sem best mat dicta
+#        agg_mat.to_csv("%s.rawplot" %l)
+        #agg(agg_mat,join(simd,"%s.aplot" % l ))
         
 def make_mat(fname,tmc,mc_count=None,booli=False):
     data = pd.read_table(fname, nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])
@@ -1743,7 +1819,9 @@ def make_mat(fname,tmc,mc_count=None,booli=False):
     N = len(data.index)
     booli = booli if booli else [True] * N
     print "MATDATA-BOOLED\n",data.loc[booli]
-    
+    data = data.loc[booli]
+    N = len(data.index)
+    print "N:\n",N
     Eavg = data.E.mean()
     stdE = data.E.std()
     stdMeanE = stdE / np.sqrt(N)
@@ -1813,45 +1891,56 @@ def make_mat(fname,tmc,mc_count=None,booli=False):
 #zameniti ovaj mat i pozvati funkcija za agregiranje. OKKKKK
     
         
-def gen_mats(ltdir,n=None):
-    """U direktorijumu ltdir trazi sve izgenerisane .all fajlove
-    i vrsi statisticke racunice, izbacuje jednu datoteku koja sadrzi
-    rezultate karakteristicne za odredjeni LTTherm. Dve kolone, jedan
-    nazivi vrednosti a drugi rezultati. Sve skalari. Ako se prosledi
-    n onda uzima samo prvih n rezultata u slucaju da rezultata ima vise
-    nego sto je n, u suprotnom ne radi nista"""
-    unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
+# def gen_mats(ltdir,n=None):
+#     """U direktorijumu ltdir trazi sve izgenerisane .all fajlove
+#     i vrsi statisticke racunice, izbacuje jednu datoteku koja sadrzi
+#     rezultate karakteristicne za odredjeni LTTherm. Dve kolone, jedan
+#     nazivi vrednosti a drugi rezultati. Sve skalari. Ako se prosledi
+#     n onda uzima samo prvih n rezultata u slucaju da rezultata ima vise
+#     nego sto je n, u suprotnom ne radi nista"""
 
-    for u in unified:
-        print 'Unified:  ', u
-        base_name, tmc = glregex.match(u).groups()        
-        mc_count=int(len(open(join(ltdir,u)).readlines()))
-        if n>mc_count:
-            #samo se vracamo u slucaju
-            # da je prosledjen n i da je on veci
-            # od mc_count
-            return 
-        mc_count = n or mc_count
-        print mc_count
-        base = "{}MC{}".format(base_name,str(mc_count))
-        print "Aggregate: ", base
-        # hm, verovatno postoji bolji nacin odbacivanja prve kolone
-        #proveri da li moze beline da gleda za separator
-        fname = join(ltdir,u)
-        values = make_mat(fname,mc_count=mc_count)
+#     glregex = \
+#     re.compile(r"""
+# ^           #Pocetak stringa poklapam
+# (L\d+       #L i bilo koji int posle
+# T\d+        #T sa bilo kojim int brojem posle
+# THERM(\d+))  #THERM sa bilo kojim int brojem posle
+# \.all$      #uzimamo .all fajlove
+# """
+#                , re.VERBOSE)
+    
+#     unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
 
-        values.to_csv(join(ltdir,base),tmc)
+#     for u in unified:
+#         print 'Unified:  ', u
+#         base_name, tmc = glregex.match(u).groups()        
+#         mc_count=int(len(open(join(ltdir,u)).readlines()))
+#         if n>mc_count:
+#             #samo se vracamo u slucaju
+#             # da je prosledjen n i da je on veci
+#             # od mc_count
+#             return 
+#         mc_count = n or mc_count
+#         print mc_count
+#         base = "{}MC{}".format(base_name,str(mc_count))
+#         print "Aggregate: ", base
+#         # hm, verovatno postoji bolji nacin odbacivanja prve kolone
+#         #proveri da li moze beline da gleda za separator
+#         fname = join(ltdir,u)
+#         #!!! stavi ovo da bude statmat
+#         values = make_mat(fname,tmc,mc_count=mc_count)
+#         values.to_csv(join(ltdir,base) + '.mat', sep=' ')
    
-        #mozda da napravim da ovo bude odvojeno
-        # tj. da pri inicijalnom generisanju
-        # pozovemo ovo a i save, a onda kada
-        # ovu zovemo iz programa mozemo da napravimo
-        # da mora eksplicitno da se sacuva
-        # znaci sta ce biti rad. bice rad da se selektuju
-        # falicni rezultati i da dobijemo bool array losih rezultata
-        # i onda na osnovu njega da izbacimo iz ovog mata odredjene rezultate
-        # znaci to je sve ovaj magt, on kontorlise sve 
-        #values.to_csv(join(ltdir,base) + '.mat', sep=' ')
+#         #mozda da napravim da ovo bude odvojeno
+#         # tj. da pri inicijalnom generisanju
+#         # pozovemo ovo a i save, a onda kada
+#         # ovu zovemo iz programa mozemo da napravimo
+#         # da mora eksplicitno da se sacuva
+#         # znaci sta ce biti rad. bice rad da se selektuju
+#         # falicni rezultati i da dobijemo bool array losih rezultata
+#         # i onda na osnovu njega da izbacimo iz ovog mata odredjene rezultate
+#         # znaci to je sve ovaj magt, on kontorlise sve 
+#         #values.to_csv(join(ltdir,base) + '.mat', sep=' ')
 
     
 if __name__ == '__main__':
@@ -1875,7 +1964,8 @@ if __name__ == '__main__':
             sys.exit(0)
 
         dlg.Destroy()
-    best_mat_dict = load_best_mat_dict()   
+    best_mat_dict = load_best_mat_dict()
+    repaired_dict= defaultdict(dict)
 
     ########################################
     ############ INIT #####################
