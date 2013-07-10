@@ -475,7 +475,7 @@ class ScatterPanel(wx.Panel):
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
         therm,sp = getthermmc(self.cmb_l.GetValue(),t)
-        title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/10000),therm,sp)
+        title ="T={:.4f}\nLS={}\n SP={}".format((float(t[1:])/10000),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
@@ -873,7 +873,7 @@ class ThermPanel(wx.Panel):
     def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
         lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
-        lbl_t ="%s=%.2f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/10000)
+        lbl_t ="%s=%.4f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/10000)
         lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
