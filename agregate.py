@@ -97,7 +97,7 @@ def agg2(agg_mat, aplot):
 
 def agg(agg_mat,aplot):
 
-    T = agg_mat.ix['T'] / 100
+    T = agg_mat.ix['T'] / 10000
     susc = (agg_mat.ix['M2avg'] - agg_mat.ix['M1avg'] ** 2) / T
 
     Tcap = (agg_mat.ix['E2avg'] - agg_mat.ix['Eavg'] ** 2) / T ** 2
@@ -194,7 +194,7 @@ def main2(sim_dir,PLOT_NAME,DIRECTORY):
         print "CURRENTLY IN:",os.getcwd()
         new_mats = glob.glob('*.mat')
         best_mat = fname(new_mats)
-        T = int(re.match(r'^L\d+T(\d{1,4})', best_mat).groups()[0])
+        T = int(re.match(r'^L\d+T(\d+)', best_mat).groups()[0])
         print best_mat
         best_stat = best_mat.replace('.mat', '.stat')
              

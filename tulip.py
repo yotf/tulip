@@ -54,15 +54,18 @@ from itertools import cycle
 from scipy import stats   
 from matplotlib.widgets import RectangleSelector
 
+
 regexf = re.compile(r'^(L\d{1,3}).aplot$')
    
 SIM_DIR = ""
-DEBUG = "+++DEBUG INFO+++  "
-DEBUGG = False
+
 LATTICE_MC = os.getcwd()
 fmt_strings = ['g+-','r*-','bo-','y+-']
 fmt_cycle = itertools.cycle(fmt_strings)
 
+
+########################################
+##########POMOCNE KLASE################
 class twoway_cycle():
     """Uzima iterable, i na zvanje prev i next
     vraca odgovarajuce clanove. ovo je verovatno
@@ -89,23 +92,201 @@ class twoway_cycle():
         self.log.debug("returning curr element:{}".format(self.it[self.i]))
         return self.it[self.i]
             
-        
-def get_files(l,t,ext="*.plot"):
-    """Vraca sve plot fajlove u zadatom folderu (L i T))"""
 
-    folder_name = join(SIM_DIR,"%s%s" %(l,t),ext)
-    print "folder name",folder_name
-    files = glob.glob(folder_name)
-    return files
+
+class FileManager():
+    """Ova klasa ce brinuti o postojacim l,t,mc, i therm
+    i takodje o izborima razlicitim, znaci originalnim statickim
+    i dinamickim, i onima sa izbacenim rezultatima.Inicijalizuje se sa
+    postojacim l-ovima, postojacim t-ovima, postojacim mc i thermovima
+    Prosledjivace mu se lt_dict, ali lt_dict nece biti globalna varijabla
+    sada, vec ce se ovde cuvati, samo u drugom obliku
+
+    """
+    #ovaj regex nam izvlaci therm i mc iz imena mat fajla
+    # fazon je sto imam redudantnost u smislu da imam LT i kao
+    # kljuceve dicta, a i kao ime fajla. Pa dobro, sta da mu radim
+    # necu sve kao regex, ovo je jednostavnije. Da sam sve kao regex
+    # onda bih morala da mmm, stavljam u stringove regexa, ove vrednosti
+    # ma, siugrno postoji zasto je dobro dict. dict je fleksibilniji, ali doduse
+    # da nam nije dict bih mogla da radim presek skupa ili tako nesto. hm, sigurno
+    # postoji nacin da na pametan nacin izvucem kao neki presek, ali to nije presek
+    # to jeste ako je u preseku ta vrednost uzimamo iz drugog, a ako nije uzimamo iz
+    # prvog
+    extr_regex = re.compile(r'(?P<base>L\d+T\d+(?P<therm>THERM\d+))(?P<mc>MC\d+)\.mat$')
+    def __init__():
+        """morace da bude iniciijalizovan sa napravljenim
+        posto ce se praviti kako se budu pozivali matovi, tako ce ovaj
+        vracati, a mi cemo stavljati u nas lt dict, cemo appendovati na nase
+        tuple"""
+        #  logging.basicConfig(level=logging.DEBUG)
+        self.log = logging.getLogger("FileManager")
+        self.choices = self.get_choices()
+        print "FileManager:self.choices",self.choices
+        self.load_bmatdict()
+        
+    def t_choices(self,l):
+        """Vraca sve moguce t-ove za prosledjeno L"""
+        self.log.debug("returning t_choices {}".format(self.choices[l])
+        return sorted(self.choices[l], key=lambda x:int(x[1:]))
+    def get_choices(self):
+        """Ide kroz imena svih direktorijum i za svaki L prilepljuje
+        odgovarajuce t-ove."""
+        regex = re.compile(r"^(L\d+)(T\d+)$")
+        dirlist = [d for d in os.walk(SIM_DIR).next()[1] if regex.match(d)]
+        dirlist.sort()
+        dct = defaultdict(list)
+        for d in dirlist:
+            l,t = regex.match(d).groups()
+            dct[l].append(t)
+        return dct
+    def get_alt(self):
+        """Pravi dictionary koji uzima
+        sve vrednosti koje postoje u alt dictu
+        i prelepljuje ih preko vrednosti iz bmatdicta
+        i to vraca"""
+        import copy
+        altm = copy.deepcopy(self.bmatdict)
+        print "REPAIRED DICT:\n", self.repdict
+        for l,val in self.repdict.items():
+            for t,path in val.items():
+                altm[l][t] = path
+        return altm
+        
+    def get_all_file(self,l,t):
+        """Vraca all fajl za zeljeni bmat, za prosledjeno l i t"""
+        base = self.get_base(l,t)
+        self.log.debug("get_all_file:vracam %s" % ("%s.all" % base))
+        return "%s.all" % base
+
+    def get_base(self,l,t):
+        """Vraca osnovu imena u obliku L[0-9]*T[0-9]*THERM[0-9]*
+        iz bmatdicta za prosledjeno l i t
+        """
+        extr_regex.search(self.bestmatd[l][t]).groupdict()["base"]
+
+    def get_files(self,l,t,ext="*.plot"):
+        """Vraca sve plot fajlove u zadatom folderu (L i T))"""
+        
+        folder_name = join(SIM_DIR,"%s%s" %(l,t),ext)
+        self.log.debug("get_files:%s" %folder_name)
+        files = glob.glob(folder_name)
+        self.log.debug(files)
+        return files
    
-def get_mtherms(L,T,therms="THERM\d+",igroup=0,ext="*.mat"):
-    """za sve moguce .mat fajlove za dato L i T
-    vraca parove mc ili therm u zavisnosti od igroup parametra)"""
-    return [re.match(r'.*(%s)(MC\d+)' % therms, f.split(os.path.sep)[-1]).groups()[igroup] for f in get_files(l=L,t=T,ext=ext)]
+    def get_therms(self,l,t):
+        """Mislim da ovaj iz best_mat_dicta vraca, pa da
+        uglavnom su nam relevantne informacije da je iz matova
+        i da su ili mc ili therms, mozemo napraviti dve funkcije
+        nece vise biti komplikovano, posto cemo ovu informaciju odmah
+        na pocetku zapisati"""
+        self.log.debug("get_therms")
+        return self.choices[l][t].keys()
+
     
-def get_mmcs(L,T,therms):
-    
-    return get_mtherms(L=L,T=T,therms=therms,igroup=1,ext="*%sMC*.mat" %therms)
+    def get_mmcs(self,l,t,therms):
+        """Znaci vraca listu mc-ova za dato l t i therm
+        """
+        return self.choices[l][t][therms]
+    def get_maxmc(self,l,t):
+        """
+        Vraca max mc u okviru 
+        """
+        #ok, uzimamo therm, posto je to nesto konstantno u
+        # best mat dictu, tj. ne konstantno nego je odredjeno
+        # sa l i t jedinstveno
+        therm = self.best_therm(l,t)
+        print "get_maxmc: best therm",therm
+        return max(self.choices[l][t][therm])
+        
+    def best_therm(self,l,t):
+       """Vraca therm koji se nalazi u best_mat_dict,
+       samo treba videti kako ce se ovo ponasati kod ovih drugih
+       da li cu imati neki currdict ili nesto pa iz njega vracati
+       dobro, svakako bi trebalo da postoji neko stanje ja mislim
+       u zavisnosti od toga sta su kako su, ajd videcu"""
+       return extr_regex.search(self.bestmatd[l][t]).groupdict()["therm"]
+        
+    def best_mc(l,t):
+        """Vraca iz bmatdicta izabrani mc
+        za odredjene l i t"""
+
+        return extr_regex.search(self.bestmatd[l][t]).groupdict()["mc"]
+
+    def get_changed_mat_name(self,l,t,new_mc):
+        """Ovo je zarad izbacivanja 'nepozeljnih' rezultata
+        prosledjuju mu se l i t, i novi mc. Vraca novo ime"""
+        return "{base}[MC{mc}].mat".format(base=self.get_base(l,t), mc=new_mc)
+                                         
+    def load_bmatdict(self):
+        """Ucitava bmatdict iz memorije"""
+        with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
+           try:
+               fcontent =  defaultdict(dict,pickle.load(hashf))
+           except EOFError:
+               fcontent = defaultdict(dict)
+        print "bmatdict",fcontent
+        self.bmatdict = fcontent
+        self.repdict = defaultdict(dict)
+
+    def clean_mat_dict(self):
+        """Gleda koji unosi u dict nemaju vrednost
+        tj. samo su dodati zbog defaultdict svojstva
+        i skida ih. Ovo ce se samo desiti u mat chooseru
+        tako da ovo tada samo treba da zovem.Nisam sigurna
+        da ce mi biti potreban"""
+        # ovo ce proci posto mi ne iteriramo kroz sam dict
+        # a skidamo sa samog dicta. ova lista items nece biti
+        # vise up to date, ali to nam nije bitno, posto nije
+        # ciklicna
+        self.log.debug("cleaning bmatdict : %s" % bmatdict)
+        for key,value in self.bmatdict.items():
+            if not value:
+                self.bmatdict.pop(key)
+                self.log.debug("removing {}.aplot".format(key))
+                try:
+                    os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
+                except Exception:
+                    self.log.warning("Exception!!!")
+        self.serialize_mat()
+
+    def add_repaired(self,l,t,val):
+        """Mislim ovo mi je glupost
+        sigurno je lakse samo tamo
+        ali ovako mogu menjati. Mada
+        mozda bi mi propertyji dobro
+        dosli
+        """
+        self.repdict[l][t]=val
+
+    # def get_alt_base(self,l,t):
+        
+    def add_to_mat_dict(self,l,t,therm,mc):
+        """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
+        u status baru, i cuva novo stanje best_mat_dict-a na disk"""
+        best_mat = self.get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
+        # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
+        assert len(best_mat)==1
+        self.bmatdict[l][t] = best_mat[0]
+        log.debug("added %s to bmatdict : %s " %(best_mat[0], self.bmatdict))
+    #    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
+        #mhm, nisam sigurna nisam sigurna nista. al ajd. nekako cu popraviti sve
+        self.clean_mat_dict()
+        #onda mi ne treba ovde serialize
+#        self.serialize_mat()
+
+    def serialize_mat(self):
+        with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
+            pickle.dump(dict(self.bmatdict),matdictfile)
+    #matDictEmpty
+    def bmatdict_empty(self):
+        """ne znam da li mi je ova f-ja relevantna
+        sad kad imam ovaj clean mm"""
+        return not self.bmatdict.keys()
+        # for key in self.best_mat_dict.keys():
+        #     if self.best_mat_dict[key]:
+        #         return False
+        # return True
         
 class ScatterPanel(wx.Panel):
     xlabel = 'Mx'    
@@ -117,19 +298,16 @@ class ScatterPanel(wx.Panel):
     chk_mc_txt = "Show first %d SPs"
     firstn = 1000
     def __init__(self,parent):
-        
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
         self.parent = parent
         logging.basicConfig(level=logging.DEBUG)
         self.log = logging.getLogger("ScatterPanel")
         self.tooltip = wx.ToolTip("'n':next\n'p':previous\nscroll:zoom")
-    
         self.tooltip.Enable(False)
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi
         fig_height = (self.parent.GetParent().height / self.dpi) * 3.2 / 4.0
         self.log.debug("fig width:{} fig height:{}".format(fig_width,fig_height))
-        
         self.fig = Figure(figsize=(fig_width,fig_height),dpi=self.dpi,facecolor='white')
         self.canvas = FigCanvas(self,-1,self.fig)
         # self.ax = Axes3D(self.fig)
@@ -138,19 +316,7 @@ class ScatterPanel(wx.Panel):
         print type(self.ax_3d)
         self.ax_hist = self.fig.add_axes([0.53,0.55,0.40,0.43])
         self.ax_qq = self.fig.add_axes([0.53,0.05,0.40,0.43])
-        # self.ax_hist_only = self.fig.add_subplot(112)
-        # self.ax_qq_only = self.fig.add_subplot(112)
-       # self.ax_radio = self.fig.add_axes([0.93,0.25,0.07,0.1])
-       # self.ax_radio.axis('off')
-       
-       
-        #self.radio = RadioButtons(self.ax_radio,("norm","uniform"),activecolor='black',active=1)
-        # self.radio.labels[0].set_fontsize(9)
-        # self.radio.labels[1].set_fontsize(9)
-        # self.radio.on_clicked(self.change_dist)
-        # self.ax_hist_only.set_visible(False)
-        # self.ax_qq_only.set_visible(False)
-        
+              
 
         self.canvas.SetToolTip(self.tooltip)
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
@@ -164,9 +330,9 @@ class ScatterPanel(wx.Panel):
                              spancoords='pixels')
    
         self.ax_3d.mouse_init()
-        self.init_gui()        # mozda da napravim da svakako mora load?
-        # ma kakvi. ovo je ok za sada
-        if best_mat_dict.keys():
+        self.init_gui()
+      
+        if ():
             self.load_data(l=self.cmb_l.GetValue())
 
     def selector_callback(self,eclick,erelease):
@@ -185,25 +351,22 @@ class ScatterPanel(wx.Panel):
         curr_l = self.cmb_l.GetValue()
         print "AGGPANEL.aggd\n", AggPanel.aggd[curr_l][curr_t]
 
-        curr_mat = best_mat_dict[curr_l][curr_t]
-        fname,t,curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % curr_l,curr_mat).groups()
-        #menjamo best_mat_dict, bez povratka!!!
         mc = sum(booli)
         print "Neodstranjenih rezultata ima:\n", mc
         #!!!stavi ovde da bude statmat!!!
         #!!! posto necemo da dupliciramo kod
         #!!! tj, promenices statmat
-        mat=make_mat("%s.all" % fname,curr_tmc,booli=booli)
-        newmatfname = "%s%sTHERM%sMC%s.mat" % (curr_l,curr_t,curr_tmc,mc)
-        print "newmatfname",newmatfname
-        tmpdir = join(SIM_DIR,"tmp")
-        if not os.path.exists(tmpdir):
-            os.makedirs(tmpdir)
-        mat.to_csv(join(tmpdir,newmatfname), sep=' ')
+        therm = file_manager.best_therm()
+        print "Racuna za therm = ",therm
+        fname = file_manager.get_all_file(curr_l,curr_t)
+        mat = statmat.create_mat(fname,file_manager.get_alt_base(),therm,mc,booli)
+        newmatfname =join(SIM_DIR,file_manager.get_changed_mat_name(curr_l,curr_t,mc))
+        
+        print "newmatfname:",newmatfname
+        mat.to_csv(newmatfname, sep=' ')
         global repaired_dict
         print "repaired dict",repaired_dict
-        
-        repaired_dict[curr_l][curr_t]=join(tmpdir,newmatfname)
+        file_manager.add_repaired(curr_l,curr_t,newmatfname)
         print "repaired dict",repaired_dict
         print "NEW MAT",mat
         print "BEST MAT DICT",best_mat_dict
@@ -393,7 +556,7 @@ class ScatterPanel(wx.Panel):
         self.log.debug("file list: %s " %flist)
 
         for f in best_mat_dict[l].values():
-            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % l,f).groups()
+            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d+)THERM(\d+))" % l,f).groups()
             print f
             
             self.log.debug("Loading data for tempearture {}".format(t))
@@ -426,7 +589,7 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Global maximum for {} is {}".format(l,self.global_ylim))
         self.log.debug("Global maximum for {} is {}".format(l,self.global_xlim))
             
-        self.mc_txt.SetRange(0,getmaxmc(l))
+        self.mc_txt.SetRange(0,file_manager.get_maxmc(l))
 
         key = lambda x: int(x[1:])
         self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
@@ -474,7 +637,8 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Magt has {} elements".format(self.magt.count()))
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
-        therm,sp = getthermmc(self.cmb_l.GetValue(),t)
+        therm = file_manager.best_therm(self.cmb_l.GetValue(),t)
+        therm = file_manager.best_mc(self.cmb_l.GetValue(),t)
         title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/100),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
@@ -498,58 +662,7 @@ class ScatterPanel(wx.Panel):
     
 
 
-def getmaxmc(l):
-    mcs = list()
-    for t in best_mat_dict[l].keys():
-        mcs.append(int(getthermmc(l,t)[1]))
-    return max(mcs)
-    
-def getthermmc(l,t):
-    return re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[l][t].split(os.path.sep)[-1]).groups()
-   
-def load_best_mat_dict():
-    with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
-       try:
-           fcontent =  defaultdict(dict,pickle.load(hashf))
-       except EOFError:
-           fcontent = defaultdict(dict)
-    print "best mat dict",fcontent
-    return fcontent
 
-def clean_mat_dict():
-    """Gleda koji unosi u dict nemaju vrednost
-    tj. samo su dodati zbog defaultdict svojstva
-    i skida ih. Ovo ce se samo desiti u mat chooseru
-    tako da ovo tada samo treba da zovem"""
-    # ovo ce proci posto mi ne iteriramo kroz sam dict
-    # a skidamo sa samog dicta. ova lista items nece biti
-    # vise up to date, ali to nam nije bitno, posto nije
-    # ciklicna
-    for key,value in best_mat_dict.items():
-        if not value:
-            best_mat_dict.pop(key)
-            print "removing {}.aplot".format(key)
-            try:
-                os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
-            except Exception:
-                print "...NOT"
-                pass
-    serialize_mat()
-        
-def add_to_mat_dict(l,t,therm,mc):
-    """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
-    u status baru, i cuva novo stanje best_mat_dict-a na disk"""
-    best_mat = get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
-    # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
-    assert len(best_mat)==1
-    best_mat_dict[l][t]=best_mat[0]
-    print "BEST MAT DICT:",best_mat_dict
-#    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
-    serialize_mat()
-
-def serialize_mat():
-    with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
-        pickle.dump(dict(best_mat_dict),matdictfile)
             
 class ThermPanel(wx.Panel):
     def __init__(self, parent):
@@ -602,15 +715,13 @@ class ThermPanel(wx.Panel):
                                  choices=sorted(lt_dict.keys(),key=lambda x: int(x[1:])),
                                  style=wx.CB_READONLY,
                                  value=lt_dict.keys()[0])
-        t_choices = sorted(lt_dict[self.cmb_L.GetValue()],key= lambda x: int(x[1:]))
+        t_choices = file_manager.t_choices(self.cmb_L.GetValue())
         self.cmb_T = wx.ComboBox(self, size=(100, -1),
                                  choices=t_choices,
                                  value=t_choices[0])
         self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
                 choices=self.get_files(), value='<Choose plot file>')
         self.update_combos()
-                                    
-   
         self.Bind(wx.EVT_COMBOBOX, self.on_select, self.cmb_plots)
         self.Bind(wx.EVT_COMBOBOX, self.update_combos, self.cmb_L)
         self.Bind(wx.EVT_COMBOBOX, self.on_select_T, self.cmb_T)
@@ -768,7 +879,9 @@ class ThermPanel(wx.Panel):
         # se disejbluju. valjda su to svi slucajevi 
         # trazimo najveci mc od svih .all fajlova.  inace
         # nece se desiti nista pri odabiru generisanja za taj mc
-        uplimit = get_mtherms(L=self.cmb_L.GetValue(),T=self.cmb_T.GetValue(),igroup=1,ext="*.mat")
+        l = self.cmb_L.GetValue()
+        t = self.cmb_T.GetValue()
+        uplimit = file_manager.get_maxmc(l,t)
         uplimit = int(sorted(uplimit,key=lambda x: int(x[2:]))[-1][2:])
         print "uplimit",uplimit
         self.mc_txt.SetRange(0,uplimit)
@@ -787,7 +900,7 @@ class ThermPanel(wx.Panel):
     def get_files(self):
         """Kada zovemo iz klase ovu metodu, uglavnom nista ne tweakujemo i to, vec
         stavljamo defaultnu vrednost "*.plot" """
-        return get_files(ext="*.plot",l=self.cmb_L.GetValue(),t=self.cmb_T.GetValue())
+        return file_manager.get_files(ext="*.plot",l=self.cmb_L.GetValue(),t=self.cmb_T.GetValue())
         
 
 
@@ -939,11 +1052,7 @@ class ThermPanel(wx.Panel):
         self.chk_mc.Enable(True)
 
 
-def matDictEmpty():
-    for key in best_mat_dict.keys():
-        if best_mat_dict[key]:
-            return False
-    return True
+
     
 class AggPanel(wx.Panel):
 
@@ -1072,13 +1181,8 @@ class AggPanel(wx.Panel):
         self.agregate(best_mat_dict)
 
     def on_alt_button(self,event):
-        import copy
-        altm = copy.deepcopy(best_mat_dict)
-        print "REPAIRED DICT:\n",repaired_dict
-        for l,val in repaired_dict.items():
-            for t,path in val.items():
-                altm[l][t] = path
-        #!!! smisli pametniji nacin
+        altm = file_manager.get_alt()
+        print "altm:",altm
         self.agregate(altm)
         
     def agregate(self,bmatdict):
@@ -1114,7 +1218,9 @@ class AggPanel(wx.Panel):
         fontsize = e.GetEventObject().GetValue()
         print "FONTSIZE", fontsize
         self.set_ticklabelfontsize(fontsize)
-        
+
+
+    
     def on_draw_button(self, event):
         L_select = self.cmb_L.GetValue()
         mag_select = self.cmb_mag.GetValue()
@@ -1122,7 +1228,8 @@ class AggPanel(wx.Panel):
         lbl = "$%s_{%s}$" %(L_select[0],L_select[1:])
         print  self.aggd[L_select].ix['T'].index
         self.ax_agg.plot(self.aggd[L_select].ix['T'],
-                         self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none')
+                         self.aggd[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none',picker=5)
+        
         self.annotations = list()
         for t,m in zip(self.aggd[L_select].ix['T'].index,self.aggd[L_select].ix[mag_select]):
             self.annotations.append(self.ax_agg.annotate('LS={groups[0]}\nSP={groups[1]}'.format(groups=
@@ -1280,15 +1387,17 @@ def handle_simfiles(dir_md5):
     dirlist = [d for d in glob.glob(join(SIM_DIR,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
     dirlist.sort()
     
+    regexlt = re.compile(r"^(L\d+)(T\d+)$")
     
     maxi = len(dirlist)
 
     prbar = wx.ProgressDialog("Please wait, doing statistics 'n stuff...",message="starting",maximum=maxi,parent=None,style=0| wx.PD_APP_MODAL| wx.PD_CAN_ABORT)
     prbar.SetMinSize(wx.Size(350,100))
     count =itertools.count()
+    choices_dict = defaultdict(dict)
     for d in dirlist:
         hashmd5 = getmd5(d)
-        
+        l,t = regexlt.match(d).groups()
         #ako je doslo do promena u direktorijumu
         #ili po prvi put pisemo
         # posto radimo sa defaultdictom, postoje tri slucaja
@@ -1307,13 +1416,13 @@ def handle_simfiles(dir_md5):
             print "running unify"
             unify.main(d)
             print "generating mats"
-            statmat.main(d)
-#            gen_mats(d)
+            choices_dict[l][t] = statmat.main(d)
             print "running compose"
             compose.main(d)
             dir_md5[d]=getmd5(d)
     writemd5hash(dir_md5)
     prbar.Destroy()
+    
 
 
 # def compose(ltdir,mcsteps="\d+",save=False):
@@ -1402,19 +1511,7 @@ def read_hashf(hfpath):
            fcontent = defaultdict(str)
     return fcontent
 
-def get_choices():
-    regex = re.compile(r"^(L\d+)(T\d+)$")
-    dirlist = [d for d in os.walk(SIM_DIR).next()[1] if regex.match(d)]
-    dirlist.sort()
-    dct = defaultdict(list)
-    # ide kroz imena svih direktorijuma i za svaki L prilepljuje odgovarajuc
-    # T-ove. prvi put kad naidje na odredjen L, to ce biti prazan niz, pa ce
-    # nalepljivati dalje nove clanove
-    for d in dirlist:
-        l,t = regex.match(d).groups()
-        dct[l].append(t)
 
-    return dct
 
 def IsBold(l,itemText):
     """Proverava da li je item u listi bold
@@ -1771,45 +1868,6 @@ class Reader(wx.Dialog):
     def ExitApp(self, event):
         self.Close()
 
-
-def raw_agg(mat_dict,simd):
-    """Prima za parametar dict koji sadrzi apsolutne
-    putanje do izabranih .mat fajlova"""
-    #za svako L ce imati vise T-ova, znaci vise foldera
-    # za odredjeno L, i za svaki od tih izabran mat
-    # prebaci ga u regularni dict pre nego sto ga prosledis
-    agg_dict = dict()
-    for l,tdict in mat_dict.items():
-        agg_mat = list()
-        for t,path in tdict.items():
-            data_mat = pd.read_table(path,index_col=0,delim_whitespace=True,names=[t])
-            data_mat.rename(index={'THERM': 'T'},inplace=True)
-            data_mat.ix['T']=int(t[1:])
-            agg_mat.append(data_mat)
-        #uvek cemo imati samo jednu kolonu, naravno
-        agg_mat = sorted(agg_mat, key=lambda x: int(x.columns[0][1:]))
-        print agg_mat
-
-        agg_mat = pd.concat(agg_mat, axis=1)
-        # SORTIRANJE, OBRATI PAZNJU !!!
-        agg_dict[l] = agg_mat
-    raw_agg = pd.concat(agg,axis=1)
-    raw_agg.columns.names=['L','T']
-    #sranje malo. znaci ovo ce biti u memoriji to je sve ok
-    # ne mozda nece morati, mozda samo da se ovo prosledjuje u agregate
-    # i onda da se pravi, ali hm, onda svaki put da se generise novi svaki put
-    # kad nam treba, nije uputno. Ne znam da li je puno trosenja memorije.
-    # enivej, o tome kasnije da rasmislis. za sada drzimo taj raw, kao sto smo drzali
-    # onaj. a ne raw_agg ce biti lokalan za agg
-    # sranje, ovo ce malo biti preveliko ne??? JOJ PA STA DA RADIM???
-    print "RAWAGG:\n",raw_agg
-    return raw_agg
-
-    
-        
-        #nista ne cuvam sem best mat dicta
-#        agg_mat.to_csv("%s.rawplot" %l)
-        #agg(agg_mat,join(simd,"%s.aplot" % l ))
         
 def make_mat(fname,tmc,mc_count=None,booli=False):
     data = pd.read_table(fname, nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])
@@ -1861,8 +1919,8 @@ def make_mat(fname,tmc,mc_count=None,booli=False):
         'stdM4',
         'stdMeanM4',
     ]
-    values = pd.Series([
-        tmc,
+     values = pd.Series([
+         tmc,
         Eavg,
         stdE,
         stdMeanE,
@@ -1881,81 +1939,15 @@ def make_mat(fname,tmc,mc_count=None,booli=False):
     ], index=val_names)
 
     return values
-       
-#!!!!Znaci u principu treba da uzmem ove 'raw' rezultate agg-a,tj ovo pre nego
-#sto ih pretvori u format pogodan za cuvanje aplotova. .hmmmmmmmmmmm.
-# Mozda da napravim da ovi .aplot fajlovi ustvari budu ovi raw podaci
-# i onda se ovde u tulipu agregiraju preko neke funkcije. tako da onda radim
-# sa raw-om, sve dok ga ne napunim. ok, onda se agregiranje radi opet preko
-# one funkcije, samo sto ce se jos dodati sta ce ona raditi, a ovde ce se
-#zameniti ovaj mat i pozvati funkcija za agregiranje. OKKKKK
-    
-        
-# def gen_mats(ltdir,n=None):
-#     """U direktorijumu ltdir trazi sve izgenerisane .all fajlove
-#     i vrsi statisticke racunice, izbacuje jednu datoteku koja sadrzi
-#     rezultate karakteristicne za odredjeni LTTherm. Dve kolone, jedan
-#     nazivi vrednosti a drugi rezultati. Sve skalari. Ako se prosledi
-#     n onda uzima samo prvih n rezultata u slucaju da rezultata ima vise
-#     nego sto je n, u suprotnom ne radi nista"""
-
-#     glregex = \
-#     re.compile(r"""
-# ^           #Pocetak stringa poklapam
-# (L\d+       #L i bilo koji int posle
-# T\d+        #T sa bilo kojim int brojem posle
-# THERM(\d+))  #THERM sa bilo kojim int brojem posle
-# \.all$      #uzimamo .all fajlove
-# """
-#                , re.VERBOSE)
-    
-#     unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
-
-#     for u in unified:
-#         print 'Unified:  ', u
-#         base_name, tmc = glregex.match(u).groups()        
-#         mc_count=int(len(open(join(ltdir,u)).readlines()))
-#         if n>mc_count:
-#             #samo se vracamo u slucaju
-#             # da je prosledjen n i da je on veci
-#             # od mc_count
-#             return 
-#         mc_count = n or mc_count
-#         print mc_count
-#         base = "{}MC{}".format(base_name,str(mc_count))
-#         print "Aggregate: ", base
-#         # hm, verovatno postoji bolji nacin odbacivanja prve kolone
-#         #proveri da li moze beline da gleda za separator
-#         fname = join(ltdir,u)
-#         #!!! stavi ovo da bude statmat
-#         values = make_mat(fname,tmc,mc_count=mc_count)
-#         values.to_csv(join(ltdir,base) + '.mat', sep=' ')
-   
-#         #mozda da napravim da ovo bude odvojeno
-#         # tj. da pri inicijalnom generisanju
-#         # pozovemo ovo a i save, a onda kada
-#         # ovu zovemo iz programa mozemo da napravimo
-#         # da mora eksplicitno da se sacuva
-#         # znaci sta ce biti rad. bice rad da se selektuju
-#         # falicni rezultati i da dobijemo bool array losih rezultata
-#         # i onda na osnovu njega da izbacimo iz ovog mata odredjene rezultate
-#         # znaci to je sve ovaj magt, on kontorlise sve 
-#         #values.to_csv(join(ltdir,base) + '.mat', sep=' ')
-
-    
 if __name__ == '__main__':
     import sys
     from docopt import docopt
     args = docopt(__doc__)
     SIM_DIR = args['SIMDIR']
     print SIM_DIR
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG) 
     app = wx.PySimpleApp()
     
-
-    # ok, mozda bi bolje bilo da koristim dirpickerctrl???
-    # mm, ifovi. Ako nije prosledjen argument, ili nije validan
-    # pokazuje se dijalog
     if not SIM_DIR or not os.path.isdir(SIM_DIR):
         dlg=wx.DirDialog(None,style=wx.DD_DEFAULT_STYLE,message="Where your simulation files are...")
         if dlg.ShowModal() == wx.ID_OK:
@@ -1964,8 +1956,8 @@ if __name__ == '__main__':
             sys.exit(0)
 
         dlg.Destroy()
-    best_mat_dict = load_best_mat_dict()
-    repaired_dict= defaultdict(dict)
+#    best_mat_dict = load_best_mat_dict()
+ #   repaired_dict= defaultdict(dict)
 
     ########################################
     ############ INIT #####################
@@ -1973,9 +1965,10 @@ if __name__ == '__main__':
     dir_md5  = read_hashf(hfpath)
     assert type(dir_md5) is defaultdict
     handle_simfiles(dir_md5)
-    # ova globalna varijabla ce sadrzati kombinacije L-ova i T-ova koje
-    # su nam dostupne. sto se tice foldera
-    lt_dict = get_choices()
+ 
+ 
+
+    file_manager = FileManager()
     app.frame = GraphFrame()
     app.frame.Show()
     app.MainLoop()
