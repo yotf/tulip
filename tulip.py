@@ -186,7 +186,7 @@ class ScatterPanel(wx.Panel):
         print "AGGPANEL.aggd\n", AggPanel.aggd[curr_l][curr_t]
 
         curr_mat = best_mat_dict[curr_l][curr_t]
-        fname,t,curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % curr_l,curr_mat).groups()
+        fname,t,curr_tmc =re.match(r"(.*%s(T\d+)THERM(\d+))" % curr_l,curr_mat).groups()
         #menjamo best_mat_dict, bez povratka!!!
         mc = sum(booli)
         print "Neodstranjenih rezultata ima:\n", mc
@@ -393,7 +393,7 @@ class ScatterPanel(wx.Panel):
         self.log.debug("file list: %s " %flist)
 
         for f in best_mat_dict[l].values():
-            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d{2,4})THERM(\d+))" % l,f).groups()
+            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d+)THERM(\d+))" % l,f).groups()
             print f
             
             self.log.debug("Loading data for tempearture {}".format(t))
@@ -475,7 +475,7 @@ class ScatterPanel(wx.Panel):
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
         therm,sp = getthermmc(self.cmb_l.GetValue(),t)
-        title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/100),therm,sp)
+        title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/10000),therm,sp)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
@@ -873,7 +873,7 @@ class ThermPanel(wx.Panel):
     def draw_legend(self,event):
         lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
         lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
-        lbl_t ="%s=%.2f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/100)
+        lbl_t ="%s=%.2f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/10000)
         lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
@@ -1048,6 +1048,7 @@ class AggPanel(wx.Panel):
         for ann in self.annotations:
             ann.set_visible(self.chk_ann.IsChecked())
         self.canvas.draw()
+        
     def set_ticklabelfontsize(self,size):
         pylab.setp(self.ax_agg.get_xticklabels(), fontsize=size)
 
@@ -1126,7 +1127,7 @@ class AggPanel(wx.Panel):
         self.annotations = list()
         for t,m in zip(self.aggd[L_select].ix['T'].index,self.aggd[L_select].ix[mag_select]):
             self.annotations.append(self.ax_agg.annotate('LS={groups[0]}\nSP={groups[1]}'.format(groups=
-                re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[L_select][t].split(os.path.sep)[-1]).groups()),xy=(float(t[1:])/100,m),xytext=(float(t[1:])/100,m), visible=False,fontsize=8))
+                re.match(r'.*THERM(\d+)MC(\d+)',best_mat_dict[L_select][t].split(os.path.sep)[-1]).groups()),xy=(float(t[1:])/10000,m),xytext=(float(t[1:])/10000,m), visible=False,fontsize=8))
 
         self.chk_ann.SetValue(False)
         self.chk_ann.Enable(True)
