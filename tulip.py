@@ -63,6 +63,11 @@ LATTICE_MC = os.getcwd()
 fmt_strings = ['g+-','r*-','bo-','y+-']
 fmt_cycle = itertools.cycle(fmt_strings)
 
+def extract_int(string):
+    """Uzima string koji sadrzi
+    jedan int i vraca taj int
+    """
+    return int(re.search(r'\d+',string).group())
 
 ########################################
 ##########POMOCNE KLASE################
@@ -91,9 +96,102 @@ class twoway_cycle():
     def curr(self):
         self.log.debug("returning curr element:{}".format(self.it[self.i]))
         return self.it[self.i]
-            
 
 
+class UserChoices:
+    """
+    Ova klasa ce voditi racuna
+    o svemu sto korisnik izabere,
+    imace tri dicta koji ce predstavljati
+    alt, curr i mat, i jos jedan dict
+    koji ce se prosledjivati agregate-u.
+    On ce sadrzati izracunate zeljene l-t kombinacije.
+    Znaci agregateu trebaju u memoriji ti rezultati racunanja
+    Mogu prvobitno da updejtujem taj dict sa matom, a onda
+    po potrebi ga updejtujem sa ovima. Svaki od ova tri ce imati
+    potrebne informacije, ovo ce biti samo plitka kopija, referenca
+    a mozda i nece, ali moze ako hoce
+    """
+    def __init__(self):
+        self.log = self.logging.getLogger("UserChoices")
+        
+    def currmat(self,l,t,mc,therm):
+        """Dodaje u izbore za curr,
+        ovi izbori ce se koristiti pri
+        pokretanju slajdera
+        """
+        self.log.debug("Neko pomera slajder, l:{} t:{} mc:{} therm:{}".format(l,t,mc,therm))
+        self.currmat[l][t][mc]=therm
+
+    def bestmat(self,l,t,mc,therm):
+        """
+        Dodaje izbor bestmata. Oni se koriste
+        pri pritisku na dugme draw
+        """
+        self.log.debug("Dodajem u bestmat, l:{} t:{} mc:{} therm:{}".format(l,t,mc,therm))
+        self.bestmat[l][t][mc]=therm
+
+    def altmat(self,l,t,mc,therm):
+        """
+        Dodaje u izbore za altmat,
+        pre ovoga se dodao mc sa zvezdicom
+        u glavne choices. mc sa zvezdicom
+        se i prosledjuje ovde
+        Hm,samo ovo nam sada ne treba
+        posto ce korisnik stavljati u bestmat
+        te altove. Hmh, ne znam koliko mi je to
+        pametno. Ne znam sada sta ce se desiti
+        ako izabere ove alternativne i koje izabere
+        pa dobro pri izabiru treba proveriti goddddamamamfkdafljslk
+        taman sam mislila da je sve ok.
+        Mozda da imam informaciju o tome od kog mc-a je napravljen
+        kao u viticastim. i onda ce onaj search valjda doci do prvog
+        rezultata. I kad hoce da vrati, nek samo onda izabere to sto je
+        u zagradi jbg, sta da mu radim. Samo ipak, sta onda cuvati u pm
+        pa da cuvamo to jbg, da cuvamo to, pa ne mozemo da cuvamo to posto
+        bmatdict nije komplikovan. Znaci sta samo treba Pa jedino da proveravamo
+        kad se izabere da li je sa zvezdicom ili nije i onda da to cuvamo u odredjen
+        ali kako onda da jbm li ga. Mozda da imam taj curr_dict. Mozda da se tu izabere
+        i onda da ostaje u currdictu dok neko ne klikne na save as best mat. Znaci
+        bira se u bestmatchooseru kako se sta stigne i bolduje se sve to i stagod
+        i tu moze biti dugme, save as bestmat, i onda ako izabere covek drugcije
+        znaci neke alternativne i ove sa mc* to ce se crtati, ali nece biti
+        u bestmat, i onda ako se gleda. Znaci u trenutku kada korisnik klikne
+        choose as bestmat, sve iz curr_dicta
+        """
+        self.log.debug("Neko pomera slajder, l:{} t:{} mc:{} therm:{}".format(l,t,mc,therm))
+        self.altmat[l][t][mc]=therm 
+
+    def best_therm(self,l,t):
+        """Ovaj ce nam trebati tokom anotacija
+        mozda treba da hmm, mozda treba iz onog
+        trenutnog da izvlacim za anotacije.
+        Hmh, mozda da nemam ovaj curr dict
+        kao poseban nego da curr bude ono
+        sto ce se trenutno crtati. sto znaci
+        da ce se menjati ako vucemo slajdere
+        a ako smo izabrali bestmatove ce biti
+        oni, a ako smo izabrali alt matove onda
+        ce biti oni kompletno. tj bice bestmat + oni
+        hurr hurr. samo sto onda se ne mozemo  vracati na
+        ove kako nam je volja. """
+        return self.bestmat[l][t].therm
+        
+
+    def curr_therm(self,l,t):
+        """Vraca onaj therm koji je trenutno
+        iscrtan"""
+        return self.currmat[l][t].therm
+
+    def best_mc(self,l,t):
+        """Vraca mc iz bestmat-a za
+        prosledjeno l i t"""
+        return self.bestmat[l][t].mc
+    def curr_mc(self,l,t):
+        """Vraca trenutno iscrtani mc
+        za odredjeno l i t"""
+        return self.currmat[l][t].mc
+        
 class FileManager():
     """Ova klasa ce brinuti o postojacim l,t,mc, i therm
     i takodje o izborima razlicitim, znaci originalnim statickim
@@ -103,17 +201,8 @@ class FileManager():
     sada, vec ce se ovde cuvati, samo u drugom obliku
 
     """
-    #ovaj regex nam izvlaci therm i mc iz imena mat fajla
-    # fazon je sto imam redudantnost u smislu da imam LT i kao
-    # kljuceve dicta, a i kao ime fajla. Pa dobro, sta da mu radim
-    # necu sve kao regex, ovo je jednostavnije. Da sam sve kao regex
-    # onda bih morala da mmm, stavljam u stringove regexa, ove vrednosti
-    # ma, siugrno postoji zasto je dobro dict. dict je fleksibilniji, ali doduse
-    # da nam nije dict bih mogla da radim presek skupa ili tako nesto. hm, sigurno
-    # postoji nacin da na pametan nacin izvucem kao neki presek, ali to nije presek
-    # to jeste ako je u preseku ta vrednost uzimamo iz drugog, a ako nije uzimamo iz
-    # prvog
-    extr_regex = re.compile(r'(?P<base>L\d+T\d+THERM(?P<therm>\d+))MC(?P<mc>\d+)\.mat$')
+   
+    # extr_regex = re.compile(r'(?P<base>L\d+T\d+THERM(?P<therm>\d+))MC(?P<mc>\d+)\.mat$')
     all_regex = re.compile(r'^L\d+T\d+(?P<therm>THERM\d+)\.all$')
     lt_regex = re.compile(r'(L\d+)(T\d+)$')
     
@@ -126,14 +215,15 @@ class FileManager():
         self.log = logging.getLogger("FileManager")
         self.choices = self._get_choices()
         self.log.debug("Glavni izbori, choices : %s" %self.choices)
-        print "FileManager:self.choices",self.choices
-        self.bestmatd = self._load_bmatdict()
+        self.bestmatd = UserChoices()
 
-    #def _load_mc_to_all(self):
 
     def add_mc(self,l,t,mc):
         """Dodaje mc u choices, thermove ce morati da
-        kupi od suseda, ili ti komsije"""
+        kupi od suseda, ili ti komsije, ali da vrednosti
+        za sve thermove inicijalizuje na None,posto nisu jos
+        izracunati
+        """
         therms = self.choices[l][t].values()[0].keys()
         tdict = {key:None for key in therms}
         self.log.debug("adding mc %s" % tdict )
@@ -149,7 +239,7 @@ class FileManager():
         ODREDJENI rezultati, pa koristimo taj argument kao indeks koji
         ce izdvojiti samo zeljenje rezultate
         """
-        mc = int(re.search(r'\d+',mc).group())
+        mc = extract_int(mc)
         filename = join(SIM_DIR,"{l}{t}".format(l=l,t=t),"{l}{t}THERM{therm}.all".format(l=l,t=t,therm=therm))
         
         self.log.debug("Creating mat from file {} for first {} rows".format(filename,mc))
@@ -221,7 +311,7 @@ class FileManager():
 
 
     def compose(self,l,t,mc):
-        """Modifikuje odgovarajuce elemente u self.choices,
+        """Modifikuje odgovarajuce elemente u self.choices [sa izracunatim matovima],
         ako je potrebno, i vraca strukturu pogodnu za plotovanje"""
         data = dict()
         self.log.debug("Composing for l:{} t:{} mc:{}".format(l,t,mc))
@@ -230,7 +320,7 @@ class FileManager():
             # ne znam da li ce biti problem sto menjam ovaj dictionary
             # dok iteriram kroz njega???
             self.log.debug("Trenutni mat je %s" %mat)
-            therm_int = int(re.search(r'\d+',therm).group())
+            therm_int = extract_int(therm)
             try:
                 self.choices[l][t][mc][therm] = mat if mat.any() else "weird"
             except:
@@ -251,13 +341,14 @@ class FileManager():
         return out
         
     def t_choices(self,l):
-        """Vraca sve moguce t-ove za prosledjeno L"""
+        """Vraca sortirane sve moguce t-ove za prosledjeno L"""
         self.log.debug("returning t_choices {} for l:{}".format(self.choices[l].keys(),l))
-        return sorted(self.choices[l].keys(), key=lambda x:int(x[1:]))
-                       
+        return sorted(self.choices[l].keys(), key=lambda x:extract_int(x))
+
+    
     def l_choices(self):
         """Vraca sve moguce L-ove u sim_dir"""
-        return sorted(self.choices.keys(),key=lambda x: int(x[1:]))
+        return sorted(self.choices.keys(),key=lambda x: extract_int(x))
 
     def mc_choices(self,l,t):
         """Vraca sve raspolozive mc-ove. Oni ujedno i odredjuju moguce
@@ -265,7 +356,7 @@ class FileManager():
         se gleda za koje mc-ove postoje koji thermovi, i obrnuto"""
         mc_choices = self.choices[l][t].keys()
         self.log.debug("returing mc_chioices {}".format(mc_choices))
-        return mc_choices
+        return sorted(mc_choices,key=lambda x: extract_int(x))
 
     def therm_count(self,l,t,mc):
         """Vraca koliko ima tacaka za dato mc, tj.trebace kod
@@ -277,109 +368,50 @@ class FileManager():
         return len(therms)
 
     def therm_choices(self,l,t,mc):
-        """Vraca sve thermove za odredjeno l,t i mc"""
+        """Vraca sve thermove za odredjeno l,t i mc,
+        sortirane u obrnutom redosledu
+        """
         therms = self.choices[l][t][mc]
         self.log.debug("Vracam thermove: {} za mc:{}".format(therms,mc))
-        return therms
-        
-        
-        
-    # def get_choices(self):
-    #     """Ide kroz imena svih direktorijum i za svaki L prilepljuje
-    #     odgovarajuce t-ove."""
-    #     regex = re.compile(r"^(L\d+)(T\d+)$")
-    #     dirlist = [d for d in os.walk(SIM_DIR).next()[1] if regex.match(d)]
-    #     dirlist.sort()
-    #     dct = defaultdict(list)
-    #     for d in dirlist:
-    #         l,t = regex.match(d).groups()
-    #         dct[l].append(t)
-    #     return dct
+        return sorted(therms,key=lambda x: extract_int(x),reverse=True)
                        
-    def get_alt(self):
-        """Pravi dictionary koji uzima
-        sve vrednosti koje postoje u alt dictu
-        i prelepljuje ih preko vrednosti iz bmatdicta
-        i to vraca"""
-        import copy
-        altm = copy.deepcopy(self.bmatdict)
-        print "REPAIRED DICT:\n", self.repdict
-        for l,val in self.repdict.items():
-            for t,path in val.items():
-                altm[l][t] = path
-        return altm
+    # def get_alt(self):
+    #     """Pravi dictionary koji uzima
+    #     sve vrednosti koje postoje u alt dictu
+    #     i prelepljuje ih preko vrednosti iz bmatdicta
+    #     i to vraca"""
+    #     import copy
+    #     altm = copy.deepcopy(self.bmatdict)
+    #     print "REPAIRED DICT:\n", self.repdict
+    #     for l,val in self.repdict.items():
+    #         for t,path in val.items():
+    #             altm[l][t] = path
+    #     return altm
         
-    def get_all_file(self,l,t):
-        """Vraca all fajl za zeljeni bmat, za prosledjeno l i t"""
-        base = self.get_base(l,t)
-        self.log.debug("get_all_file:vracam %s" % ("%s.all" % base))
-        return "%s.all" % base
+    # def get_all_file(self,l,t):
+    #     """Vraca all fajl za zeljeni bmat, za prosledjeno l i t"""
+    #     base = self.get_base(l,t)
+    #     self.log.debug("get_all_file:vracam %s" % ("%s.all" % base))
+    #     return "%s.all" % base
 
-    def get_base(self,l,t):
-        """Vraca osnovu imena u obliku L[0-9]*T[0-9]*THERM[0-9]*
-        iz bmatdicta za prosledjeno l i t
-        """
-        extr_regex.search(self.bestmatd[l][t]).groupdict()["base"]
-
-    def get_files(self,l,t,ext="*.plot"):
-        """Vraca sve plot fajlove u zadatom folderu (L i T))"""
-        folder_name = join(SIM_DIR,"%s%s" %(l,t),ext)
-        self.log.debug("get_files:%s" %folder_name)
-        files = glob.glob(folder_name)
-        self.log.debug(files)
-        return files
-   
-    # def get_therms(self,l,t):
-    #     """Mislim da ovaj iz best_mat_dicta vraca, pa da
-    #     uglavnom su nam relevantne informacije da je iz matova
-    #     i da su ili mc ili therms, mozemo napraviti dve funkcije
-    #     nece vise biti komplikovano, posto cemo ovu informaciju odmah
-    #     na pocetku zapisati"""
-
-    #     return self.choices[l][t].keys()
-
-
-    # def get_therms(self,l,t):
-    #     """Vraca sve moguce thermove za dato l i t"""
-    #     therms = self.choices[l][t].keys()
-    #     self.log.debug("getting therms:{}".format(therms))
-    #     return therms
-        
-    # def get_mcs(self,l,t,therm):
+    # def get_base(self,l,t):
+    #     """Vraca osnovu imena u obliku L[0-9]*T[0-9]*THERM[0-9]*
+    #     iz bmatdicta za prosledjeno l i t
     #     """
-    #     Znaci vraca listu mc-ova za dato l t i therm
-    #     Razlikuje se od mc_choices posto se onome ne
-    #     prosledjuje therms. Ovaj je specificniji.
-    #     """
-    #     mcs =sorted(self.choices[l][t][therm],key=lambda x: int(x[2:]))
-    #     self.log.debug("vracam mcove: {} za therm: {}".format(mcs,therm))
-    #     return mcs
+    #     extr_regex.search(self.bestmatd[l][t]).groupdict()["base"]
 
                        
     def get_maxmc(self,l,t):
         """
-        Vraca max mc u okviru 
+        Vraca max mc za odredjeno l i t
+        ne znam da li nam to treb
         """
-        #ok, uzimamo therm, posto je to nesto konstantno u
-        # best mat dictu, tj. ne konstantno nego je odredjeno
-        # sa l i t jedinstveno
         return max(self.mc_choices(l,t))
-        
-    def best_therm(self,l,t):
-       """Vraca therm koji se nalazi u best_mat_dict,
-       samo treba videti kako ce se ovo ponasati kod ovih drugih
-       da li cu imati neki currdict ili nesto pa iz njega vracati
-       dobro, svakako bi trebalo da postoji neko stanje ja mislim
-       u zavisnosti od toga sta su kako su, ajd videcu"""
-       self.log.debug("vracam best_therm za l:{} i t:{} mat:{}".format(l,t,self.bmatdict[l][t]))
-       print self.extr_regex
-       return self.extr_regex.search(self.bestmatd[l][t]).groupdict()["therm"]
-        
-    def best_mc(l,t):
-        """Vraca iz bmatdicta izabrani mc
-        za odredjene l i t"""
 
-        return extr_regex.search(self.bestmatd[l][t]).groupdict()["mc"]
+    def add_bestmat(self,l,t,therm,mc):
+        self.bmatdict.bestmat(l,t,therm,mc)
+        
+            
     def _get_choices(self):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
         u simdir-u i izvlaci l,t,i therm.Pretpostavljamo da nema
@@ -411,86 +443,79 @@ class FileManager():
                 mct_choices[mc][therm] = None
             choices[l][t] = mct_choices
         return choices
+
+    
   
-    def get_changed_mat_name(self,l,t,new_mc):
-        """Ovo je zarad izbacivanja 'nepozeljnih' rezultata
-        prosledjuju mu se l i t, i novi mc. Vraca novo ime"""
-        return "{base}[MC{mc}].mat".format(base=self.get_base(l,t), mc=new_mc)
+    # def get_changed_mat_name(self,l,t,new_mc):
+    #     """Ovo je zarad izbacivanja 'nepozeljnih' rezultata
+    #     prosledjuju mu se l i t, i novi mc. Vraca novo ime"""
+    #     return "{base}[MC{mc}].mat".format(base=self.get_base(l,t), mc=new_mc)
                                          
-    def _load_bmatdict(self):
-        """Ucitava bmatdict iz memorije"""
-        with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
-           try:
-               fcontent =  defaultdict(dict,pickle.load(hashf))
-           except EOFError:
-               fcontent = defaultdict(dict)
-        print "bmatdict",fcontent
-        self.bmatdict = fcontent
-        self.repdict = defaultdict(dict)
+    # def _load_bmatdict(self):
+    #     """Ucitava bmatdict iz memorije"""
+    #     with open(join(SIM_DIR,"mat.dict"),mode="ab+") as hashf:
+    #        try:
+    #            fcontent =  defaultdict(dict,pickle.load(hashf))
+    #        except EOFError:
+    #            fcontent = defaultdict(dict)
+    #     print "bmatdict",fcontent
 
-    def clean_mat_dict(self):
-        """Gleda koji unosi u dict nemaju vrednost
-        tj. samo su dodati zbog defaultdict svojstva
-        i skida ih. Ovo ce se samo desiti u mat chooseru
-        tako da ovo tada samo treba da zovem.Nisam sigurna
-        da ce mi biti potreban"""
-        # ovo ce proci posto mi ne iteriramo kroz sam dict
-        # a skidamo sa samog dicta. ova lista items nece biti
-        # vise up to date, ali to nam nije bitno, posto nije
-        # ciklicna
-        self.log.debug("cleaning bmatdict : %s" % self.bmatdict)
-        for key,value in self.bmatdict.items():
-            if not value:
-                self.bmatdict.pop(key)
-                self.log.debug("removing {}.aplot".format(key))
-                try:
-                    os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
-                except Exception:
-                    self.log.warning("Exception!!!")
-        self.serialize_mat()
+    # def clean_mat_dict(self):
+    #     """Gleda koji unosi u dict nemaju vrednost
+    #     tj. samo su dodati zbog defaultdict svojstva
+    #     i skida ih. Ovo ce se samo desiti u mat chooseru
+    #     tako da ovo tada samo treba da zovem.Nisam sigurna
+    #     da ce mi biti potreban"""
+    #     # ovo ce proci posto mi ne iteriramo kroz sam dict
+    #     # a skidamo sa samog dicta. ova lista items nece biti
+    #     # vise up to date, ali to nam nije bitno, posto nije
+    #     # ciklicna
+    #     self.log.debug("cleaning bmatdict : %s" % self.bmatdict)
+    #     for key,value in self.bmatdict.items():
+    #         if not value:
+    #             self.bmatdict.pop(key)
+    #             self.log.debug("removing {}.aplot".format(key))
+    #             try:
+    #                 os.remove(join(SIM_DIR,'{}.aplot'.format(key)))
+    #             except Exception:
+    #                 self.log.warning("Exception!!!")
+    #     self.serialize_mat()
 
-    def add_repaired(self,l,t,val):
-        """Mislim ovo mi je glupost
-        sigurno je lakse samo tamo
-        ali ovako mogu menjati. Mada
-        mozda bi mi propertyji dobro
-        dosli
-        """
-        self.repdict[l][t]=val
 
-    # def get_alt_base(self,l,t):
+    
+
         
-    def add_to_mat_dict(self,l,t,therm,mc):
-        """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
-        u status baru, i cuva novo stanje best_mat_dict-a na disk"""
-        best_mat = self.get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
-        # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
-        assert len(best_mat)==1
-        self.bmatdict[l][t] = best_mat[0]
-        self.log.debug("added %s to bmatdict : %s " %(best_mat[0], self.bmatdict))
-    #    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
-        #mhm, nisam sigurna nisam sigurna nista. al ajd. nekako cu popraviti sve
-        self.clean_mat_dict()
-        #onda mi ne treba ovde serialize
-#        self.serialize_mat()
+#     def add_to_mat_dict(self,l,t,therm,mc):
+#         """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
+#         u status baru, i cuva novo stanje best_mat_dict-a na disk"""
+#         best_mat = self.get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
+#         # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
+#         assert len(best_mat)==1
+#         self.bmatdict[l][t] = best_mat[0]
+#         self.log.debug("added %s to bmatdict : %s " %(best_mat[0], self.bmatdict))
+#     #    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
+#         #mhm, nisam sigurna nisam sigurna nista. al ajd. nekako cu popraviti sve
+#         self.clean_mat_dict()
+#         #onda mi ne treba ovde serialize
+# #        self.serialize_mat()
 
-    def remove_from_bmatdict(self,l,t):
-        """Brise zapis za prosledjeno l i t iz bestmatdicta"""
-        self.log.debug("Brisem zapis za l:{} t:{} i bmatdicta".format(l,t))
-        del self.bmatdict[l][t]
-        self.serialize_mat()
-    def serialize_mat(self):
-        with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
-            pickle.dump(dict(self.bmatdict),matdictfile)
-    #matDictEmpty
-    def bmatdict_empty(self):
-        """ne znam da li mi je ova f-ja relevantna
-        sad kad imam ovaj clean mm"""
-        return not self.bmatdict.keys()
-        # for key in self.best_mat_dict.keys():
-        #     if self.best_mat_dict[key]:
-        #         return False
-        # return True
+#     def remove_from_bmatdict(self,l,t):
+#         """Brise zapis za prosledjeno l i t iz bestmatdicta"""
+#         self.log.debug("Brisem zapis za l:{} t:{} i bmatdicta".format(l,t))
+#         del self.bmatdict[l][t]
+#         self.serialize_mat()
+#     def serialize_mat(self):
+#         with open(join(SIM_DIR,"mat.dict") ,"wb") as matdictfile:
+#             pickle.dump(dict(self.bmatdict),matdictfile)
+#     #matDictEmpty
+#     def bmatdict_empty(self):
+#         """ne znam da li mi je ova f-ja relevantna
+#         sad kad imam ovaj clean mm"""
+#         return not self.bmatdict.keys()
+#         # for key in self.best_mat_dict.keys():
+#         #     if self.best_mat_dict[key]:
+#         #         return False
+#         # return True
         
 class ScatterPanel(wx.Panel):
     xlabel = 'Mx'    
@@ -927,7 +952,7 @@ class ThermPanel(wx.Panel):
                                  value=t_choices[0])
 
 
-        self.cmb_pfiles = wx.ComboBox(self, size=(300, -1),
+        self.cmb_pfiles = wx.ComboBox(self, size=(150, -1),
                 choices=[], value='--')
         self.set_cmb_pfiles()
         self.update_combos()
@@ -1172,7 +1197,10 @@ class ThermPanel(wx.Panel):
 
     def on_pick(self,event):
         artist = event.artist
-        artist.set_color(np.random.random(3))
+        try:
+            artist.set_color(np.random.random(3))
+        except:
+            pass
         print "pick"
         self.canvas.draw()
 
@@ -1658,11 +1686,32 @@ def IsBold(l,itemText):
     print "or is in {}".format(file_manager.bmatdict[l].keys())
     return itemText in file_manager.bmatdict[l].keys()
     
-def MakeBold(self,item):
+def ChangeFont(listctrl_,item,l,what,*args):
+    """Menja font odredjenog elementa
+    u matchooseru u odnosu na gde je ovaj,
+    ha,samo sta je fazon, fazon jeste
+    sto je ovo samo za l hahahahahahahha
+    to je najveci fazon od svih!! Ajd probamo ovo
+    znaci mogu joj se proslediti sta je znaci
+    l t mc ili therm, i proizvoljan broj argumenata"""
+    map_ = {'l':file_manager.best_ls,'t': lambda l: file_manager.best_ts(l),
+            'mc':lambda l,t:file_manager.best_mc(l,t),
+            'therm':lambda l,t,mc:file_manager.best_therm(l,t,mc)
+            }
+    fontweight = wx.FONTWEIGHT_NORMAL
+    fontstyle = wx.FONTSTYLE_NORMAL
+    if l in map[what](*args) and not in file_manager.alt_ls():
+        fontweight = wx.FONTWEIGHT_BOLD
+        fontstyle = wx.FONTSTYLE_ITALIC
+    elif l in file_manager.best_ls() and in file_manager.alt_ls():
+        fontweight = wx.FONTWEIGHT_BOLD
+    elif l not in file_manager.best_ls and in file_manager.alt_ls():
+        fontstyle = wx.FONTSTYLE_ITALIC
         font = item.GetFont()
-        font.SetWeight(wx.FONTWEIGHT_BOLD)
+        font.SetWeight(wx_fontweight)
+        font.SetStyle(wx_fontstyle)
         item.SetFont(font)
-        self.SetItem(item)
+        listctrl_.SetItem(item)
         
 def UnBold(self,item):
         font = item.GetFont()
@@ -1683,12 +1732,10 @@ class ListCtrlLattice(wx.ListCtrl):
         cntr = 0
         for l in file_manager.l_choices():
             self.InsertStringItem(cntr,l)
-            
-            if l in file_manager.bmatdict.keys() and file_manager.bmatdict[l]:
-                item = self.GetItem(cntr)
-                MakeBold(self,item)
 
-                
+
+            item = self.GetItem(cntr)
+            ChangeFont(self,item,l)
             cntr = cntr+1    
 
     
@@ -1762,8 +1809,8 @@ class ListCtrlTempr(wx.ListCtrl):
         cntr = 0
         for t in file_manager.t_choices(item):
             self.InsertStringItem(cntr,t)
-            if t in file_manager.bmatdict[item].keys():
-                MakeBold(self,self.GetItem(cntr))
+            if t in file_manager.bestmat_ts:
+                ChangeFont(self,self.GetItem(cntr))
 
                 
             cntr = cntr+1
@@ -1805,13 +1852,13 @@ class ListCtrlTherm(wx.ListCtrl):
         self.l = l
         print "gparent",self.parent.GetGrandParent().GetGrandParent().GetParent()
         cntr = 0
-        for therm in sorted(file_manager.get_therms(l,t),key=lambda x: int(x[5:])):
-            self.InsertStringItem(cntr,therm)
-            print therm
+        for mc in file_manager.mc_choices():
+            self.InsertStringItem(cntr,mc)
+            print mc
             try:
-                if file_manager.best_therm(self.l,self.t)==therm:
-                    MakeBold(self,self.GetItem(cntr))
-                    getSiblingByName(self,"ListControlMC").LoadData(therm=therm,l=self.l,t=self.t)
+                if file_manager.best_mc(l,t):
+                    ChangeFont(self,self.GetItem(cntr))
+                    getSiblingByName(self,"ListControlMC").LoadData(mc=mc,l=self.l,t=self.t)
             except Exception:
                 pass
             cntr = cntr + 1
@@ -1835,21 +1882,22 @@ class ListCtrlMC(wx.ListCtrl):
         self.SetColumnWidth(0, size.x-5)
         event.Skip()
 
-    def LoadData(self,therm,l,t):
+    def LoadData(self,mc,l,t):
         self.DeleteAllItems()
         cntr=0
-        for mc in sorted(file_manager.get_mcs(l,t,therm),key=lambda x: int(x[2:])):
-            self.InsertStringItem(cntr,mc)
+        for therm in file_manager.therm_choices(l,t,mc):
+            self.InsertStringItem(cntr,therm)
             try:
-                if file_manager.best_mc(l,t) == mc:
-                    MakeBold(self,self.GetItem(cntr))
+                if file_manager.best_therm(l,t) == therm:
+                    ChangeFont(self,self.GetItem(cntr))
             except Exception:
                 pass
             cntr = cntr + 1
 
     def OnSelect(self,event):
-        self.parent.GetGrandParent().GetGrandParent().enable_choose()
-        #self.parent.GetGrandParent().GetGrandParent().unchoose_enabled(False);
+        # self.parent.GetGrandParent().GetGrandParent().enable_choose()
+         self.parent.GetGrandParent().GetGrandParent().on_choose_button("dummy")
+
 
 
 
@@ -1997,10 +2045,29 @@ class Reader(wx.Dialog):
         therm =self.listTherm.GetItemText(self.listTherm.GetFirstSelected())
         mc =self.listMC.GetItemText(self.listMC.GetFirstSelected())
 
-        file_manager.add_to_mat_dict(l=l,t = t,therm=therm,mc=mc)
+        file_manager.add_bestmat(l=l,t = t,therm=therm,mc=mc)
         self.GetGrandParent().flash_status_message("Best .mat for %s%s selected" % (l,t))
+        self.bold_choice()
+    def bold_choice(self):
+        """Tek izabrani izbor pravi italic"""
+        for lc in self.listcontrols:
+            ChangeFont(lc,lc.GetItem(lc.GetFirstSelected()),wx_fontstyle = wx.FONTSTYLE_ITALIC)
+
+    @property
+    def listcontrols(self):
+        """Vraca listu list kontrola"""
+        return [ self.listL, self.listT, self.listTherm, self.listMC ] 
+
     def ExitApp(self, event):
         self.Close()
+
+def unify_():
+    """ide kroz sve direktorijume i radi unify"""
+    dirlist = [d for d in glob.glob(join(SIM_DIR,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
+    dirlist.sort()
+    for dir_ in dirlist:
+        unify.main(dir_)
+
 
         
 
@@ -2029,8 +2096,8 @@ if __name__ == '__main__':
  #   repaired_dict= defaultdict(dict)
 
     ########################################
-    ############ INIT #####################
-    #!!!!OVDE treba uraditi unify po svim direktorijumima
+    ############ INIT #####################   
+    unify_()
     file_manager = FileManager()
     app.frame = GraphFrame()
     app.frame.Show()

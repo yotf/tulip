@@ -117,7 +117,7 @@ def main(ltdir,n=None):
     unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
     therm_mc_dict = defaultdict(list)
     for u in unified:
-        self.log.debug('Unified: %s '%u)
+        log.debug('Unified: %s '%u)
         base_name, therm_count = glregex.match(u).groups()
 
         mc_count=int(len(open(join(ltdir,u)).readlines()))
@@ -133,10 +133,10 @@ def main(ltdir,n=None):
         log.debug("mc_count=%s" % mc_count)
         out_file_base = join(ltdir,base_name)
 
-        log.debug("Out .mat file base:%s" %out_file)
+        log.debug("Out .mat file base:%s" %out_file_base)
         in_file = join(ltdir,u)
         log.debug("In .all file: %s" % in_file )
-        create_mat(in_file ,therm_count,out_file,mc_count)
+        create_mat(in_file ,out_file_base,therm_count,mc_count)
     return therm_mc_dict
 
 
