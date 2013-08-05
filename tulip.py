@@ -1088,6 +1088,7 @@ class AggPanel(wx.Panel):
         leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
 
         self.xy_ann = self.ax_agg.annotate('dummy text',xy = (0.0,0.0),fontsize=9,color='gray')
+        self.xy_ann.set_visible(False)
         
         leg.draggable(True)
         self.ax_agg.set_xlabel("$T$")
@@ -1160,8 +1161,10 @@ class AggPanel(wx.Panel):
             text = 'x:{:.4f}\ny:{:.4f}'.format(event.xdata,event.ydata)
             self.xy_ann.xy = x,y
             xlim = self.ax_agg.get_xlim()[1]
+            ylim = self.ax_agg.get_ylim()[1]
             print xlim
             #self.xy_ann.xytext= xlim+0.01, 0
+            self.xy_ann.xytext= xlim+0.004,ylim
         
             self.xy_ann.set_text(text)
             self.xy_ann.set_visible(True)
