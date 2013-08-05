@@ -916,8 +916,7 @@ class AggPanel(wx.Panel):
         self.init_gui()        
         
     def init_gui(self):
-        self.bestmat_button=wx.Button(self,-1,"Choose best .mats ...")
-        self.Bind(wx.EVT_BUTTON, self.on_chooser,self.bestmat_button)
+        
         
         self.cmb_L = wx.ComboBox(
             self,
@@ -954,8 +953,6 @@ class AggPanel(wx.Panel):
         self.Bind(wx.EVT_CHECKBOX, self.on_chk_ann, self.chk_ann)
         
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.hbox1.Add(self.bestmat_button, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL) 
         # self.hbox1.Add(self.agregate_btn, border=5, flag=wx.ALL
         #                | wx.ALIGN_CENTER_VERTICAL)
         # self.hbox1.Add(self.alt_btn, border=5, flag=wx.ALL
@@ -998,6 +995,8 @@ class AggPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
+
+    
 
 
     def on_chk_ann(self,event):
@@ -1079,13 +1078,17 @@ class AggPanel(wx.Panel):
         mag_values = agg_data[L_select].ix[mag_select]
         for ti,m,tr in zip(index_ts,mag_values,real_ts):
             print 'ti:{} m:{} tr:{}'.format(ti,m,tr)
-            self.annotations.append(self.ax_agg.annotate(self.controller.annotate_agg(L_select,ti),xy=(tr,m),xytext=(tr,m), visible=False,fontsize=8))
+            text = self.controller.annotate_agg(L_select,ti)
+            self.annotations.append(self.ax_agg.annotate(text,xy=(tr,m),xytext=(tr,m), visible=False,fontsize=8,picker = 5))
 
         self.chk_ann.SetValue(False)
         self.chk_ann.Enable(True)
         
         #???!!!self.ax_agg.set_xlim(right=1.55)
         leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
+
+        self.xy_ann = self.ax_agg.annotate('dummy text',xy = (0.0,0.0),fontsize=9,color='gray')
+        
         leg.draggable(True)
         self.ax_agg.set_xlabel("$T$")
         self.ax_agg.set_ylabel(self.name_dict[mag_select])
@@ -1103,11 +1106,15 @@ class AggPanel(wx.Panel):
         self.canvas.draw()
         
     def init_plot(self):
+        
         self.dpi = 100
         fig_width = self.parent.GetParent().width / self.dpi / 1.3
         fig_height = self.parent.GetParent().height / self.dpi * 3 / 4
         self.fig = Figure((fig_width, fig_height), dpi=self.dpi,facecolor='w')
         self.ax_agg = self.fig.add_subplot(111)
+
+        self.xy_ann = self.ax_agg.annotate('dummy text',xy = (0.0,0.0),fontsize=9,color='gray')
+        self.xy_ann.set_visible(False)
         
         self.canvas = FigCanvas(self, -1, self.fig)
         self.toolbar = NavigationToolbar(self.canvas)
@@ -1116,8 +1123,56 @@ class AggPanel(wx.Panel):
         self.toolbar.SetSize(wx.Size(fw,20))
         self.toolbar.Realize()
 
+        self.canvas.mpl_connect('pick_event', self.on_pick)
+        self.canvas.mpl_connect('key_press_event',self.on_key_press)
+        self.mte = self.canvas.mpl_connect('motion_notify_event', self.mouse_moved)
+
+
+        
+        ########################################
+        ########### MATPLOTLIB EVENTS ##########
+
+    def on_key_press(self,event):
+
+        if event.key == 'x':
+            try:
+                self.canvas.mpl_disconnect(self.mte)
+                del self.cursor
+            except:
+                pass
+        elif event.key == 'c':
+            self.cursor = widgets.Cursor(self.ax_agg, useblit=True, color='gray', linewidth=0.5)
+            
+            
+    def on_pick(self,event):
+        print type(event)
+        print event.artist.set_visible(False)
+        self.canvas.draw()
+        print type(event.artist)
+        print event
+
+        
+    def mouse_moved(self,event):
+        x,y = event.xdata,event.ydata
+        if x is not None:
+            print "XX",x
+            x,y = np.asscalar(x),np.asscalar(y)
+            text = 'x:{:.4f}\ny:{:.4f}'.format(event.xdata,event.ydata)
+            self.xy_ann.xy = x,y
+            xlim = self.ax_agg.get_xlim()[1]
+            print xlim
+            #self.xy_ann.xytext= xlim+0.01, 0
+        
+            self.xy_ann.set_text(text)
+            self.xy_ann.set_visible(True)
+        else:
+            self.xy_ann.set_visible(False)
+        self.canvas.draw()
+    def exited_ax(self,event):
+        pass
         ########################################
         ######### CONTROLER INTERFACE ##########
+
 
     def set_l_choices(self,lch):
         self.cmb_L.SetItems(lch)
@@ -1324,7 +1379,7 @@ def load_agg():
 
 
 class MyListCtrl(wx.ListCtrl):
-    def __init__(self, parent, id,controller):
+    def __init__(self, parent, id,controller,mat_deletable=False):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
 		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
 
@@ -1333,9 +1388,20 @@ class MyListCtrl(wx.ListCtrl):
 
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.Bind(wx.EVT_LIST_ITEM_SELECTED,self.OnSelect)
+        self.Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK,self.OnRightClick)
 
         self.InsertColumn(0, '')
         self.SetName(MyListCtrl.__name__)
+
+    def OnRightClick(self,event):
+        """U slucaju da smo na t,therm ili mc-u
+        brise se bestmat iz bestmatova.Oslanjamo
+        se na atribut controllera koji on drzi
+        konzistentim, nadamo se"""
+        selected = event.GetIndex()
+        selected = self.GetItemText(selected)
+        name = util.extract_name(selected)
+        self.controller.remove_bestmat(**{name:selected})
         
     def LoadData(self,list_items):
         self.DeleteAllItems()
@@ -1349,9 +1415,6 @@ class MyListCtrl(wx.ListCtrl):
 
     def OnFocus(self, event):
         self.SetItemBackgroundColour(0, 'red')
-        
-    def doNothing(self):
-        pass
         
     def OnSelect(self, event):
         selected = event.GetIndex()
@@ -1393,16 +1456,15 @@ class Reader(wx.Panel):
         self.Bind(wx.EVT_TOOL, self.ExitApp, id=1)
         
  #       self.button_choose = wx.Button(self,-1,"Choose",size=(70,30))
-        self.button_unchoose = wx.Button(self,-1,"Remove",size=(100,30))
+
    #     self.button_done = wx.Button(self,-1,"Done",size=(70,30))
 ###        self.Bind(wx.EVT_BUTTON, self.on_choose_button,self.button_choose)
-        self.Bind(wx.EVT_BUTTON, self.on_unchoose_button,self.button_unchoose)
+
     #    self.Bind(wx.EVT_BUTTON, self.on_done_button,self.button_done)
         vbox.Add(splitter, 1,  wx.EXPAND | wx.TOP | wx.BOTTOM, 5 )
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.AddStretchSpacer()
         #hbox.Add(self.button_choose,1, wx.BOTTOM,5)
-        hbox.Add(self.button_unchoose,1, wx.BOTTOM,5)
 #        hbox.Add(self.button_done,1,wx.BOTTOM,5)
         vbox.Add(hbox,flag=wx.ALIGN_RIGHT|wx.RIGHT,border=10)
         self.SetSizer(vbox)
@@ -1441,31 +1503,11 @@ class Reader(wx.Panel):
         self.button_choose.Enable(True)
     def unchoose_enabled(self,is_enabled):
         self.button_unchoose.Enable(is_enabled)
+        
     def on_unchoose_button(self,event):
-        l = self.listL.GetItemText(self.listL.GetFirstSelected())
-        t = self.listT.GetItemText(self.listT.GetFirstSelected())
-        file_manager.remove_from_bmatdict(l,t)
-
-        UnBold(self.listT, self.listT.GetItem(self.listT.GetFirstSelected()))
-        self.listT.OnSelect("dummY")
+        raise NotImplementedError
         
-    def on_done_button(self,event):
-        self.SetReturnCode(wx.ID_OK)
-        self.Close()
-        
-    def on_choose_button(self,event):
-        l =self.listL.GetItemText(self.listL.GetFirstSelected())
-        t =self.listT.GetItemText(self.listT.GetFirstSelected())
-        therm =self.listTherm.GetItemText(self.listTherm.GetFirstSelected())
-        mc =self.listMC.GetItemText(self.listMC.GetFirstSelected())
 
-        file_manager.add_bestmat(l=l,t = t,therm=therm,mc=mc)
-        self.GetGrandParent().flash_status_message("Best .mat for %s%s selected" % (l,t))
-        self.bold_choice()
-    def bold_choice(self):
-        """Tek izabrani izbor pravi italic"""
-        for lc in self.listcontrols:
-            ChangeFont(lc,lc.GetItem(lc.GetFirstSelected()),wx_fontstyle = wx.FONTSTYLE_ITALIC)
 
 
     def ExitApp(self, event):

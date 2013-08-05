@@ -112,7 +112,7 @@ class ChoicesConverter(mvc.View):
     def annotate_agg(self,l,t):
         ls =self.model.bestmat_choices(l=l,t=t,which='therm')[0]
         sp =self.model.bestmat_choices(l=l,t=t,which='mc')[0]
-        return 'LS={}\nSP={}'.format(extract_int(ls),extract_int(sp))
+        return 'LS={}\nSP={}'.format(util.extract_int(ls),util.extract_int(sp))
 
 class Choices(mvc.Model):
     
@@ -187,8 +187,34 @@ class Choices(mvc.Model):
         
     def add_bestmat(self,l,t,mc,therm):
         self.log.debug('Adding bestmat!')
+        self.bestmats[l] = self.bestmats[l] if self.bestmats.has_key(l) else dict()
         self.bestmats[l][t] = {'mc':mc,'therm':therm}
         self.notify_observers()
+
+    def remove_bestmat(self,**kwargs):
+        """U slucaju da je na l
+        kliknuto, svi za taj l se brisu
+        i suprotnom samo odrejeni. Jako je
+        tight coupling izmedju ovih zbog ovog
+        kwargs. Mozda bude pravilo problema"""
+        l = kwargs['l']
+        t = kwargs['t']
+        try:
+            del self.bestmats[l][t]
+            if not self.bestmats[l]:
+                self.log.debug('Sad je prazno za taj l, brisem ga celog')
+                del self.bestmats[l]
+            self.log.debug('Brisem iz bestmata za l:{} i t:{}'.format(l,t))
+        except KeyError:
+            try:
+                self.bestmats.pop(l)
+                self.log.debug('Brisem iz bestmata za l:{}'.format(l))
+                self.log.debug('Sada bestmat izgleda ovako: {}'.format(self.bestmats))
+            except KeyError:
+                self.log.debug('Kliknuo korisnik na ne bestmat stvar. Idiot!')
+
+        self.notify_observers()
+            
 
     def add_alt(self,l,t,mc,therm,booli):
         self.alts[l][t] = {'mc':mc,'therm':therm,'booli':booli}
@@ -231,7 +257,7 @@ class Choices(mvc.Model):
             if not val:
                 break
             x = x[val]
-        self.log.debug("Vracam izbore :{} za l:{} t:{} mc:{} ".format(x,l,t,mc))
+        #self.log.debug("Vracam izbore :{} za l:{} t:{} mc:{} ".format(x,l,t,mc))
         return x.keys()
 
     def bestmat_choices(self,l=None,t=None,which='mc'):
@@ -314,9 +340,9 @@ class Choices(mvc.Model):
         self.log.debug("Loading {}".format(fname))
         with open(join(self.simdir,fname),mode="ab+") as hashf:
             try:
-                fcontent =  defaultdict(dict,pickle.load(hashf))
+                fcontent =  dict(pickle.load(hashf))
             except EOFError:
-                fcontent = defaultdict(dict)
+                fcontent = dict()
         return fcontent
         
     def unify(self):
@@ -488,10 +514,14 @@ class Choices(mvc.Model):
             #uvek cemo imati samo jednu kolonu, naravno
             print agg_mat
             agg_mat = sorted(agg_mat, key=lambda x: util.extract_int(x[1]))
-            dat,keys = zip(*agg_mat)
-            print 'dat,keys',dat,keys
-            agg_mat = pd.concat(dat, axis=1,keys=keys)
-            plot_data[l] = self.agg(agg_mat)
+            try:
+                dat,keys = zip(*agg_mat)
+            except:
+                util.show_error('No points','No points selected. Ask developer to disable draw button')
+            else:
+                print 'dat,keys',dat,keys
+                agg_mat = pd.concat(dat, axis=1,keys=keys)
+                plot_data[l] = self.agg(agg_mat)
 
         self.log.debug('plot data \n:%s' %plot_data)
         return plot_data
@@ -771,6 +801,12 @@ class FileManager(mvc.Controller):
     def add_bestmat(self):
         bestm = self.current_choices()
         self.model.add_bestmat(**bestm)
+
+    def remove_bestmat(self,**kwargs):
+        typ = kwargs.keys()[0]
+        self.match_stuff[typ]['choice'] = kwargs[typ]
+        ch = self.current_choices()
+        self.model.remove_bestmat(**ch)
 
     def current_choices(self):
         """Vraca trenutno selektovan izbor
