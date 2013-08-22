@@ -33,6 +33,12 @@ class ChoicesConverter(mvc.View):
         reverse = True if not t else False
         return sorted(self.model.choices(l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
 
+    def get_scat_title(self,l,t):
+      
+        therm = util.extract_int(self.model.bestmat_choices(l=l,t=t,which='therm')[0])
+        mc = util.extract_int(self.model.bestmat_choices(l=l,t=t,which='mc')[0])
+        return "T={:.4f}\nLS={}\n SP={}".format(float(util.extract_int(t))/10000.0,therm,mc)
+
     @counter
     @benchmark
     @logg
@@ -48,8 +54,7 @@ class ChoicesConverter(mvc.View):
             self.log.debug('uredjujem izgleda za :%s' %x)
             item = wx.ListItem()
             item.SetText(x)
-
-            if x in bestmat_ch:
+            if x in bestmat_ch and (mc is None or mc in self.model.bestmat_choices(l,t,'mc')):
                 self.log.debug('boldovao')
                 fdict['weight']=wx.FONTWEIGHT_BOLD
             
@@ -60,7 +65,10 @@ class ChoicesConverter(mvc.View):
             items.append(item)
         return items
 
-    def l_choices_agg(self):
+    def bmat_choices(self,l=None,t=None,which = 'mc'):
+        return sorted(self.model.bestmat_choices(l,t,which),key = lambda x:util.extract_int(x))
+        
+    def _l_choices_agg(self):
         return sorted(self.model.bestmat_ls(), key = lambda x:util.extract_int(x))
 
     def mag_choices_agg(self):
@@ -128,6 +136,7 @@ class Choices(mvc.Model):
         self.bestmats = None
         self.altmats = None
         self.mags = None
+
         
     def init_model(self):
         """Ovo se poziva tek kada se pokrene aplikacija
@@ -184,6 +193,18 @@ class Choices(mvc.Model):
         """
         self.files = self._map_filesystem()
         self.notify_observers()
+
+    def add_virtual_file(self,l,t,mc,therm,booli):
+        """Dodaje ovog kao izbor u bestmat, zatim ga
+        dodaje u izbore fajlova uz to da je prethodno izracunao
+        mat za njega. """
+        self.add_bestmat(l=l,t=t,mc=mc,therm=therm)
+        mat = self.create_mat(l,t,therm,booli=booli)
+        therm_ch = dict()
+        therm_ch[therm]=mat
+        self.files[l][t][mc].update(therm_ch)
+        self.notify_observers()
+
         
     def add_bestmat(self,l,t,mc,therm):
         self.log.debug('Adding bestmat!')
@@ -239,7 +260,7 @@ class Choices(mvc.Model):
         mc-ova"""
         self.log.debug("Vracam max mc")
         return util.extract_int(max(self.mc_choices(l,t),key =lambda x: util.extract_int(x)))
-
+        
     def get_mags(self):
         """Taj mags ce sadrzati i formule
         a i mozda ove stringove koji korespondiraju.
@@ -337,6 +358,8 @@ class Choices(mvc.Model):
         
 
     def load_choices(self,fname):
+        """Cita all fajlove za dato l ( gleda bestmatove)
+        i vraca ih u formatu pogodnom za plotovanje"""
         self.log.debug("Loading {}".format(fname))
         with open(join(self.simdir,fname),mode="ab+") as hashf:
             try:
@@ -344,6 +367,25 @@ class Choices(mvc.Model):
             except EOFError:
                 fcontent = dict()
         return fcontent
+
+    def load_sp_data(self,l,n=None):
+        """Ucitava podatke za isrcatavanje na
+        scatter panelu"""
+        all_data = dict()
+        for t,tmc in self.bestmats[l].items():
+            filename = join(self.simdir,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=tmc['therm']))
+            self.log.debug("Loading data from file %s" % filename)
+            # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
+            data = pd.read_table(filename,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
+            data.pop('seed')
+            self.log.debug("rows read: %s" % data.e.count())
+            data.set_index(np.arange(data.e.count()),inplace=True)
+            all_data[t] = data
+        
+        data = pd.concat(all_data,axis=0)
+        return data
+            
+        
         
     def unify(self):
         dirlist = [d for d in glob.glob(join(self.simdir,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
@@ -698,24 +740,23 @@ class FileManager(mvc.Controller):
         lchoices = self.view.l_choices()
         self.tp.set_l_choices(lchoices)
         #ovaj ce gledati iz bestmatdicta kako sta
-        self.ap.set_l_choices(self.view.l_choices_agg())
+        bmat_ch = self.view.bmat_choices()
+        self.ap.set_l_choices(bmat_ch)
         # samo ce morati da vidi ako ima, ako nema jbg
         # bice prazno
         self.ap.set_mag_choices(self.view.mag_choices_agg())
         self.refresh_matchooser()
-        #^^ u gui-ju ce se pozvati
-        #odredjeni event handleri koji
-        # ce ostatak updejtovati
-        # self.ap.set_l_choices(self.view.best_ls())
-        # self.sp.set_l_choices(self.view.best_ls())
-        # Malo ovo demetrin zakon rusi!!!
-
+        
+        ####SCATTER PANEL####
+        
+        self.sp.set_l_choices(bmat_ch)
+        
+        
     def refresh_matchooser(self):
         ch = self.current_choices()
         self.l_gen(**ch)
         self.t_gen(**ch)
         self.mc_gen(**ch)
-       # self.therm_gen(self.match_stuff['therm']['choice'])
         lch = self.view.matchooseritems()
         self.match_stuff['l']['result']=lch
         self.populate_matchooser()
@@ -755,7 +796,8 @@ class FileManager(mvc.Controller):
         uplimit = self.model.get_maxmc(l,t)
         self.tp.set_mc_range(uplimit)
 
-        
+
+    
     def get_plot_data(self,l,t,mc):
         """Vraca datafrejm za plotovanje"""
         return self.model.compose(l,t,mc)
@@ -795,7 +837,7 @@ class FileManager(mvc.Controller):
         lala = ['l','t','mc','therm']
         cmpr = lala.index(util.extract_name(choice)) if choice else -1
         pop = {key:self.match_stuff[key]['result'] for key in self.match_stuff if cmpr < lala.index(key)}
-        self.log.debug('population : {}'.format(pop))
+        #self.log.debug('population : {}'.format(pop))
         self.ap.reader.populateListControls(**pop)
 
     def add_bestmat(self):
@@ -846,6 +888,35 @@ class FileManager(mvc.Controller):
         self.add_bestmat()
 
     
+    #############SCATTER PANEL###################
+
+    def load_sp_data(self,l,n=None):
+        return self.model.load_sp_data(l,n)
+
+    def get_maxmc(self,l,t):
+        return self.model.get_maxmc(l,t)
+
+    def get_scat_title(self,l,t):
+        return self.view.get_scat_title(l,t)
+
+    def remove_faulty(self,l,t,booli):
+        """Za odredjeno l i t izracunava novi
+        mat, i stavlja ovaj izbor u sve moguce izbore
+        i stavlja taj izbor u izbor za bestmat, sto je
+        problem je l' posto ne postoji na disku teh teh
+        a kako bi se cuvalo, cuvalo bi se nekako brate
+        znaci samo taj booli treba da sacuvamo ali jbg
+        kad nije uniformno sa bestmatom mozda u taj dict
+        da ubacimo samo jos jedno polje hmmm hmmm i da ga
+        tako cuvamo. samo kad bi se to onda racunalo mmm
+        i kako bi se ucitalo pri pokretanju. moralo bi. ajd
+        za sada nek se lepo racuna i dodaje tamo gde treba
+        a posle cemo videti"""
+        mc=sum(booli)
+        prev_mc = len(booli)
+        mc = 'MC%s[%s]' % (mc,prev_mc)
+        therm = self.model.bestmat_choices(l,t,which='therm')[0]
+        self.model.add_virtual_file(l=l,t=t,mc=mc,therm=therm,booli=booli)
 
    
 

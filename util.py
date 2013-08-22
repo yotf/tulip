@@ -1,5 +1,7 @@
 import wx
 import re
+import numpy as np
+import logging
 def extract_int(string):
     """Vraca prvi int iz stringa
     nadam se

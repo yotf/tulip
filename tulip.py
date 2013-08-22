@@ -203,9 +203,6 @@ class ScatterPanel(wx.Panel):
    
         self.ax_3d.mouse_init()
         self.init_gui()
-      
-        if ():
-            self.load_data(l=self.cmb_l.GetValue())
 
     def selector_callback(self,eclick,erelease):
         x_begin = eclick.xdata
@@ -214,34 +211,14 @@ class ScatterPanel(wx.Panel):
             x_begin,x_end = x_end,x_begin
         # znaci bice true ako se ne nalazi u ovoj regiji
         self.log.debug("x_begin {} x_end {}".format(x_begin,x_end))
-        print self.magt
                        
         booli = [ not (mag>=x_begin and mag<=x_end) for mag in self.magt ]
-        self.log.debug("booli:\n",booli)
+        self.log.debug("booli:\n %s",booli)
         #znaci prosledjujemo mu za sta da generise mat
         curr_t = self.temprs.curr()
         curr_l = self.cmb_l.GetValue()
-        print "AGGPANEL.aggd\n", AggPanel.aggd[curr_l][curr_t]
-
-        mc = sum(booli)
-        print "Neodstranjenih rezultata ima:\n", mc
-        #!!!stavi ovde da bude statmat!!!
-        #!!! posto necemo da dupliciramo kod
-        #!!! tj, promenices statmat
-        therm = file_manager.best_therm(curr_l,curr_t)
-        print "Racuna za therm = ",therm
-        fname = file_manager.get_all_file(curr_l,curr_t)
-        mat = statmat.create_mat(fname,file_manager.get_alt_base(),therm,mc,booli)
-        newmatfname =join(self.simdir,file_manager.get_changed_mat_name(curr_l,curr_t,mc))
         
-        print "newmatfname:",newmatfname
-        mat.to_csv(newmatfname, sep=' ')
-        global repaired_dict
-        print "repaired dict",repaired_dict
-        file_manager.add_repaired(curr_l,curr_t,newmatfname)
-        print "repaired dict",repaired_dict
-        print "NEW MAT",mat
-        print "BEST MAT DICT",file_manager.bmatdict
+        self.controller.remove_faulty(curr_l,curr_t,booli)
         self.step("dummy",curr=True,booli=booli)
         
     
@@ -303,13 +280,10 @@ class ScatterPanel(wx.Panel):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         
         self.vbox.Add(self.canvas,1,wx.EXPAND)
-        value = "" if file_manager.bmatdict_empty() else file_manager.bmatdict.keys()[0]
         self.cmb_l = wx.ComboBox(self, size=(70, -1),
-                                 choices=sorted(file_manager.bmatdict.keys(),key=lambda x: int(x[1:])),
-                                 style=wx.CB_READONLY,
-                                 value=value)
 
-        self.reload_button = wx.Button(self, -1, 'Reload')
+                                 style=wx.CB_READONLY)
+
         self.draw_button = wx.Button(self, -1, '>', size=(40,-1))
         self.prev_button = wx.Button(self, -1, '<',size=(40,-1))
         self.save_button = wx.Button(self, -1, 'Save')
@@ -339,7 +313,6 @@ class ScatterPanel(wx.Panel):
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_ylim)
         self.Bind(wx.EVT_CHECKBOX,self.on_chk_lim, self.chk_xlim)
         self.Bind(wx.EVT_BUTTON, self.on_load_button, self.load_button)
-        self.Bind(wx.EVT_BUTTON, self.on_reload_button, self.reload_button)
         self.Bind(wx.EVT_BUTTON, self.step, self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.on_prev_press, self.prev_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
@@ -347,8 +320,6 @@ class ScatterPanel(wx.Panel):
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 
         self.hbox1.Add(self.cmb_l, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.reload_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.prev_button, border=5, flag=wx.BOTTOM | wx.TOP | wx.LEFT
                        | wx.ALIGN_CENTER_VERTICAL)
@@ -393,12 +364,22 @@ class ScatterPanel(wx.Panel):
         self.chk_mcs.SetLabel(self.chk_mc_txt % self.mc_txt.GetValue())
         self.firstn = self.mc_txt.GetValue()
         self.on_chk_mcs("dummy")
-        
+
+    def able_buttons(self,enable=False):
+        """u zavisnosti od enable
+        disabluje ili enabluje dugmice u sizeru"""
+        buttons = self.hbox1.GetChildren()
+        for b in buttons:
+            try:
+                b.GetWindow().Enable(enable)
+            except:
+                pass
 
     def on_chk_mcs(self,event):
         firstn = self.firstn if self.chk_mcs.IsChecked() else None
-        self.log.debug("Loading first {} sp for {}".format(firstn,None))
-        self.load_data(l=self.cmb_l.GetValue(),n = firstn,keep=True)
+        self.log.debug("Loading first {} sps".format(firstn))
+        self.data = self.controller.load_sp_data(l=self.cmb_l.GetValue(),n = firstn)
+        self.step('dummy',curr=True)
 
     def on_chk_lim(self,event):
         self.ylim = self.global_ylim if self.chk_ylim.IsChecked() else self.local_ylim
@@ -419,35 +400,15 @@ class ScatterPanel(wx.Panel):
         self.load_data(l=self.cmb_l.GetValue())
         self.setup_plot()
    
-    def load_data(self,l="L10",n=1000, keep=False):
-        """Ucitava podatke za animaciju"""
-        flist=glob.glob(join(self.simdir,"{}T*".format(l)))
-        self.all_data= dict()
-        
-        flist = [f for f in flist if os.path.isdir(f)]
-        self.log.debug("file list: %s " %flist)
+    def set_lims(self,l):
 
-        for f in file_manager.bmatdict[l].values():
-            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d+)THERM(\d+))" % l,f).groups()
-            print f
-            
-            self.log.debug("Loading data for tempearture {}".format(t))
-            self.curr_all = '%s.all' % fname
-            self.log.debug("Loading data from file %s" % self.curr_all)
-            # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
-            data = pd.read_table(self.curr_all,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
-            data.pop('seed')
-            self.log.debug("rows read: %s" % data.e.count())
-            data.set_index(np.arange(data.e.count()),inplace=True)
-            self.all_data[t] = data
-        
-        self.data = pd.concat(self.all_data,axis=0)
-        self.ts = self.all_data.keys()
         ylims = list()
         xlims = list()
-        for t in self.ts:
+        ts = set(zip(*self.data.index)[0])
+        for t in ts:
             self.ax_hist.cla()
             x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
+            print 'xyz',x,y,z
             magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
             self.ax_hist.hist(magt,bins=100)
             ylims.append(self.ax_hist.get_ylim())
@@ -461,25 +422,26 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Global maximum for {} is {}".format(l,self.global_ylim))
         self.log.debug("Global maximum for {} is {}".format(l,self.global_xlim))
             
-        self.mc_txt.SetRange(0,file_manager.get_maxmc(l))
-
-        key = lambda x: int(x[1:])
-        self.ts = sorted(self.ts,key = lambda x: int(x[1:]))
-        self.temprs = self.temprs if keep else twoway_cycle(self.ts)
+        # self.mc_txt.SetRange(0,self.controller.get_maxmc(l))
+        self.ts = sorted(ts,key = lambda x: int(x[1:]))
+        # self.temprs = self.temprs if keep else twoway_cycle(self.ts)
+        self.temprs = util.twoway_cycle(self.ts)
         self.setup_plot(curr=True)
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
         
-        print DEBUG,"self.ts reversed",self.ts
 
     def setup_plot(self,curr=False):
         "Initial drawing of scatter plot"
-        from matplotlib import cm
+        self.mc_txt
         self.step("dummy",curr=curr)
 
     
     def step(self,event, backwards=False,curr=False,booli=False):
         """Crta za sledece, proslo ili trenutno t"""
         t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
+        l = self.cmb_l.GetValue()
+
+        self.mc_txt.SetRange(0,self.controller.get_maxmc(l,t))
         self.log.debug("t u step-u je ispalo :{}".format(t))
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
         self.magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
@@ -509,9 +471,7 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Magt has {} elements".format(self.magt.count()))
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
-        therm = file_manager.best_therm(self.cmb_l.GetValue(),t)
-        sp = file_manager.best_mc(self.cmb_l.GetValue(),t)
-        title ="T={:.2f}\nLS={}\n SP={}".format((float(t[1:])/100),therm,sp)
+        title = self.controller.get_scat_title(l,t)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
@@ -531,11 +491,29 @@ class ScatterPanel(wx.Panel):
                
     def forceUpdate(self,event):
         self.scat.changed()
+
+    def set_l(self,l):
+        self.cmb_l.SetValue(l)
+        self.data = self.controller.load_sp_data(l,n=self.firstn)
+        self.set_lims(l)
+
+    ############## CONTROLLER INTERFACE ################
+
     
+    def set_l_choices(self,lch):
+        """stavlja izbore za l, i stavlja
+        maksimalno mc za izabrano l """
+        self.cmb_l.SetItems(lch)
+        try:
+            l = lch[0]
+        except:
+            self.cmb_l.SetValue('--')
+            self.able_buttons(False)
+        else:
+            self.set_l(l)
+            self.able_buttons(True)
 
-
-
-            
+                            
 class ThermPanel(wx.Panel):
     
     def __init__(self, parent,controller):
@@ -944,10 +922,17 @@ class AggPanel(wx.Panel):
         self.lbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
 
+        self.point_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
+                                    minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
+        
+        self.point_slider.Enable(False)
+
+        
         self.xylbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
         self.lbl_slider.Bind(wx.EVT_SCROLL,self.on_slider_scroll)
         self.xylbl_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
+        self.point_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
         self.chk_ann = wx.CheckBox(self,-1,"Annotate", size=(-1,30))
         self.chk_ann.Enable(False)
         self.Bind(wx.EVT_CHECKBOX, self.on_chk_ann, self.chk_ann)
@@ -967,6 +952,8 @@ class AggPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
         self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.point_slider,border=5,flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
         self.toolhbox.Add(self.toolbar)
@@ -1024,33 +1011,6 @@ class AggPanel(wx.Panel):
 
     def on_alt_button(self,event):
         raise NotImplementedError
-        
-    # def agregate(self,bmatdict):
-    #     #!!! hm,dobro ove choices resi
-    #     #kad budes resila ono sa lazy evaluation
-    #     #hmmmhhhhh
-    #     agregate.main(dict(bmatdict),self.simdir)
-
-    #     aggd = load_agg()
-    #     # stavljamo ovde kao staticku variablu
-    #     # valjda je ovo ok
-    #     self.L_choices = zip(*aggd.columns)[0]
-    #     print self.L_choices
-        
-    #     self.L_choices = list(set(self.L_choices))
-    #     print self.L_choices
-        
-    #     self.mag_choices = list(aggd.index)
-    #     self.cmb_L.SetItems(self.L_choices)
-    #     self.cmb_L.SetValue(self.L_choices[0])
-    #     self.cmb_mag.SetItems(self.mag_choices)
-    #     self.cmb_mag.SetValue(self.mag_choices[0])
-    #     self.draw_button.Enable(True)
-    #     #ovome ce moci da se pristupi i preko self i to
-    #     # samo sto ako ga prebrisemo, nece biti dobro
-    #     # samo nam je potrebno da ponovo izracunamo za jedno
-    #     # L i T mat i to je to
-    #     AggPanel.aggd = aggd;
 
     def on_xyslider_scroll(self,e):
         fontsize = e.GetEventObject().GetValue()
@@ -1147,10 +1107,23 @@ class AggPanel(wx.Panel):
             
     def on_pick(self,event):
         print type(event)
-        print event.artist.set_visible(False)
+        print help(event)
+        try:
+            x,y = event.artist.xy
+
+        except:
+            pass
+        else:
+            print x,y
+            t =  'T%s' % int(x*10000)
+            l = self.cmb_L.GetValue()
+            print t,l
+            #therm = 
+        if event.mouseevent.button == 1:
+            print event.artist.set_visible(False)
+        elif event.mouseevent.button ==3:
+            pass
         self.canvas.draw()
-        print type(event.artist)
-        print event
 
         
     def mouse_moved(self,event):
@@ -1183,6 +1156,7 @@ class AggPanel(wx.Panel):
             self.cmb_L.SetValue(lch[0])
         except:
             self.cmb_L.SetValue('--')
+        
 
     def set_mag_choices(self,mch):
         self.cmb_mag.SetItems(mch)
@@ -1199,12 +1173,11 @@ class TabContainer(wx.Notebook):
         self.controller  = controller
         tp = ThermPanel(self,controller)
         ag = AggPanel(self,controller)
-        # scat = ScatterPanel(self,controller)
-        scat = "dummy"
+        scat = ScatterPanel(self,controller)
         self.controller.init_gui(tp,ag,scat)
         self.AddPage(tp, 'Therm')
         self.AddPage(ag, 'Aggregate')
-        # self.AddPage(scat,"Scatter")
+        self.AddPage(scat,"Scatter")
 
     def flash_status_message(self,message):
         self.GetParent().flash_status_message(message,3000)
