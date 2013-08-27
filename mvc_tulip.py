@@ -29,32 +29,32 @@ class ChoicesConverter(mvc.View):
         pass
         # self.update_gui()
 
-    def choices(self,l=None,t=None,mc=None):
+    def choices(self,dir_=None,l=None,t=None,mc=None):
         reverse = True if not t else False
-        return sorted(self.model.choices(l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
+        return sorted(self.model.choices(dir_=dir_,l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
 
-    def get_scat_title(self,l,t):
+    def get_scat_title(self,dir_,l,t):
       
-        therm = util.extract_int(self.model.bestmat_choices(l=l,t=t,which='therm')[0])
-        mc = util.extract_int(self.model.bestmat_choices(l=l,t=t,which='mc')[0])
+        therm = util.extract_int(self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0])
+        mc = util.extract_int(self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0])
         return "T={:.4f}\nLS={}\n SP={}".format(float(util.extract_int(t))/10000.0,therm,mc)
 
     @counter
     @benchmark
     @logg
-    def matchooseritems(self,l=None,t=None,mc=None):
+    def matchooseritems(self,dir_,l=None,t=None,mc=None):
         items = list()
         # ako je prosledjen mc onda zelimo therm
         which = 'therm' if mc else 'mc'
-        bestmat_ch = self.model.bestmat_choices(l,t,which)
+        bestmat_ch = self.model.bestmat_choices(dir_,l,t,which)
         self.log.debug('bestmatch %s' %bestmat_ch)
-        for x in self.choices(l,t,mc):
+        for x in self.choices(dir_,l,t,mc):
             fdict = {'pointSize':10,'family':wx.FONTFAMILY_DEFAULT,
                      'style':wx.FONTSTYLE_NORMAL,'weight':wx.FONTWEIGHT_NORMAL}
             self.log.debug('uredjujem izgleda za :%s' %x)
             item = wx.ListItem()
             item.SetText(x)
-            if x in bestmat_ch and (mc is None or mc in self.model.bestmat_choices(l,t,'mc')):
+            if x in bestmat_ch and (mc is None or mc in self.model.bestmat_choices(dir_,l,t,'mc')):
                 self.log.debug('boldovao')
                 fdict['weight']=wx.FONTWEIGHT_BOLD
             
@@ -65,8 +65,8 @@ class ChoicesConverter(mvc.View):
             items.append(item)
         return items
 
-    def bmat_choices(self,l=None,t=None,which = 'mc'):
-        return sorted(self.model.bestmat_choices(l,t,which),key = lambda x:util.extract_int(x))
+    def bmat_choices(self,dir_=None,l=None,t=None,which = 'mc'):
+        return sorted(self.model.bestmat_choices(dir_,l,t,which),key = lambda x:util.extract_int(x))
         
     def _l_choices_agg(self):
         return sorted(self.model.bestmat_ls(), key = lambda x:util.extract_int(x))
@@ -83,43 +83,20 @@ class ChoicesConverter(mvc.View):
         ok, ajd lepo radi ovaj view. Pa radim sve lepo, samo eto preskacem stvari
         koje mislim da ne treba sada. tj, da, prioritizujem, sta hoces"""
         return self.model.mag_choices()
-    def l_choices(self):
-        """Vraca sve moguce L-ove u sim_dir
-        valjda ovaj zna za model pa moze tako
-        da mu gettuje stvari. tj, zna kako izgleda
-        e pa nisam bas sigurna JBGt
-        Jaoj moram pogledati od ovoga sve pre nego
-        sto radim ovo. Nema smisla jednostavno. 
-        """
-        ls = sorted(self.model.l_choices(),key=lambda x: util.extract_int(x))
-        
-        return ls
-
-    def t_choices(self,l):
-        """Vraca sortirane sve moguce t-ove za prosledjeno L"""
-        ts =  sorted(self.model.t_choices(l), key=lambda x:util.extract_int(x))
-        return ts
 
     def mc_choices(self,l,t):
         """Vraca sve raspolozive mc-ove, formatirane za prikaz. Oni ujedno i odredjuju moguce
         plotove za therm panel. Ovo podize pitanje da li je bolje da
         se gleda za koje mc-ove postoje koji thermovi, i obrnuto"""
-        mc_choices = self.model.mc_choices(l,t)
+        mc_choices = self.model.choices(l=l,t=t)
         
         sorted_mcs =  sorted(mc_choices,key=lambda x: util.extract_int(x))
         return ["{mc} [{tmc}]".format(mc=mc,tmc=self.model.therm_count(l,t,mc)) for mc in sorted_mcs ]
 
-    def therm_choices(self,l,t,mc):
-        """Vraca sve thermove za odredjeno l,t i mc,
-        sortirane u obrnutom redosledu
-        """
-        therms = self.model.therm_choices(l,t,mc)
-        self.log.debug("Vracam  pogled thermova")
-        return sorted(therms,key=lambda x: util.extract_int(x),reverse=True)
 
-    def annotate_agg(self,l,t):
-        ls =self.model.bestmat_choices(l=l,t=t,which='therm')[0]
-        sp =self.model.bestmat_choices(l=l,t=t,which='mc')[0]
+    def annotate_agg(self,dir_,l,t):
+        ls =self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0]
+        sp =self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0]
         return 'LS={}\nSP={}'.format(util.extract_int(ls),util.extract_int(sp))
 
 class Choices(mvc.Model):
@@ -134,8 +111,8 @@ class Choices(mvc.Model):
         mvc.Model.__init__(self)
         self.log = logging.getLogger("Choices")
         self.bestmats = None
-        self.altmats = None
         self.mags = None
+        self.files = None
 
         
     def init_model(self):
@@ -153,13 +130,13 @@ class Choices(mvc.Model):
         # mogu da se ukucaju formule. to bi bilo tako sto ce se zadati
         # pisati velicine i aritmeticki operator, najnormalnije ce sse pisat
         self.mags = [
+        'susc',
+        'Tcap',
         'M1avg',
         'M2avg',
         'M4avg',
-        'susc',
         'Eavg',
         'E2avg',
-        'Tcap',
         'U'        
         ]
 
@@ -167,13 +144,6 @@ class Choices(mvc.Model):
         self.log.debug("Vracam mag choices : %s" %self.mags)
         return self.mags
 
-
-    def choices(self):
-        ch = dict()
-        ch['l'] = self.l_choices()
-        ch['t'] = self.t_choices()
-        ch['mc'] = self.mc_choices()
-        ch['therm'] = self.therm_choices()        
 
 
     def set_simdir(self,simdir):
@@ -194,37 +164,40 @@ class Choices(mvc.Model):
         self.files = self._map_filesystem()
         self.notify_observers()
 
-    def add_virtual_file(self,l,t,mc,therm,booli):
+    def add_virtual_file(self,dir_,l,t,mc,therm,booli):
         """Dodaje ovog kao izbor u bestmat, zatim ga
         dodaje u izbore fajlova uz to da je prethodno izracunao
         mat za njega. """
-        self.add_bestmat(l=l,t=t,mc=mc,therm=therm)
-        mat = self.create_mat(l,t,therm,booli=booli)
+        self.add_bestmat(dir_=dir_,l=l,t=t,mc=mc,therm=therm)
+        mat = self.create_mat(dir_,l,t,therm,booli=booli)
         therm_ch = dict()
         therm_ch[therm]=mat
-        self.files[l][t][mc].update(therm_ch)
+        self.files[dir_][l][t][mc].update(therm_ch)
         self.notify_observers()
 
         
-    def add_bestmat(self,l,t,mc,therm):
+    def add_bestmat(self,dir_,l,t,mc,therm):
         self.log.debug('Adding bestmat!')
-        self.bestmats[l] = self.bestmats[l] if self.bestmats.has_key(l) else dict()
-        self.bestmats[l][t] = {'mc':mc,'therm':therm}
+        self.bestmats[dir_] = self.bestmats[dir_] if self.bestmats.has_key(dir_) else dict()
+        self.bestmats[dir_][l]=self.bestmats[dir_][l] if self.bestmats[dir_].has_key(l) else dict()
+        self.bestmats[dir_][l][t] = {'mc':mc,'therm':therm}
         self.notify_observers()
 
+    @logg
     def remove_bestmat(self,**kwargs):
         """U slucaju da je na l
         kliknuto, svi za taj l se brisu
         i suprotnom samo odrejeni. Jako je
         tight coupling izmedju ovih zbog ovog
         kwargs. Mozda bude pravilo problema"""
+        dir_= kwargs['dir_']
         l = kwargs['l']
         t = kwargs['t']
         try:
-            del self.bestmats[l][t]
-            if not self.bestmats[l]:
+            del self.bestmats[dir_][l][t]
+            if not self.bestmats[dir_][l]:
                 self.log.debug('Sad je prazno za taj l, brisem ga celog')
-                del self.bestmats[l]
+                del self.bestmats[dir_][l]
             self.log.debug('Brisem iz bestmata za l:{} i t:{}'.format(l,t))
         except KeyError:
             try:
@@ -236,30 +209,30 @@ class Choices(mvc.Model):
 
         self.notify_observers()
             
-
-    def add_alt(self,l,t,mc,therm,booli):
-        self.alts[l][t] = {'mc':mc,'therm':therm,'booli':booli}
-
-    def add_curr(self,l,t,mc,therm,booli=False):
-        """Moram videti kako ce ovo funkcionisati,
-        posto moram uzimati i iz bestmata i sve"""
-        raise NotImplementedError
         
-    def add_mc(self,l,t,mc):
+    def add_mc(self,mc,**kwargs):
         """Prima za koje l t da generise novo
         mc, i stavlja ga u sturkturu podataka
         """
-        therms = self.therm_choices(l,t, self.get_static_mcs(l,t)[0])
+
+        statmc = self.get_static_mcs(**kwargs)[0]
+        kwargs['mc']=statmc
+        therms = self.choices(**kwargs)
         tdict = {key:None for key in therms}
         self.log.debug("adding mc %s" % tdict )
-        self.files[l][t]["MC%s" %mc]=tdict
-        self.notify_observers()
+        kwargs['mc']="MC%s" % mc
+        self.add_to_map(tdict = tdict,**kwargs)
 
-    def get_maxmc(self,l,t):
+
+    def add_to_map(self,dir_,l,t,mc,tdict):
+        self.files[dir_][l][t][mc]=tdict
+        self.notify_observers()
+        
+    def get_maxmc(self,dir_,l,t):
         """Vraca makisamalan BROJ
         mc-ova"""
         self.log.debug("Vracam max mc")
-        return util.extract_int(max(self.mc_choices(l,t),key =lambda x: util.extract_int(x)))
+        return util.extract_int(max(self.choices(dir_,l,t),key =lambda x: util.extract_int(x)))
         
     def get_mags(self):
         """Taj mags ce sadrzati i formule
@@ -268,11 +241,12 @@ class Choices(mvc.Model):
         doteruj"""
         return self.mags
 
-    def choices(self,l=None,t=None,mc=None):
+    @logg
+    def choices(self,dir_=None,l=None,t=None,mc=None):
         """Nemoj da prosledjujes van redosleda argumenta
         tj, nemoj da si prosledila therm ako nemas
         mc!"""
-        ls = [l,t,mc]
+        ls = [dir_,l,t,mc]
         x = self.files
         for val in ls:
             if not val:
@@ -281,14 +255,14 @@ class Choices(mvc.Model):
         #self.log.debug("Vracam izbore :{} za l:{} t:{} mc:{} ".format(x,l,t,mc))
         return x.keys()
 
-    def bestmat_choices(self,l=None,t=None,which='mc'):
+    def bestmat_choices(self,dir_=None,l=None,t=None,which='mc'):
         """
         Ocekuje dobar format. ne znam kako to da omogucim
         uvek. sta bi ovaj rekao. oni treba da komuniciraju
         i dogovore format. hmh. mi kazemo sta hocemo a oni
         izkomuniciraju
         """
-        ls = [l,t,which]
+        ls = [dir_,l,t,which]
         x = self.bestmats
         for val in ls:
             if not val:
@@ -303,50 +277,14 @@ class Choices(mvc.Model):
         return [x] if isinstance(x,basestring) else x
         
         
-    def currmat_choices(self):
-        #!!!TODO
-        return []
-        
-    def bestmat_ls(self):
-        """Vraca sve L-ove iz bestmata"""
-        self.log.debug("returning l's from bestmat:{}".format(self.bestmats.keys()))
-        return self.bestmats.keys()
-        
-    def bestmat_ts(self,l):
-        """Vraca sve t-ove iz bestmata za odredjeno l"""
-        self.log.debug("Vracam tove iz bestmata za l %s " %l)
-        return self.bestmats[l].keys()
-        
-    def bestmat_mcs(self,l,t):
-        return self.bestmats[l][t].keys()
-
-    def bestmat_therms(self,l,t,mc):
-        return self.bestmats[l][t][mc]
-
-    def altmat_ls(self):
-        """Vraca sve L-ove iz altmata"""
-        self.log.debug("returning l's from altmat")
-        return self.altmats.keys()
-        
-    def altmat_ts(self,l):
-        """Vraca sve t-ove iz altmata za odredjeno l"""
-        self.log.debug("Vracam tove iz altmata za l %s " %l)
-        return self.altmats[l].keys()
-        
-    def altmat_mcs(self,l,t):
-        return self.altmats[l][t].keys()
-
-    def altmat_therms(self,l,t,mc):
-        return self.altmats[l][t][mc].keys()
-        
-    def get_static_mcs(self,l,t):
+    def get_static_mcs(self,**kwargs):
         """
         Vraca samo one mc-ove koji se nalaze
         na disku. ili imaju isti format kao ti na disku
         jbg
         """
-        statmcs = [ mc for mc in self.mc_choices(l,t) if self.statmc_regex.match(mc)]
-        self.log.debug("Vracam staticke mc-ove:{} za l:{} t:{}".format(statmcs,l,t))
+        statmcs = [ mc for mc in self.choices(**kwargs) if self.statmc_regex.match(mc)]
+        self.log.debug("Vracam staticke mc-ove:{} za dir:{dir_} l:{l} t:{t}".format(statmcs,**kwargs))
         return statmcs
         
     def load_state(self):
@@ -354,12 +292,8 @@ class Choices(mvc.Model):
         ga je korisnik ostavio. Sto se tice
         izbora samo, doduse"""
         self.bestmats = self.load_choices("bestmat.dict")
-        self.altmats = self.load_choices("altmat.dict")
-        
 
     def load_choices(self,fname):
-        """Cita all fajlove za dato l ( gleda bestmatove)
-        i vraca ih u formatu pogodnom za plotovanje"""
         self.log.debug("Loading {}".format(fname))
         with open(join(self.simdir,fname),mode="ab+") as hashf:
             try:
@@ -368,12 +302,15 @@ class Choices(mvc.Model):
                 fcontent = dict()
         return fcontent
 
-    def load_sp_data(self,l,n=None):
+    def load_sp_data(self,dir_,l,n=None):
         """Ucitava podatke za isrcatavanje na
-        scatter panelu"""
+        scatter panelu, i vraca u formatu pogodnom
+        za plotovanje"""
         all_data = dict()
-        for t,tmc in self.bestmats[l].items():
-            filename = join(self.simdir,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=tmc['therm']))
+        print self.bestmats[dir_][l].items()
+        for t,tmc in self.bestmats[dir_][l].items():
+            print self.simdir,dir_,l,t,tmc['therm']
+            filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=tmc['therm']))
             self.log.debug("Loading data from file %s" % filename)
             # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
             data = pd.read_table(filename,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
@@ -385,7 +322,6 @@ class Choices(mvc.Model):
         data = pd.concat(all_data,axis=0)
         return data
             
-        
         
     def unify(self):
         dirlist = [d for d in glob.glob(join(self.simdir,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
@@ -401,11 +337,11 @@ class Choices(mvc.Model):
         ovog therm panela da vidi neko da ne plotuje nebulozne
         stvari. znaci ovo ce biti u nekim viticastim zagradama
         iza broja mc-ova"""
-        therms = self.therm_choices(l,t,mc)
+        therms = self.choices(l,t,mc)
         self.log.debug("Vracam broj thermova:{} za mc:{}".format(len(therms),mc))
         return len(therms)
 
-    def create_mat(self,l,t,therm,mc=None,booli=False):
+    def create_mat(self,dir_,l,t,therm,mc=None,booli=False):
         """Cita all fajlove i obradjuje ih statisticki. U slucaju
         da je prosledjen mc to znaci da smo prethodno dodali u onaj
         choices dictionary odgovarajuc mc, i da sad radimo za njega
@@ -416,7 +352,7 @@ class Choices(mvc.Model):
         """
 
         mc = util.extract_int(mc) if mc else None
-        filename = join(self.simdir,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=therm))
+        filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=therm))
         
         self.log.debug("Creating mat from file {} for first {} rows".format(filename,mc))
         data = pd.read_table(filename,nrows=mc,delim_whitespace=True, names= ['seed', 'E','Mx','My','Mz'])
@@ -466,7 +402,7 @@ class Choices(mvc.Model):
             'stdMeanM4',
             ]
         values = pd.Series([
-            therm,
+            util.extract_int(therm),
             Eavg,
             stdE,
             stdMeanE,
@@ -485,25 +421,25 @@ class Choices(mvc.Model):
             ], index=val_names)
         return values
 
-
-    def compose(self,l,t,mc):
+    @logg
+    def compose(self,dir_,l,t,mc):
         """Modifikuje odgovarajuce elemente u self.files [sa izracunatim matovima],
         ako je potrebno, i vraca strukturu pogodnu za plotovanje"""
         data = dict()
-        self.log.debug("Composing for l:{} t:{} mc:{}".format(l,t,mc))
-        self.log.debug("Idem kroz {}".format(self.files[l][t][mc].items()))
-        for therm,mat in self.files[l][t][mc].items():
+        self.log.debug("Composing for dir_:{} l:{} t:{} mc:{}".format(dir_,l,t,mc))
+        self.log.debug("Idem kroz {}".format(self.files[dir_][l][t][mc].items()))
+        for therm,mat in self.files[dir_][l][t][mc].items():
             # ne znam da li ce biti problem sto menjam ovaj dictionary
             # dok iteriram kroz njega???
             self.log.debug("Trenutni mat je %s" %mat)
             therm_int = util.extract_int(therm)
             try:
-                self.files[l][t][mc][therm] = mat if mat.any() else "weird"
+                self.files[dir_][l][t][mc][therm] = mat if mat.any() else "weird"
             except:
-                self.files[l][t][mc][therm] = self.create_mat(l,t,therm_int,mc)
+                self.files[dir_][l][t][mc][therm] = self.create_mat(dir_,l,t,therm,mc)
             else:
                 self.log.debug("Vec je izracunat mat")
-            data[therm_int] = self.files[l][t][mc][therm]
+            data[therm_int] = self.files[dir_][l][t][mc][therm]
         df = pd.DataFrame(data)
         out = { 'abs(cv(E1))':abs(df.ix['stdMeanE'] / df.ix['Eavg']),
             'cv(E2)':df.ix['stdMeanE2']/df.ix['E2avg'],
@@ -515,26 +451,19 @@ class Choices(mvc.Model):
         self.log.debug("Vracam za plotovanje : \n %s" %out)
         return out
 
-    def get_plot_dict(self,mat=False,alt=False):
+    def get_plot_dict(self,dir_):
         """Vraca dictionary koji
         sadrzi podatke o tome sta
         ce se agregirate, tj. sta ce
         se plotovati. Moze samo matove,
         moze samo altove, a moze i trenutno
         izabrane"""
-        from itertools import chain
-        from copy import deepcopy
-        
-        if mat:
-            return self.bestmats
-        if alt:
-            raise NotImplementedError
-        return self.bestmats
+        return self.bestmats[dir_]
         
     @logg
-    def agregate(self,alt=False,mat=False):
+    def agregate(self,dir_,alt=False,mat=False):
         plot_data = dict()
-        for_plotting = self.get_plot_dict()
+        for_plotting = self.get_plot_dict(dir_)
         for l,tdict in for_plotting.items():
             agg_mat = list()
             for t,val in tdict.items():
@@ -544,10 +473,10 @@ class Choices(mvc.Model):
                 except:
                     booli = False
 
-                self.log.debug('checking whether calculated : %s' %self.files[l][t][mc][therm])
-                if self.files[l][t][mc][therm] is None:
-                    self.files[l][t][mc][therm]=self.create_mat(l,t,therm)
-                data_mat = self.files[l][t][mc][therm]
+                self.log.debug('checking whether calculated : %s' %self.files[dir_][l][t][mc][therm])
+                if self.files[dir_][l][t][mc][therm] is None:
+                    self.files[dir_][l][t][mc][therm]=self.create_mat(dir_,l,t,therm)
+                data_mat = self.files[dir_][l][t][mc][therm]
                 self.log.debug(type(data_mat))
                 data_mat.rename({'THERM': 'T'},inplace=True)
                 self.log.debug('TTTTT :%s',t)
@@ -571,7 +500,6 @@ class Choices(mvc.Model):
     @logg
     def agg(self,agg_mat):
         T = agg_mat.ix['T'] / 10000.0
-        print T
         susc = (agg_mat.ix['M2avg'] - agg_mat.ix['M1avg'] ** 2) / T
 
         Tcap = (agg_mat.ix['E2avg'] - agg_mat.ix['Eavg'] ** 2) / T ** 2
@@ -608,65 +536,35 @@ class Choices(mvc.Model):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
         u simdir-u i izvlaci l,t,i therm.
         """
-        choices = defaultdict(dict)
-        mc_to_all = defaultdict(list)
-        for root,dirs,files in os.walk(self.simdir):
-            ltmatch = self.lt_regex.search(root)
-            if not ltmatch:
-                #u slucaju da je folder drugog formata
-                continue
-            l,t = ltmatch.groups()
-            matched = [f for f in files if self.all_regex.match(f)]
-            mct_choices = defaultdict(dict)
-            for all_ in matched:
-                therm = self.all_regex.match(all_).groupdict()['therm']
-                #znaci za svaki therm ce dodavati u prikacenu listu
-                # mc-ove tako sto ce otvarati all fajl i brojati linije
-                mc = "MC{sps}".format(sps=len(open(join(root,all_)).readlines()))
-                mct_choices[mc][therm] = None
-            choices[l][t] = mct_choices
-        return choices
-
-    def l_choices(self):
-        """
-        Vraca sve moguce L-ove
-        u fajl sistemu. tj, ako postoji
-        taj direktorijum - bice u vracenoj
-        listi
-        """
-        return self.files.keys()
-        
-    def t_choices(self,l):
-        """
-        Vraca sve moguce t-ove za prosledjeno
-        l, tj ako postoji ime foldera odgovarajuce
-        to t ce biti u vracenoj listi
-        """
-        t_choices = self.files[l].keys()
-        self.log.debug("Vracam t izbore:{} za l:{} ".format(t_choices,l))
-        return t_choices
-
-    def mc_choices(self,l,t):
-        """
-        Vraca sve mc-ove za odredjeno l i t,
-        ako postoji .all fajl sa tim brojem linija
-        taj mc ce biti u vracenoj listi
-        """
-        mc_choices = self.files[l][t].keys()
-        self.log.debug("Vracam mc izbore : {} za l:{} i t:{}".format(mc_choices,l,t))
-        return mc_choices
-
-    def therm_choices(self,l,t,mc):
-        """
-        Vraca sve moguce thermove
-        za prosledjeno l t i mc,
-        ako postoji u fajl sistemu
-         bice vracen u listi
-        """
-        therms = self.files[l][t][mc].keys()
-        self.log.debug("Vracam thermove : {} za l:{} t:{} mc:{}".format(therms,l,t,mc))
-        return therms
-
+        filess = dict()
+        dirs_ = [dir_ for dir_ in os.listdir(self.simdir) if os.path.isdir(join(self.simdir,dir_))]
+        self.log.debug('directories in sim folder: %s' % dirs_)
+        for dir_ in dirs_:
+            path = join(self.simdir,dir_)
+            choices = defaultdict(dict)
+            mc_to_all = defaultdict(list)
+            self.log.debug('Currently mapping directory: %s' %dir_)
+            for root,dirs,files in os.walk(path):
+                #self.log.debug('checking if match: %s' %root)
+                ltmatch = self.lt_regex.search(root)
+                if not ltmatch:
+                    #u slucaju da je folder drugog formata
+                    continue
+                l,t = ltmatch.groups()
+                matched = [f for f in files if self.all_regex.match(f)]
+                mct_choices = defaultdict(dict)
+                for all_ in matched:
+                    therm = self.all_regex.match(all_).groupdict()['therm']
+                    #znaci za svaki therm ce dodavati u prikacenu listu
+                    # mc-ove tako sto ce otvarati all fajl i brojati linije
+                    mc = "MC{sps}".format(sps=len(open(join(root,all_)).readlines()))
+                    mct_choices[mc][therm] = None
+                choices[l][t] = mct_choices
+            if choices:
+                filess[dir_]=choices
+                
+        self.log.debug('mapped fsystem: %s' % filess)
+        return filess
 
 class FileManager(mvc.Controller):
     """Ova klasa ce brinuti o postojacim l,t,mc, i therm
@@ -737,27 +635,26 @@ class FileManager(mvc.Controller):
         """Ako je promenjen model
         updejtuju se svi elementi gui-ja
         """
-        lchoices = self.view.l_choices()
-        self.tp.set_l_choices(lchoices)
+        dir_choices = self.view.choices()
+        self.tp.set_choices(**{'dir_':dir_choices})
         #ovaj ce gledati iz bestmatdicta kako sta
-        bmat_ch = self.view.bmat_choices()
-        self.ap.set_l_choices(bmat_ch)
+        self.ap.set_dir_choices(dir_choices)
+        
         # samo ce morati da vidi ako ima, ako nema jbg
         # bice prazno
         self.ap.set_mag_choices(self.view.mag_choices_agg())
         self.refresh_matchooser()
-        
         ####SCATTER PANEL####
+        bmat_ch = self.view.bmat_choices()
+        self.sp.set_dir_choices(bmat_ch)
         
-        self.sp.set_l_choices(bmat_ch)
-        
-        
+    @logg
     def refresh_matchooser(self):
         ch = self.current_choices()
         self.l_gen(**ch)
         self.t_gen(**ch)
         self.mc_gen(**ch)
-        lch = self.view.matchooseritems()
+        lch = self.view.matchooseritems(dir_=self.ap_dir)
         self.match_stuff['l']['result']=lch
         self.populate_matchooser()
         
@@ -767,7 +664,7 @@ class FileManager(mvc.Controller):
     
     ######### THERM PANEL #############
                        
-    def add_mc(self,l,t,mc):
+    def add_mc(self,mc,**kwargs):
         """Dodaje mc u choices, thermove ce morati da
         preuzme od prvog suseda koji nije 'specijalan'
         Hm, verovatno je pogresno sto iz modela prikazujem
@@ -775,47 +672,76 @@ class FileManager(mvc.Controller):
         i to a ovde da ih hvatam. hmm
          """
         try:
-            self.model.add_mc(l,t,mc)
+            self.model.add_mc(mc,**kwargs)
         except IndexError:
             util.show_error("Simdir error","An empty folder in your simulation directory??")
             
     def on_l_select_tp(self,l):
         """Kada korisnik selektuje l u thermpanelu,
         namestaju se odredjeni t"""
-        tch = self.view.t_choices(l)
+        tch = self.view.choices(l)
         self.tp.set_t_choices(tch)
+
+    @logg
+    def tp_on_select(self,**kwargs):
+        """prosledjuju se sve sto je selektovano.
+        gleda koja je prva kontrola koja nije prosledjena
+        i u nju stavlja rezultat. oslanja se na sekv. cmbord"""
         
-    def on_t_select(self,l,t):
-        """Kada korisnik u thermpanelu izabere
-        t ova metoda se pozove i popune se odredjeni
-        mc izbori
-        """
-        mch = self.view.mc_choices(l,t)
-        self.tp.set_mc_choices(mch)
+        choices = self.view.choices(**kwargs)
         self.tp.reset_chkboxes()
-        uplimit = self.model.get_maxmc(l,t)
-        self.tp.set_mc_range(uplimit)
+        for cmb in self.tp.cmbord:
+            self.log.debug('Nalazim prvi izbor koji nije prosledjen, trenutni: %s' %cmb)
+            try:
+                dir_ = kwargs['dir_']
+                l = kwargs['l']
+                t = kwargs['t']
+            except:
+                pass
+            else:
+                uplimit = self.model.get_maxmc(dir_,l,t)
+                self.tp.set_mc_range(uplimit)
+            if cmb not in kwargs.keys():
+                self.log.debug('Ovaj nije: %s' %cmb)
+                self.tp.set_choices(**{cmb:choices})
+                return
+
+        util.show_error('What the select?','You selected %s, what\'s that?' %kwargs)
+        
+
+      
+      
 
 
     
-    def get_plot_data(self,l,t,mc):
+    def get_plot_data(self,dir_,l,t,mc):
         """Vraca datafrejm za plotovanje"""
-        return self.model.compose(l,t,mc)
+        return self.model.compose(dir_,l,t,mc)
     
         
 
     ########################################
     ########### AGGREGATE PANEL ############
 
-    def get_agg_plot_data(self):
-        return self.model.agregate()
+    def get_agg_plot_data(self,dir_):
+        return self.model.agregate(dir_)
 
-    def annotate_agg(self, l,t):
+    def annotate_agg(self,dir_, l,t):
         """
         Vraca anotaciju za odredjeno l i t
         """
-        return self.view.annotate_agg(l,t)
+        return self.view.annotate_agg(dir_,l,t)
 
+    @logg
+    def ap_dir_selected(self,val,changed):
+        self.ap.set_l_choices(self.view.bmat_choices(dir_=val))
+        self.ap_dir = val
+        if changed:
+            self.l_gen()
+            self.refresh_matchooser()
+    
+
+        
 
     ########################################
     ######## READER INTERFACE ##############
@@ -832,29 +758,32 @@ class FileManager(mvc.Controller):
         if typ!='therm':
             self.populate_matchooser(choice = choice)
 
+    @logg
     def populate_matchooser(self,choice = None):
         self.log.debug('populating matchooser, choice made: %s' %choice)
         lala = ['l','t','mc','therm']
         cmpr = lala.index(util.extract_name(choice)) if choice else -1
         pop = {key:self.match_stuff[key]['result'] for key in self.match_stuff if cmpr < lala.index(key)}
-        #self.log.debug('population : {}'.format(pop))
+        self.log.debug('population : {}'.format(pop))
         self.ap.reader.populateListControls(**pop)
 
     def add_bestmat(self):
         bestm = self.current_choices()
-        self.model.add_bestmat(**bestm)
+        self.model.add_bestmat(self.ap_dir,**bestm)
 
     def remove_bestmat(self,**kwargs):
         typ = kwargs.keys()[0]
         self.match_stuff[typ]['choice'] = kwargs[typ]
         ch = self.current_choices()
+        ch['dir_'] = self.ap_dir
         self.model.remove_bestmat(**ch)
 
     def current_choices(self):
         """Vraca trenutno selektovan izbor
         u bestmat chooseru """
         return {key:self.match_stuff[key]['choice'] for key in self.match_stuff}
-        
+
+    @logg
     def l_gen(self,**kwargs):
         """L izbor prima za parametar
         stavlja ga medju atribut choices,
@@ -862,9 +791,10 @@ class FileManager(mvc.Controller):
         i zove sve ostale funkcije za atribute
         zato sto jbg, ne znam kako drugcije
         """
-        lch = kwargs['l']
+        dir_ = self.ap_dir
+        lch = kwargs['l'] if 'l' in kwargs.keys() else None
         self.match_stuff['l']['choice'] = lch
-        self.match_stuff['t']['result'] = self.view.matchooseritems(l=lch) if lch else []
+        self.match_stuff['t']['result'] = self.view.matchooseritems(dir_=dir_,l=lch) if lch else []
         self.t_gen(**kwargs)
 
     def t_gen(self,**kwargs):
@@ -872,7 +802,7 @@ class FileManager(mvc.Controller):
         lch = self.match_stuff['l']['choice']
         self.log.debug('generating mc results for choice %s' %tch)
         self.match_stuff['t']['choice'] = tch
-        self.match_stuff['mc']['result'] = self.view.matchooseritems(l=lch,t=tch) if tch else []
+        self.match_stuff['mc']['result'] = self.view.matchooseritems(dir_=self.ap_dir,l=lch,t=tch) if tch else []
         self.mc_gen(**kwargs)
 
     def mc_gen(self,**kwargs):
@@ -881,7 +811,7 @@ class FileManager(mvc.Controller):
         tch = self.match_stuff['t']['choice']
         self.log.debug('generating therm results for choice %s' %mch)
         self.match_stuff['mc']['choice'] = mch
-        self.match_stuff['therm']['result'] = self.view.matchooseritems(l = lch,t=tch,mc = mch) if mch else []
+        self.match_stuff['therm']['result'] = self.view.matchooseritems(dir_=self.ap_dir,l = lch,t=tch,mc = mch) if mch else []
                                     
     def therm_gen(self,**kwargs):
         self.match_stuff['therm']['choice'] = kwargs['therm'] 
@@ -890,16 +820,20 @@ class FileManager(mvc.Controller):
     
     #############SCATTER PANEL###################
 
-    def load_sp_data(self,l,n=None):
-        return self.model.load_sp_data(l,n)
+    def sp_on_dir_select(self,val):
+        lch = self.view.bmat_choices(dir_=val)
+        self.sp.set_l_choices(lch)
 
-    def get_maxmc(self,l,t):
-        return self.model.get_maxmc(l,t)
+    def load_sp_data(self,dir_,l,n=None):
+        return self.model.load_sp_data(dir_,l,n)
 
-    def get_scat_title(self,l,t):
-        return self.view.get_scat_title(l,t)
+    def get_maxmc(self,dir_,l,t):
+        return self.model.get_maxmc(dir_,l,t)
 
-    def remove_faulty(self,l,t,booli):
+    def get_scat_title(self,dir_,l,t):
+        return self.view.get_scat_title(dir_,l,t)
+
+    def remove_faulty(self,dir_,l,t,booli):
         """Za odredjeno l i t izracunava novi
         mat, i stavlja ovaj izbor u sve moguce izbore
         i stavlja taj izbor u izbor za bestmat, sto je
@@ -915,123 +849,10 @@ class FileManager(mvc.Controller):
         mc=sum(booli)
         prev_mc = len(booli)
         mc = 'MC%s[%s]' % (mc,prev_mc)
-        therm = self.model.bestmat_choices(l,t,which='therm')[0]
-        self.model.add_virtual_file(l=l,t=t,mc=mc,therm=therm,booli=booli)
+        therm = self.model.bestmat_choices(dir_,l,t,which='therm')[0]
+        self.model.add_virtual_file(dir_=dir_,l=l,t=t,mc=mc,therm=therm,booli=booli)
+
+    
 
    
 
-    # def on_select_listctr(self,selected):
-        
-        
-        
-                       
-    # def get_alt(self):
-    #     """Pravi dictionary koji uzima
-    #     sve vrednosti koje postoje u alt dictu
-    #     i prelepljuje ih preko vrednosti iz bmatdicta
-    #     i to vraca"""
-    #     import copy
-    #     altm = copy.deepcopy(self.bmatdict)
-    #     print "REPAIRED DICT:\n", self.repdict
-    #     for l,val in self.repdict.items():
-    #         for t,path in val.items():
-    #             altm[l][t] = path
-    #     return altm
-        
-    # def get_all_file(self,l,t):
-    #     """Vraca all fajl za zeljeni bmat, za prosledjeno l i t"""
-    #     base = self.get_base(l,t)
-    #     self.log.debug("get_all_file:vracam %s" % ("%s.all" % base))
-    #     return "%s.all" % base
-
-    # def get_base(self,l,t):
-    #     """Vraca osnovu imena u obliku L[0-9]*T[0-9]*THERM[0-9]*
-    #     iz bmatdicta za prosledjeno l i t
-    #     """
-    #     extr_regex.search(self.bestmatd[l][t]).groupdict()["base"]
-
-                       
-    # def get_maxmc(self,l,t):
-    #     """
-    #     Vraca max mc za odredjeno l i t
-    #     ne znam da li nam to treb
-    #     """
-    #     return max(self.mc_choices(l,t))
-
-    # def add_bestmat(self,l,t,therm,mc):
-    #     self.bmatdict.bestmat(l,t,therm,mc)
-        
-            
-
-
-    
-  
-    # def get_changed_mat_name(self,l,t,new_mc):
-    #     """Ovo je zarad izbacivanja 'nepozeljnih' rezultata
-    #     prosledjuju mu se l i t, i novi mc. Vraca novo ime"""
-    #     return "{base}[MC{mc}].mat".format(base=self.get_base(l,t), mc=new_mc)
-                                         
-    # def _load_bmatdict(self):
-    #     """Ucitava bmatdict iz memorije"""
-    #     with open(join(self.simdir,"mat.dict"),mode="ab+") as hashf:
-    #        try:
-    #            fcontent =  defaultdict(dict,pickle.load(hashf))
-    #        except EOFError:
-    #            fcontent = defaultdict(dict)
-    #     print "bmatdict",fcontent
-
-    # def clean_mat_dict(self):
-    #     """Gleda koji unosi u dict nemaju vrednost
-    #     tj. samo su dodati zbog defaultdict svojstva
-    #     i skida ih. Ovo ce se samo desiti u mat chooseru
-    #     tako da ovo tada samo treba da zovem.Nisam sigurna
-    #     da ce mi biti potreban"""
-    #     # ovo ce proci posto mi ne iteriramo kroz sam dict
-    #     # a skidamo sa samog dicta. ova lista items nece biti
-    #     # vise up to date, ali to nam nije bitno, posto nije
-    #     # ciklicna
-    #     self.log.debug("cleaning bmatdict : %s" % self.bmatdict)
-    #     for key,value in self.bmatdict.items():
-    #         if not value:
-    #             self.bmatdict.pop(key)
-    #             self.log.debug("removing {}.aplot".format(key))
-    #             try:
-    #                 os.remove(join(self.simdir,'{}.aplot'.format(key)))
-    #             except Exception:
-    #                 self.log.warning("Exception!!!")
-    #     self.serialize_mat()
-
-
-    
-
-        
-#     def add_to_mat_dict(self,l,t,therm,mc):
-#         """Dodaje u dictionary 'reprezentativnih' matova, ispisuje poruku
-#         u status baru, i cuva novo stanje best_mat_dict-a na disk"""
-#         best_mat = self.get_files(l=l,t=t,ext="*%s%s*.mat" %(therm,mc))
-#         # ne bi smelo da ima fajlova u okviru jednog foldera sa istim MC i THERM
-#         assert len(best_mat)==1
-#         self.bmatdict[l][t] = best_mat[0]
-#         self.log.debug("added %s to bmatdict : %s " %(best_mat[0], self.bmatdict))
-#     #    self.parent.flash_status_message("Best .mat for %s%s selected" % (l,t))
-#         #mhm, nisam sigurna nisam sigurna nista. al ajd. nekako cu popraviti sve
-#         self.clean_mat_dict()
-#         #onda mi ne treba ovde serialize
-# #        self.serialize_mat()
-
-#     def remove_from_bmatdict(self,l,t):
-#         """Brise zapis za prosledjeno l i t iz bestmatdicta"""
-#         self.log.debug("Brisem zapis za l:{} t:{} i bmatdicta".format(l,t))
-#         del self.bmatdict[l][t]
-#         self.serialize_mat()
-#     def serialize_mat(self):
-#         with open(join(self.simdir,"mat.dict") ,"wb") as matdictfile:
-#             pickle.dump(dict(self.bmatdict),matdictfile)
-#     #matDictEmpty
-#     def bmatdict_empty(self):
-#         """ne znam da li mi je ova f-ja relevantna
-#         sad kad imam ovaj clean mm"""
-#         return not self.bmatdict.keys()
-#         # for key in self.best_mat_dict.keys():
-#         #     if self.best_mat_dict[key]:
-#         #         return False

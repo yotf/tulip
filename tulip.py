@@ -52,7 +52,7 @@ import util
 #tako treba valjda i sa importima, nem pojma
 # to jos vidi
 import tulip
-PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(tulip.__file__))
+#PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(tulip.__file__))
 #!!!Ove napravi kao dictionaryje. i nesto da mogu da se kombinuju
 #nem pojma. da moze da se menja, znaci neka struktura koja ce se u zavisnosti
 #od parametra ce advancovati jedan cycle++, od bilo koji od ovih
@@ -61,102 +61,6 @@ PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(tulip.__file__))
 fmt_strings = ['g+-','r*-','bo-','y+-']
 fmt_cycle = itertools.cycle(fmt_strings)
 
-
-    
-        
-class UserChoices():
-    """
-    Ova klasa ce voditi racuna
-    o svemu sto korisnik izabere,
-    imace tri dicta koji ce predstavljati
-    alt, curr i mat, i jos jedan dict
-    koji ce se prosledjivati agregate-u.
-    On ce sadrzati izracunate zeljene l-t kombinacije.
-    Znaci agregateu trebaju u memoriji ti rezultati racunanja
-    Mogu prvobitno da updejtujem taj dict sa matom, a onda
-    po potrebi ga updejtujem sa ovima. Svaki od ova tri ce imati
-    potrebne informacije, ovo ce biti samo plitka kopija, referenca
-    a mozda i nece, ali moze ako hoce
-    """
-    def __init__(self):
-        self.log = self.logging.getLogger("UserChoices")
-        
-    def currmat(self,l,t,mc,therm):
-        """Dodaje u izbore za curr,
-        ovi izbori ce se koristiti pri
-        pokretanju slajdera
-        """
-        self.log.debug("Neko pomera slajder, l:{} t:{} mc:{} therm:{}".format(l,t,mc,therm))
-        self.currmat[l][t][mc]=therm
-
-    def bestmat(self,l,t,mc,therm):
-        """
-        Dodaje izbor bestmata. Oni se koriste
-        pri pritisku na dugme draw
-        """
-        self.log.debug("Dodajem u bestmat, l:{} t:{} mc:{} therm:{}".format(l,t,mc,therm))
-        self.bestmat[l][t][mc]=therm
-
-    def altmat(self,l,t,mc,therm):
-        """
-        Dodaje u izbore za altmat,
-        pre ovoga se dodao mc sa zvezdicom
-        u glavne choices. mc sa zvezdicom
-        se i prosledjuje ovde
-        Hm,samo ovo nam sada ne treba
-        posto ce korisnik stavljati u bestmat
-        te altove. Hmh, ne znam koliko mi je to
-        pametno. Ne znam sada sta ce se desiti
-        ako izabere ove alternativne i koje izabere
-        pa dobro pri izabiru treba proveriti goddddamamamfkdafljslk
-        taman sam mislila da je sve ok.
-        Mozda da imam informaciju o tome od kog mc-a je napravljen
-        kao u viticastim. i onda ce onaj search valjda doci do prvog
-        rezultata. I kad hoce da vrati, nek samo onda izabere to sto je
-        u zagradi jbg, sta da mu radim. Samo ipak, sta onda cuvati u pm
-        pa da cuvamo to jbg, da cuvamo to, pa ne mozemo da cuvamo to posto
-        bmatdict nije komplikovan. Znaci sta samo treba Pa jedino da proveravamo
-        kad se izabere da li je sa zvezdicom ili nije i onda da to cuvamo u odredjen
-        ali kako onda da jbm li ga. Mozda da imam taj curr_dict. Mozda da se tu izabere
-        i onda da ostaje u currdictu dok neko ne klikne na save as best mat. Znaci
-        bira se u bestmatchooseru kako se sta stigne i bolduje se sve to i stagod
-        i tu moze biti dugme, save as bestmat, i onda ako izabere covek drugcije
-        znaci neke alternativne i ove sa mc* to ce se crtati, ali nece biti
-        u bestmat, i onda ako se gleda. Znaci u trenutku kada korisnik klikne
-        choose as bestmat, sve iz curr_dicta
-        """
-        self.log.debug("Neko pomera slajder, l:{} t:{} mc:{} therm:{}".format(l,t,mc,therm))
-        self.altmat[l][t][mc]=therm 
-
-    def best_therm(self,l,t):
-        """Ovaj ce nam trebati tokom anotacija
-        mozda treba da hmm, mozda treba iz onog
-        trenutnog da izvlacim za anotacije.
-        Hmh, mozda da nemam ovaj curr dict
-        kao poseban nego da curr bude ono
-        sto ce se trenutno crtati. sto znaci
-        da ce se menjati ako vucemo slajdere
-        a ako smo izabrali bestmatove ce biti
-        oni, a ako smo izabrali alt matove onda
-        ce biti oni kompletno. tj bice bestmat + oni
-        hurr hurr. samo sto onda se ne mozemo  vracati na
-        ove kako nam je volja. """
-        return self.bestmat[l][t].therm
-        
-
-    def curr_therm(self,l,t):
-        """Vraca onaj therm koji je trenutno
-        iscrtan"""
-        return self.currmat[l][t].therm
-
-    def best_mc(self,l,t):
-        """Vraca mc iz bestmat-a za
-        prosledjeno l i t"""
-        return self.bestmat[l][t].mc
-    def curr_mc(self,l,t):
-        """Vraca trenutno iscrtani mc
-        za odredjeno l i t"""
-        return self.currmat[l][t].mc
         
         
 class ScatterPanel(wx.Panel):
@@ -217,8 +121,9 @@ class ScatterPanel(wx.Panel):
         #znaci prosledjujemo mu za sta da generise mat
         curr_t = self.temprs.curr()
         curr_l = self.cmb_l.GetValue()
+        dir_ = self.cmb_dirs.GetValue()
         
-        self.controller.remove_faulty(curr_l,curr_t,booli)
+        self.controller.remove_faulty(dir_,curr_l,curr_t,booli)
         self.step("dummy",curr=True,booli=booli)
         
     
@@ -281,8 +186,10 @@ class ScatterPanel(wx.Panel):
         
         self.vbox.Add(self.canvas,1,wx.EXPAND)
         self.cmb_l = wx.ComboBox(self, size=(70, -1),
-
                                  style=wx.CB_READONLY)
+
+        self.cmb_dirs = wx.ComboBox(self, size=(70, -1),
+                                         style=wx.CB_READONLY)
 
         self.draw_button = wx.Button(self, -1, '>', size=(40,-1))
         self.prev_button = wx.Button(self, -1, '<',size=(40,-1))
@@ -317,8 +224,12 @@ class ScatterPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.on_prev_press, self.prev_button)
         self.Bind(wx.EVT_BUTTON, self.save_figure, self.save_button)
         self.Bind(wx.EVT_COMBOBOX,self.on_selectl,self.cmb_l)
+        self.Bind(wx.EVT_COMBOBOX,self.on_select_dir,self.cmb_dirs)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 
+
+        self.hbox1.Add(self.cmb_dirs, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_l, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.prev_button, border=5, flag=wx.BOTTOM | wx.TOP | wx.LEFT
@@ -377,8 +288,9 @@ class ScatterPanel(wx.Panel):
 
     def on_chk_mcs(self,event):
         firstn = self.firstn if self.chk_mcs.IsChecked() else None
+        dir_ = self.cmb_dirs.GetValue()
         self.log.debug("Loading first {} sps".format(firstn))
-        self.data = self.controller.load_sp_data(l=self.cmb_l.GetValue(),n = firstn)
+        self.data = self.controller.load_sp_data(dir_=dir_,l=self.cmb_l.GetValue(),n = firstn)
         self.step('dummy',curr=True)
 
     def on_chk_lim(self,event):
@@ -394,6 +306,11 @@ class ScatterPanel(wx.Panel):
         self.cmb_l.SetItems(choices)
         self.cmb_l.SetValue(choices[0])
         self.load_data(l=choices[0])
+
+    def on_select_dir(self,event):
+        vl = self.cmb_dirs.GetValue()
+        self.controller.sp_on_dir_select(vl)
+        
         
     def on_selectl(self,event):
         print "Loading data for {}...".format(self.cmb_l.GetValue())
@@ -438,10 +355,11 @@ class ScatterPanel(wx.Panel):
     
     def step(self,event, backwards=False,curr=False,booli=False):
         """Crta za sledece, proslo ili trenutno t"""
+        dir_ = self.cmb_dirs.GetValue()
         t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
         l = self.cmb_l.GetValue()
 
-        self.mc_txt.SetRange(0,self.controller.get_maxmc(l,t))
+        self.mc_txt.SetRange(0,self.controller.get_maxmc(dir_,l,t))
         self.log.debug("t u step-u je ispalo :{}".format(t))
         x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
         self.magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
@@ -471,7 +389,7 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Magt has {} elements".format(self.magt.count()))
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
-        title = self.controller.get_scat_title(l,t)
+        title = self.controller.get_scat_title(dir_,l,t)
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
@@ -492,13 +410,33 @@ class ScatterPanel(wx.Panel):
     def forceUpdate(self,event):
         self.scat.changed()
 
+    def on_selectl(self,event):
+        val = self.cmb_l.GetValue()
+        self.set_l(val)
+
     def set_l(self,l):
         self.cmb_l.SetValue(l)
-        self.data = self.controller.load_sp_data(l,n=self.firstn)
+        dir_ = self.cmb_dirs.GetValue()
+        self.data = self.controller.load_sp_data(dir_,l,n=self.firstn)
         self.set_lims(l)
 
     ############## CONTROLLER INTERFACE ################
 
+    def set_dir_choices(self,dirch):
+        self.cmb_dirs.SetItems(dirch)
+        try:
+            dir_ = dirch[0]
+        except:
+            self.cmb_dirs.SetValue('--')
+        else:
+            self.cmb_dirs.SetValue(dir_)
+            self.controller.sp_on_dir_select(dir_)
+
+
+
+
+        
+        
     
     def set_l_choices(self,lch):
         """stavlja izbore za l, i stavlja
@@ -515,6 +453,10 @@ class ScatterPanel(wx.Panel):
 
                             
 class ThermPanel(wx.Panel):
+
+    cmbord = ['dir_','l','t','mc']
+    cmbsize=[150,70,70,130]
+    plts = ['M1', 'M2', 'M4']
     
     def __init__(self, parent,controller):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -535,6 +477,8 @@ class ThermPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.on_draw_button,self.draw_button)
         self.Bind(wx.EVT_BUTTON, self.on_save_button,self.btn_savesep)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button, self.clear_button)
+
+        
         self.chk_l = wx.CheckBox(self,-1,"L", size=(-1, 30))
         self.chk_t = wx.CheckBox(self,-1,"T",size=(-1, 30))
         self.chk_mc = wx.CheckBox(self,-1,"SP",size=(-1, 30))
@@ -558,35 +502,14 @@ class ThermPanel(wx.Panel):
         self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_t)
         self.Bind(wx.EVT_CHECKBOX,self.draw_legend,self.chk_mc)
         
-        plot_choices = ['M1', 'M2', 'M4']
-        self.cmb_mags = wx.ComboBox(self, size=(100, -1),style=wx.CB_READONLY,
-                                    choices = plot_choices, value= plot_choices[0])
-        self.cmb_L = wx.ComboBox(self, size=(70, -1),
-                                 style=wx.CB_READONLY,
-                                 value = '--'
-                                 )
-        self.cmb_T = wx.ComboBox(self, size=(100, -1),style=wx.CB_READONLY, value='--')
+        
 
-        self.cmb_mcs = wx.ComboBox(self, size=(150, -1),
-                choices=[], value='--')
-        self.Bind(wx.EVT_COMBOBOX, self.on_l_select, self.cmb_L)
-        self.Bind(wx.EVT_COMBOBOX, self.on_t_select, self.cmb_T)
-        self.Bind(wx.EVT_COMBOBOX, self.on_select_mcs,
-                  self.cmb_mcs)
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
         
         self.hbox1.AddSpacer(20)
-   
-        self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.cmb_T, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.cmb_mcs, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.cmb_mags, border=5, flag=wx.ALL
-                       | wx.ALIGN_CENTER_VERTICAL)
-
-
+                
+        self.make_combos()
+        
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
 
@@ -626,6 +549,30 @@ class ThermPanel(wx.Panel):
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.SetSizer(self.vbox)
         self.vbox.Fit(self)
+
+
+    def make_combos(self):
+        self.cmb_dict = dict()
+        for name,size in zip(self.cmbord,self.cmbsize):
+            combo = wx.ComboBox(self, size=(size, -1),
+                                style=wx.CB_READONLY,
+                                value = '--',
+                                name=name
+            )
+            self.cmb_dict[name]=combo
+
+            self.Bind(wx.EVT_COMBOBOX, self.on_select, combo)
+                
+            self.hbox1.Add(combo, border=5, flag=wx.ALL
+                               | wx.ALIGN_CENTER_VERTICAL)
+
+
+        self.cmb_mags = wx.ComboBox(self, size=(100, -1),style=wx.CB_READONLY,
+                                    choices = self.plts, value= self.plts[0],name='mags')
+        
+        self.hbox1.Add(self.cmb_mags, border=5, flag=wx.ALL
+                               | wx.ALIGN_CENTER_VERTICAL)
+
 
 
     def on_save_button(self,event):
@@ -697,61 +644,83 @@ class ThermPanel(wx.Panel):
         """Pravi rezultat manje preciznosti
         tj, za prvih n mc-ova"""
         firstnmcs =int( self.mc_txt.GetValue())
-        l = self.cmb_L.GetValue()
-        t = self.cmb_T.GetValue()
-        self.controller.add_mc(l,t,firstnmcs)
+        vals = self.get_cmbvals('t')
+        self.controller.add_mc(firstnmcs,**vals)
 
 
     ### CONTROLER INTERFACE ####
 
-    def set_l_choices(self,lch):
+        
+    def set_choices(self,**kwargs):
+        """Prosledjuje se jedan choice
+        koji god i setuje se onda sta treba
+        """
+        assert len (kwargs.keys())==1
+        name,items =kwargs.items()[0]
+        cmb = self.cmb_dict[name]
+        self.log.debug('Setting items for %s' %name)
+        cmb.SetItems(items)
+
+        curr_val = cmb.GetValue()
         try:
-            value = lch[0] if self.cmb_L.GetValue()=='--' else self.cmb_L.GetValue()
+            value = items[0] if curr_val=='--' or curr_val not in items else curr_val
         except IndexError:
-            util.show_error("Simdir error", "No l choices! Wrong simulation directory?")
+            util.show_error("Simdir error", "No %s choices! Wrong simulation directory?" %name)
         else:
-            self.cmb_L.SetItems(lch)
-            self.cmb_L.SetValue(value)
-            self.on_l_select()
+            cmb.SetValue(value)
+            self.on_select(**kwargs)
+        
+            
 
-    def on_l_select(self, *args):
-        l = self.cmb_L.GetValue()
-        self.controller.on_l_select_tp(l)
-    
-    def set_t_choices(self,ts):
-        self.cmb_T.SetItems(ts)
+    def on_select(self, event=None,**kwargs):
+        """
+        Znaci uzimamo id od objekta koji je
+        izazvao event i onda uzimamo name-ove
+        Kwargsovi koje prima su sledeci:
+           dir-->nad direktorijumi koji sadrzi L-ove
+           l--> koji l je selektovan
+           t--> temperature
+           mc--> simulation paths
+           samo jedno od te 4 sme da se prosledi, jbg
+        ako je mc onda nista ne uradi, za sada
+        """
+        
         try:
-            value = ts[0]
-        except IndexError:
-            util.show_error("Simdir error","No t choices! Something wrong with simdir?")
+            self.log.debug("event: %s" % event)
+            name = event.GetEventObject().GetName()
+        except Exception as e:
+            print e
+            assert len(kwargs.keys())==1
+            
+            name = kwargs.keys()[0]
+        if name=='mc':
+            return
+        self.log.debug('getting vals for combo by name: %s' %name)
+        vals = self.get_cmbvals(name)
+        self.log.debug('Vrednosti za generisanje sledeceg komba: %s' % vals)
+        self.controller.tp_on_select(**vals)
+
+
+    def get_cmbvals(self,name):
+        """Vraca dictionary vrednosti
+        svih comboboxova koji su potrebni
+        za odredjivanje sledeceg. tj, ako je
+        l selektovano onda se prosledjuje njegova
+        vrednost i vrednost g-a"""
+        try:
+            val_dict = {k:combo.GetValue() for k,combo in self.cmb_dict.items() if self.cmbord.index(name)>=self.cmbord.index(k)}
+        except ValueError as ve:
+            util.show_error('ValueError',str(ve))
         else:
-            self.cmb_T.SetValue(value)
-            self.on_t_select()
-
-    def on_t_select(self):
-        l = self.cmb_L.GetValue()
-        t = self.cmb_T.GetValue()
-        self.controller.on_t_select(l,t)
-
+            return val_dict
+        
+      
     def set_mc_range(self,range_):
         self.mc_txt.SetRange(0,range_)
         
-    def set_mc_choices(self,mch):
-        self.cmb_mcs.SetItems(mch)
-        try:
-            value = mch[0]
-        except IndexError:
-            util.show_error("Simdir error","No mc choices! Something wrong with simdir?")
-        else:
-            self.cmb_mcs.SetValue(value)
-
     def get_mc(self):
         """Vraca selektovan mc"""
-        return re.search(r'MC(\d+)', self.cmb_mcs.GetValue()).group(0)
-
-    def on_select_mcs(self, event):
-        """Nista se ne desava """
-        self.log.debug("On select mcs")
+        return re.search(r'MC(\d+)', self.cmb_dict['mc'].GetValue()).group(0)
         
     def init_plot(self):
         self.dpi = 100
@@ -807,19 +776,20 @@ class ThermPanel(wx.Panel):
         self.canvas.draw()
         
     def on_draw_button(self,event):
-        mc = self.get_mc()
-        l = self.cmb_L.GetValue()
-        t  = self.cmb_T.GetValue()
         self.log.debug("on_draw_button")
-        self.data = self.controller.get_plot_data(l,t,mc)
+        plt = {name:cmb.GetValue() for name,cmb in self.cmb_dict.items()}
+        plt['mc'] = self.get_mc()
+        self.data = self.controller.get_plot_data(**plt)
         self.log.debug("Loaded data for plot:\n %s" % self.data)
         self.draw_plot()
         
     def draw_legend(self,event):
         lbl_mc = self.get_mc()
-        lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
-        lbl_t ="%s=%.4f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/100)
-        lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
+        lbl_mc ="%s=%s" %("SP",util.extract_name(lbl_mc).upper())
+        lbl_t ="%s=%.4f" %(util.extract_name(self.cmb_dict['t'].GetValue()).upper(),float(util.extract_int(self.cmb_dict['t'].GetValue())/10000.0))
+        l = self.cmb_dict['l'].GetValue()
+        namel = util.extract_name(l).upper()
+        lbl_l ="%s=%s"% (namel,util.extract_int(l))
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
         tchk  = self.chk_t.IsChecked()
@@ -878,29 +848,39 @@ class ThermPanel(wx.Panel):
         for c in self.checkboxes:
             c.Enable(True)
 
+    
+    @property
     def checkboxes(self):
         return [ self.chk_l,self.chk_t,self.chk_mc]
     
 class AggPanel(wx.Panel):
-
     name_dict = {'susc':r"$\mathcal{X}$",'Tcap':'$C_V$','T':'$T$',
                  'M1avg':r"$\langle{M}\rangle$",'M2avg':r"$\langle{M^2}\rangle$",'M4avg':r"$\langle{M^4}\rangle$",'Eavg':r"$\langle{H}\rangle$",'E2avg':r"$\langle{H^2}\rangle$",'U':r'$U_{L}$'}
+    
     def __init__(self, parent,controller):
         self.controller = controller
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.log= logging.getLogger('AggPanel')
         self.init_plot()
-        self.init_gui()        
+        self.init_gui()
         
     def init_gui(self):
-        
+
+        self.cmb_dirs =  wx.ComboBox(
+            self,
+            -1,
+            size=(150, -1),
+            style=wx.CB_READONLY,
+            value='--',
+            )
         
         self.cmb_L = wx.ComboBox(
             self,
             -1,
             size=(150, -1),
             style=wx.CB_READONLY,
+            value='--'
             )
          
         self.cmb_mag = wx.ComboBox(
@@ -910,7 +890,7 @@ class AggPanel(wx.Panel):
             style=wx.CB_READONLY,
             )
         self.draw_button = wx.Button(self, -1, 'Draw')
-      
+        self.Bind(wx.EVT_COMBOBOX, self.on_select_dir, self.cmb_dirs)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
         self.clear_button = wx.Button(self, -1, 'Clear')
         self.clear_button.Enable(True)
@@ -941,7 +921,9 @@ class AggPanel(wx.Panel):
         # self.hbox1.Add(self.agregate_btn, border=5, flag=wx.ALL
         #                | wx.ALIGN_CENTER_VERTICAL)
         # self.hbox1.Add(self.alt_btn, border=5, flag=wx.ALL
-                    #   | wx.ALIGN_CENTER_VERTICAL) 
+                    #   | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.Add(self.cmb_dirs, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(20)
@@ -1025,9 +1007,10 @@ class AggPanel(wx.Panel):
     
     def on_draw_button(self, event):
         L_select = self.cmb_L.GetValue()
+        dir_ = self.cmb_dirs.GetValue()
         mag_select = self.cmb_mag.GetValue()
         lbl = "$%s_{%s}$" %(L_select[0],L_select[1:])
-        agg_data = self.controller.get_agg_plot_data()
+        agg_data = self.controller.get_agg_plot_data(dir_)
         
         self.ax_agg.plot(agg_data[L_select].ix['T'],
                          agg_data[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none',picker=5)
@@ -1038,7 +1021,7 @@ class AggPanel(wx.Panel):
         mag_values = agg_data[L_select].ix[mag_select]
         for ti,m,tr in zip(index_ts,mag_values,real_ts):
             print 'ti:{} m:{} tr:{}'.format(ti,m,tr)
-            text = self.controller.annotate_agg(L_select,ti)
+            text = self.controller.annotate_agg(dir_,L_select,ti)
             self.annotations.append(self.ax_agg.annotate(text,xy=(tr,m),xytext=(tr,m), visible=False,fontsize=8,picker = 5))
 
         self.chk_ann.SetValue(False)
@@ -1094,7 +1077,6 @@ class AggPanel(wx.Panel):
         ########### MATPLOTLIB EVENTS ##########
 
     def on_key_press(self,event):
-
         if event.key == 'x':
             try:
                 self.canvas.mpl_disconnect(self.mte)
@@ -1111,8 +1093,8 @@ class AggPanel(wx.Panel):
         try:
             x,y = event.artist.xy
 
-        except:
-            pass
+        except Exception as e:
+            print e
         else:
             print x,y
             t =  'T%s' % int(x*10000)
@@ -1144,19 +1126,38 @@ class AggPanel(wx.Panel):
         else:
             self.xy_ann.set_visible(False)
         self.canvas.draw()
-    def exited_ax(self,event):
-        pass
+
         ########################################
         ######### CONTROLER INTERFACE ##########
 
 
+    def set_dir_choices(self,dirch):
+        self.cmb_dirs.SetItems(dirch)
+        try:
+            curr_val = self.cmb_dirs.GetValue()
+            val = dirch[0] if  curr_val=='--' or curr_val not in dirch else curr_val
+        except IndexError as e:
+            self.cmb_dirs.SetValue('--')
+        except Exception as e:
+            util.show_error('Some error!',str(e))
+
+        else:
+            self.cmb_dirs.SetValue(val)
+
+            self.on_select_dir(val=val,changed=curr_val!=val)
+
+    def on_select_dir(self,event=None,val=None,changed=True):
+        if event!=None:
+            val = event.GetEventObject().GetValue()
+        self.controller.ap_dir_selected(val,changed)
+            
     def set_l_choices(self,lch):
         self.cmb_L.SetItems(lch)
         try:
-            self.cmb_L.SetValue(lch[0])
+            val = self.cmb_L.GetValue()
+            self.cmb_L.SetValue(lch[0] if val=='--' or not val or val not in lch else val)
         except:
             self.cmb_L.SetValue('--')
-        
 
     def set_mag_choices(self,mch):
         self.cmb_mag.SetItems(mch)
@@ -1244,117 +1245,8 @@ class GraphFrame(wx.Frame):
 
 
 
-    
-
-
-# def compose(ltdir,mcsteps="\d+",save=False):
-#     """Po thermovima redja vrednosti iz matova,
-#     ako treba da gledamo samo za odredjen broj mc-ova, onda
-#     prosledjujemo parametar mcsteps (inace se svi citaju), ako
-#     hocemo da cuvamo rezultat onda stavljamo save na True. Samo prvi
-#     put ce save biti true, ovo ostalo nece biti volataile, vec samo da
-#     se gleda"""
-#     glregex = \
-#         re.compile(r"^(L\d+)(T\d+)THERM\d+(MC%s)\.mat$" % mcsteps)
-#     file_list = [f for f in os.listdir(ltdir) if glregex.match(f)]
-#     plots = list(set([glregex.match(f).groups() for f in file_list]))
-#     df= "nesto"
-#     for plot in plots:
-#         data = dict()
-#         for mat in re.findall("^%s%sTHERM.*%s\.mat$" % plot,
-#                               '\n'.join(file_list), re.MULTILINE):
-#             ser = pd.read_csv(join(ltdir,mat), sep=' ', index_col=0, names=['t'])['t']
-#             data[ser.ix['THERM']] = ser
-
-#         base = '%s%s%s_THERM' % plot
-#         plotf = base + '.plot'
-#         print "making",plotf,"..."
-#         df = pd.DataFrame(data)
-
-#         out = { 'abs(cv(E1))':abs(df.ix['stdMeanE'] / df.ix['Eavg']),
-#                 'cv(E2)':df.ix['stdMeanE2']/df.ix['E2avg'],
-#                 'cv(M1)':df.ix['stdMeanM1']/df.ix['M1avg'],
-#                 'cv(M2)':df.ix['stdMeanM2']/df.ix['M2avg'],
-#                 'cv(M4)':df.ix['stdMeanM4']/df.ix['M4avg']}
-#         out = pd.DataFrame(out)
-#         out = pd.concat([df,out.T])
-
-#         if save:
-#             out.to_csv(join(ltdir,plotf))
-#         return out
-
-#ili je mozda umesto ovih save-ova bolje da imam neki temp
-# folder, nisam sigurna, posto mm, brze ce ici ako se ne cuva
-# fazon jeste sto ce to samo trebati da se radi za odredjeno
-# t, za pocetak, shvatas? znaci mi cemo praviti samo za jedno t
-# i onda njega ubacivati sa ostalim agregatima hmmmmmmmmmmmmmmmmm
-# ti aplot fajlovi mi onako nisu nesto vazni a ovi compose ustvari
-# nam ni ne trebaju. posto aggregate radi za mat fajlovima da
-# ok, sta je fazon, fazon je sto nam trebaju novi matovi za odredjeno
-# t i onda da zamenimo agregat sa tim. znaci kad kliknemo aggregate da
-
-def load_agg():
-    aplot_files = [f for f in os.listdir(self.simdir) if regexf.match(f)]
-    aplot_files.sort()
-    agg = dict()
-    for aplot in aplot_files:
-        L = regexf.match(aplot).groups()[0]
-        data = pd.read_csv(join(self.simdir,aplot), index_col=0)
-        agg[L] = data
-
-    agg_data = pd.concat(agg, axis=1)
-    agg_data.columns.names = ['L', 'T']
-    print agg_data
-    return agg_data
-
-        
-
-
-
-# def IsBold(l,itemText):
-#     """Proverava da li je item u listi bold
-#     ili ne"""
-# #    font = item.GetFont()
-#     print "checking if item '{}' is bold or not...".format(itemText)
-#     print "or is in {}".format(file_manager.bmatdict[l].keys())
-#     return itemText in file_manager.bmatdict[l].keys()
-    
-# def ChangeFont(listctrl_,item,l,what,*args):
-#     """Menja font odredjenog elementa
-#     u matchooseru u odnosu na gde je ovaj,
-#     ha,samo sta je fazon, fazon jeste
-#     sto je ovo samo za l hahahahahahahha
-#     to je najveci fazon od svih!! Ajd probamo ovo
-#     znaci mogu joj se proslediti sta je znaci
-#     l t mc ili therm, i proizvoljan broj argumenata"""
-#     map_ = {'l':file_manager.best_ls,'t': lambda l: file_manager.best_ts(l),
-#             'mc':lambda l,t:file_manager.best_mc(l,t),
-#             'therm':lambda l,t,mc:file_manager.best_therm(l,t,mc)
-#             }
-#     fontweight = wx.FONTWEIGHT_NORMAL
-#     fontstyle = wx.FONTSTYLE_NORMAL
-#     if l in map[what](*args) and not in file_manager.alt_ls():
-#         fontweight = wx.FONTWEIGHT_BOLD
-#         fontstyle = wx.FONTSTYLE_ITALIC
-#     elif l in file_manager.best_ls() and in file_manager.alt_ls():
-#         fontweight = wx.FONTWEIGHT_BOLD
-#     elif l not in file_manager.best_ls and in file_manager.alt_ls():
-#         fontstyle = wx.FONTSTYLE_ITALIC
-#         font = item.GetFont()
-#         font.SetWeight(wx_fontweight)
-#         font.SetStyle(wx_fontstyle)
-#         item.SetFont(font)
-#         listctrl_.SetItem(item)
-        
-# def UnBold(self,item):
-#         font = item.GetFont()
-#         font.SetWeight(wx.FONTWEIGHT_NORMAL)
-#         item.SetFont(font)
-#         self.SetItem(item)
-        
-
-
 class MyListCtrl(wx.ListCtrl):
+    
     def __init__(self, parent, id,controller,mat_deletable=False):
         wx.ListCtrl.__init__(self, parent, id, style=wx.LC_REPORT | wx.LC_HRULES | 
 		wx.LC_NO_HEADER | wx.LC_SINGLE_SEL)
@@ -1396,10 +1288,6 @@ class MyListCtrl(wx.ListCtrl):
         selected = event.GetIndex()
         selected = self.GetItemText(selected)
         self.controller.listctrl_selected(selected)
-        
-    
-
-
 
 class Reader(wx.Panel):
     
@@ -1431,17 +1319,10 @@ class Reader(wx.Panel):
       
         self.Bind(wx.EVT_TOOL, self.ExitApp, id=1)
         
- #       self.button_choose = wx.Button(self,-1,"Choose",size=(70,30))
-
-   #     self.button_done = wx.Button(self,-1,"Done",size=(70,30))
-###        self.Bind(wx.EVT_BUTTON, self.on_choose_button,self.button_choose)
-
-    #    self.Bind(wx.EVT_BUTTON, self.on_done_button,self.button_done)
         vbox.Add(splitter, 1,  wx.EXPAND | wx.TOP | wx.BOTTOM, 5 )
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.AddStretchSpacer()
-        #hbox.Add(self.button_choose,1, wx.BOTTOM,5)
-#        hbox.Add(self.button_done,1,wx.BOTTOM,5)
+
         vbox.Add(hbox,flag=wx.ALIGN_RIGHT|wx.RIGHT,border=10)
         self.SetSizer(vbox)
         
