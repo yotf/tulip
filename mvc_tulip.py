@@ -34,8 +34,10 @@ class ChoicesConverter(mvc.View):
         return sorted(self.model.choices(dir_=dir_,l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
 
     def get_scat_title(self,dir_,l,t):
-      
-        therm = util.extract_int(self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0])
+       
+        therm = self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0]
+        print therm
+        therm = util.extract_int(therm)
         mc = util.extract_int(self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0])
         return "T={:.4f}\nLS={}\n SP={}".format(float(util.extract_int(t))/10000.0,therm,mc)
 
@@ -156,19 +158,12 @@ class Choices(mvc.Model):
         """
         self.simdir = simdir
 
-    def files_updated(self):
-        """
-        Ako se pritisne neko reload dugme
-        ce se ovo ja mislim zvati, tj kontroler ce ga zvati
-        """
-        self.files = self._map_filesystem()
-        self.notify_observers()
 
     def add_virtual_file(self,dir_,l,t,mc,therm,booli):
         """Dodaje ovog kao izbor u bestmat, zatim ga
         dodaje u izbore fajlova uz to da je prethodno izracunao
         mat za njega. """
-        self.add_bestmat(dir_=dir_,l=l,t=t,mc=mc,therm=therm)
+        # self.add_bestmat(dir_=dir_,l=l,t=t,mc=mc,therm=therm)
         mat = self.create_mat(dir_,l,t,therm,booli=booli)
         therm_ch = dict()
         therm_ch[therm]=mat
@@ -181,8 +176,30 @@ class Choices(mvc.Model):
         self.bestmats[dir_] = self.bestmats[dir_] if self.bestmats.has_key(dir_) else dict()
         self.bestmats[dir_][l]=self.bestmats[dir_][l] if self.bestmats[dir_].has_key(l) else dict()
         self.bestmats[dir_][l][t] = {'mc':mc,'therm':therm}
+        self.save_mats()
         self.notify_observers()
 
+    def save_mats(self):
+        from copy import deepcopy
+        for_save = deepcopy(self.bestmats)
+        for dir_,ldict in for_save.items():
+            for l,tdict in ldict.items():
+                print tdict
+                if not tdict:
+                    del ldict
+                    continue
+                for t,val in tdict.items():
+                    if '[' in val['mc']:
+                        del tdict[t]
+                # if '[' in tdict['mc']:
+                #     del tdict
+        
+        self.log.debug('for save:%s' %for_save)
+        self.log.debug('bestmat:%s' %self.bestmats)
+        with open(join(self.simdir,'bestmat.dict'),'wb') as bmatfile:
+            pickle.dump(dict(for_save),bmatfile)
+            
+            
     @logg
     def remove_bestmat(self,**kwargs):
         """U slucaju da je na l
@@ -262,6 +279,7 @@ class Choices(mvc.Model):
         i dogovore format. hmh. mi kazemo sta hocemo a oni
         izkomuniciraju
         """
+        
         ls = [dir_,l,t,which]
         x = self.bestmats
         for val in ls:
@@ -531,6 +549,11 @@ class Choices(mvc.Model):
         print out
         return out
 
+    def remap_fsystem(self):
+        """BICE PROBLEM SA NOVO GENERISANIM MC-OVIMA!!!"""
+        self.files = self._map_filesystem()
+        self.bestmats = self.load_choices('bestmat.dict')
+        self.notify_observers()
 
     def _map_filesystem(self):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
@@ -645,9 +668,11 @@ class FileManager(mvc.Controller):
         self.ap.set_mag_choices(self.view.mag_choices_agg())
         self.refresh_matchooser()
         ####SCATTER PANEL####
-        bmat_ch = self.view.bmat_choices()
-        self.sp.set_dir_choices(bmat_ch)
-        
+
+
+
+    def remap_fsystem(self):
+        self.model.remap_fsystem()
     @logg
     def refresh_matchooser(self):
         ch = self.current_choices()
@@ -820,6 +845,10 @@ class FileManager(mvc.Controller):
     
     #############SCATTER PANEL###################
 
+    def init_scatter(self):
+        bmat_ch = self.view.bmat_choices()
+        self.sp.set_dir_choices(bmat_ch)
+
     def sp_on_dir_select(self,val):
         lch = self.view.bmat_choices(dir_=val)
         self.sp.set_l_choices(lch)
@@ -831,6 +860,7 @@ class FileManager(mvc.Controller):
         return self.model.get_maxmc(dir_,l,t)
 
     def get_scat_title(self,dir_,l,t):
+        self.log.debug('Getting scat title for dir_:{} l:{} t:{}'.format(dir_,l,t))
         return self.view.get_scat_title(dir_,l,t)
 
     def remove_faulty(self,dir_,l,t,booli):

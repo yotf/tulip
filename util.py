@@ -3,17 +3,24 @@ import re
 import numpy as np
 import logging
 def extract_int(string):
-    """Vraca prvi int iz stringa
-    nadam se
+    """Vraca prvi int iz stringa, ako ga
+    ima - u suprotnom vraca nulu!
     """
-    return int(re.search(r'\d+',string).group())
+    try:
+        return int(re.search(r'\d+',string).group())
+    except:
+        return 0 
     
 def extract_name(string):
     """Vraca ime izbora
     L1010->l i tako"""
-    name = re.search(r'(L|THERM|MC|T)',string).group().lower()
-    assert name in ['l','t','therm','mc']
-    return name
+    try:
+        name = re.search(r'(L|THERM|MC|T)',string).group().lower()
+        assert name in ['l','t','therm','mc']
+    except:
+        show_error('Wrong choice format','New format? Please contact developer!')
+    else:
+        return name
 
 ########################################
 ##########POMOCNE KLASE################

@@ -14,7 +14,6 @@ Options:
     -h --help
 """
    
-#import pdb
 import wxversion
 wxversion.select('2.8')
 import wx
@@ -432,11 +431,6 @@ class ScatterPanel(wx.Panel):
             self.cmb_dirs.SetValue(dir_)
             self.controller.sp_on_dir_select(dir_)
 
-
-
-
-        
-        
     
     def set_l_choices(self,lch):
         """stavlja izbore za l, i stavlja
@@ -451,7 +445,6 @@ class ScatterPanel(wx.Panel):
             self.set_l(l)
             self.able_buttons(True)
 
-                            
 class ThermPanel(wx.Panel):
 
     cmbord = ['dir_','l','t','mc']
@@ -1179,9 +1172,15 @@ class TabContainer(wx.Notebook):
         self.AddPage(tp, 'Therm')
         self.AddPage(ag, 'Aggregate')
         self.AddPage(scat,"Scatter")
+        self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
 
     def flash_status_message(self,message):
         self.GetParent().flash_status_message(message,3000)
+
+    def OnPageChanging(self,event):
+        new = event.GetSelection()
+        if new==2:
+            self.controller.init_scatter()
 
 
 class GraphFrame(wx.Frame):
@@ -1211,7 +1210,9 @@ class GraphFrame(wx.Frame):
         menu_file = wx.Menu()
 
         m_exit = menu_file.Append(-1, 'E&xit\tCtrl-X', 'Exit')
+        m_reload = menu_file.Append(-1,'&Reload\tCtrl-R','Reload')
         self.Bind(wx.EVT_MENU, self.on_exit, m_exit)
+        self.Bind(wx.EVT_MENU,self.on_reload,m_reload)
 
         self.menubar.Append(menu_file, '&File')
         self.SetMenuBar(self.menubar)
@@ -1233,6 +1234,9 @@ class GraphFrame(wx.Frame):
 
     def on_exit(self, event):
         self.Destroy()
+
+    def on_reload(self,event):
+        self.controller.remap_fsystem()
 
     def flash_status_message(self, msg, flash_len_ms=1500):
         self.statusbar.SetStatusText(msg)
