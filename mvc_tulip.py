@@ -184,16 +184,9 @@ class Choices(mvc.Model):
         for_save = deepcopy(self.bestmats)
         for dir_,ldict in for_save.items():
             for l,tdict in ldict.items():
-                print tdict
-                if not tdict:
-                    del ldict
-                    continue
                 for t,val in tdict.items():
                     if '[' in val['mc']:
                         del tdict[t]
-                # if '[' in tdict['mc']:
-                #     del tdict
-        
         self.log.debug('for save:%s' %for_save)
         self.log.debug('bestmat:%s' %self.bestmats)
         with open(join(self.simdir,'bestmat.dict'),'wb') as bmatfile:
@@ -224,6 +217,8 @@ class Choices(mvc.Model):
             except KeyError:
                 self.log.debug('Kliknuo korisnik na ne bestmat stvar. Idiot!')
 
+        self.clean_bmat()
+        self.save_mats()
         self.notify_observers()
             
         
@@ -309,7 +304,24 @@ class Choices(mvc.Model):
         """Postavlja tulip u stanje u kom
         ga je korisnik ostavio. Sto se tice
         izbora samo, doduse"""
-        self.bestmats = self.load_choices("bestmat.dict")
+        self.load_bestmat()
+
+    def clean_bmat(self):
+        """Brise prazne vrednosti iz bestmata"""
+        
+        for dir_,ldict in self.bestmats.items():
+            if not ldict:
+                del self.bestmats[dir_]
+            for l,tdict in ldict.items():
+                if not tdict:
+                    del ldict[l]
+                    continue
+                for t,tmc_dict in tdict.items():
+                    if not tmc_dict:
+                        del tdict[t]
+                        continue
+                        
+        
 
     def load_choices(self,fname):
         self.log.debug("Loading {}".format(fname))
@@ -552,8 +564,28 @@ class Choices(mvc.Model):
     def remap_fsystem(self):
         """BICE PROBLEM SA NOVO GENERISANIM MC-OVIMA!!!"""
         self.files = self._map_filesystem()
-        self.bestmats = self.load_choices('bestmat.dict')
+        self.load_bestmat()
         self.notify_observers()
+
+    def load_bestmat(self):
+        """Proverava da li postoji u strukturi fajlova
+        odgovarajuci podaci iz bestmat-a, ako nema - brise ih
+        vraca azuran bestmat dict"""
+        bmat =  self.load_choices('bestmat.dict')
+        for dir_,ldict in bmat.items():
+            if dir_ not in self.files.keys():
+                del bmat[dir_]
+                continue
+            for l,tdict in ldict.items():
+                if l not in self.files[dir_].keys():
+                    del ldict[l]
+                    continue
+                for t,tmc_dict in tdict.items():
+                    if t not in self.files[dir_][l].keys() or tmc_dict['mc'] not in self.files[dir_][l][t].keys() :
+                        del tdict[t]
+                        continue
+        self.bestmats = bmat
+        self.clean_bmat()
 
     def _map_filesystem(self):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
@@ -802,6 +834,7 @@ class FileManager(mvc.Controller):
         ch = self.current_choices()
         ch['dir_'] = self.ap_dir
         self.model.remove_bestmat(**ch)
+        
 
     def current_choices(self):
         """Vraca trenutno selektovan izbor

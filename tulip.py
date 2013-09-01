@@ -187,7 +187,7 @@ class ScatterPanel(wx.Panel):
         self.cmb_l = wx.ComboBox(self, size=(70, -1),
                                  style=wx.CB_READONLY)
 
-        self.cmb_dirs = wx.ComboBox(self, size=(70, -1),
+        self.cmb_dirs = wx.ComboBox(self, size=(150, -1),
                                          style=wx.CB_READONLY)
 
         self.draw_button = wx.Button(self, -1, '>', size=(40,-1))
@@ -427,9 +427,12 @@ class ScatterPanel(wx.Panel):
             dir_ = dirch[0]
         except:
             self.cmb_dirs.SetValue('--')
+            self.able_buttons(False)
         else:
             self.cmb_dirs.SetValue(dir_)
+            self.able_buttons(True)
             self.controller.sp_on_dir_select(dir_)
+            
 
     
     def set_l_choices(self,lch):
@@ -440,10 +443,9 @@ class ScatterPanel(wx.Panel):
             l = lch[0]
         except:
             self.cmb_l.SetValue('--')
-            self.able_buttons(False)
         else:
             self.set_l(l)
-            self.able_buttons(True)
+          
 
 class ThermPanel(wx.Panel):
 
