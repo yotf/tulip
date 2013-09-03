@@ -445,7 +445,17 @@ class ScatterPanel(wx.Panel):
             self.cmb_l.SetValue('--')
         else:
             self.set_l(l)
-          
+
+
+class ExpPanel(wx.Panel):
+    def __init__(self,parent,controller):
+        wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
+        self.controller = controller
+        self.log = logging.getLogger("ExpPanel")
+        self.l = wx.SpinCtrl(self, size = (80,-1))
+        self.t = wx.SpinCtrl(self, size = (80,-1))
+        self.therm = wx.SpinCtrl(self, size = (80,-1))
+        self.so = wx.SpinCtrl(self, size = (80,-1))
 
 class ThermPanel(wx.Panel):
 
@@ -457,7 +467,7 @@ class ThermPanel(wx.Panel):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.controller = controller
         self.log = logging.getLogger("ThermPanel")
-        self.tooltip=wx.ToolTip("r:color to red\ng:color to green\n")
+        self.tooltip = wx.ToolTip("r:color to red\ng:color to green\n")
         self.parent = parent
         self.init_plot()
         self.canvas.SetToolTip(self.tooltip)
@@ -1170,10 +1180,12 @@ class TabContainer(wx.Notebook):
         tp = ThermPanel(self,controller)
         ag = AggPanel(self,controller)
         scat = ScatterPanel(self,controller)
+        exp = ExpPanel(self,controller)
         self.controller.init_gui(tp,ag,scat)
         self.AddPage(tp, 'Therm')
         self.AddPage(ag, 'Aggregate')
         self.AddPage(scat,"Scatter")
+        self.AddPage(exp,"Exp")
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
 
     def flash_status_message(self,message):

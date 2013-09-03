@@ -48,6 +48,7 @@ def main(ltdir):
     print "IN DIRECTORY: ",ltdir
     all_files = [f for f in os.listdir(ltdir) if glregex.match(f)]
     all_files.sort()
+    print all_files
     group_file = dict()
     while all_files:
         grupa = glregex.search(all_files[0]).groups()[0]
@@ -60,14 +61,14 @@ def main(ltdir):
         ofName = join(ltdir,"%s.all") % key   # Output file name
         with open(ofName, 'a') as of:
             for sim_file in value:
-                with open(sim_file) as f:
+                with open(join(ltdir,sim_file)) as f:
                     of.write("".join(l for l in f if not l.strip().startswith("#")))
-                os.remove(sim_file)
+                os.remove(join(ltdir,sim_file))
 
         # Proveri da li je fajl ispravan (bar donekle):
         # ako je neka od simulacija proizvela neispravan simulation output
         # (manje od 5 kolona) -> prijavi gresku
-        # (dtype garantuje da ce prva kolona biti interpretirana kao long long).
+        # (dtype garantuje da ce prva kolona biti interpretirana kao long long).x
         all_frame =  pd.read_table(ofName,names=['seed', 'E', 'Mx', 'My', 'Mz'],
                                    delim_whitespace=True, 
                                    dtype={'seed':np.int64})

@@ -29,9 +29,12 @@ class ChoicesConverter(mvc.View):
         pass
         # self.update_gui()
 
-    def choices(self,dir_=None,l=None,t=None,mc=None):
+    def choices(self,dir_=None,l=None,t=None,mc=None,therm_count=False):
         reverse = True if not t else False
-        return sorted(self.model.choices(dir_=dir_,l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
+        if t and not mc and therm_count:
+            return self.mc_choices(dir_,l,t)
+        else:
+            return sorted(self.model.choices(dir_=dir_,l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
 
     def get_scat_title(self,dir_,l,t):
        
@@ -86,14 +89,14 @@ class ChoicesConverter(mvc.View):
         koje mislim da ne treba sada. tj, da, prioritizujem, sta hoces"""
         return self.model.mag_choices()
 
-    def mc_choices(self,l,t):
+    def mc_choices(self,dir_,l,t):
         """Vraca sve raspolozive mc-ove, formatirane za prikaz. Oni ujedno i odredjuju moguce
         plotove za therm panel. Ovo podize pitanje da li je bolje da
         se gleda za koje mc-ove postoje koji thermovi, i obrnuto"""
-        mc_choices = self.model.choices(l=l,t=t)
+        mc_choices = self.model.choices(dir_=dir_,l=l,t=t)
         
         sorted_mcs =  sorted(mc_choices,key=lambda x: util.extract_int(x))
-        return ["{mc} [{tmc}]".format(mc=mc,tmc=self.model.therm_count(l,t,mc)) for mc in sorted_mcs ]
+        return ["{mc} ({tmc})".format(mc=mc,tmc=self.model.therm_count(dir_,l,t,mc)) for mc in sorted_mcs ]
 
 
     def annotate_agg(self,dir_,l,t):
@@ -354,20 +357,24 @@ class Choices(mvc.Model):
             
         
     def unify(self):
-        dirlist = [d for d in glob.glob(join(self.simdir,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
-        dirlist.sort()
-        for dir_ in dirlist:
-            try:
-                unify.main(dir_)
-            except NotImplementedError :
-                util.show_error("Duplicate Seeds","Duplicated seeds found while unifying! What to do, what to do????!?!?!")
+        dirs = [ d for d in os.listdir(self.simdir) if os.path.isdir(join(self.simdir,d))]
+        self.log.debug('parent dirs: %s',dirs)
+        for d_ in dirs:
+            dirlist = [d for d in glob.glob(join(self.simdir,d_,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
+            dirlist.sort()
+            for dir_ in dirlist:
+                try:
+                    self.log.debug('unifying directory %s' %dir_)
+                    unify.main(dir_)
+                except NotImplementedError :
+                    util.show_error("Duplicate Seeds","Duplicated seeds found while unifying! What to do, what to do????!?!?!")
 
-    def therm_count(self,l,t,mc):
+    def therm_count(self,dir_,l,t,mc):
         """Vraca koliko ima tacaka za dato mc, tj.trebace kod
         ovog therm panela da vidi neko da ne plotuje nebulozne
         stvari. znaci ovo ce biti u nekim viticastim zagradama
         iza broja mc-ova"""
-        therms = self.choices(l,t,mc)
+        therms = self.choices(dir_,l,t,mc)
         self.log.debug("Vracam broj thermova:{} za mc:{}".format(len(therms),mc))
         return len(therms)
 
@@ -744,7 +751,7 @@ class FileManager(mvc.Controller):
         """prosledjuju se sve sto je selektovano.
         gleda koja je prva kontrola koja nije prosledjena
         i u nju stavlja rezultat. oslanja se na sekv. cmbord"""
-        
+        kwargs['therm_count']=True
         choices = self.view.choices(**kwargs)
         self.tp.reset_chkboxes()
         for cmb in self.tp.cmbord:
