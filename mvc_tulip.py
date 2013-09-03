@@ -570,8 +570,7 @@ class Choices(mvc.Model):
 
     def remap_fsystem(self):
         """BICE PROBLEM SA NOVO GENERISANIM MC-OVIMA!!!"""
-        self.files = self._map_filesystem()
-        self.load_bestmat()
+        self.init_model()
         self.notify_observers()
 
     def load_bestmat(self):
