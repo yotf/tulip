@@ -378,6 +378,16 @@ class Choices(mvc.Model):
         self.log.debug("Vracam broj thermova:{} za mc:{}".format(len(therms),mc))
         return len(therms)
 
+    def name_gen(self):
+        cntr=0
+        constants = ['seed','E']
+        while(True):
+            if cntr>len(constants)-1:
+                yield 'M%s' % (cntr-len(constants))
+            else:
+                yield constants[cntr]
+            cntr=cntr+1
+
     def create_mat(self,dir_,l,t,therm,mc=None,booli=False):
         """Cita all fajlove i obradjuje ih statisticki. U slucaju
         da je prosledjen mc to znaci da smo prethodno dodali u onaj
@@ -392,7 +402,17 @@ class Choices(mvc.Model):
         filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=therm))
         
         self.log.debug("Creating mat from file {} for first {} rows".format(filename,mc))
-        data = pd.read_table(filename,nrows=mc,delim_whitespace=True, names= ['seed', 'E','Mx','My','Mz'])
+        data = pd.read_table(filename,nrows=mc,delim_whitespace=True,header=None)
+        for col in data:
+            if len(data[col].dropna())==0:
+                data.pop(col)
+        
+        self.log.debug('len of columns %s' %len(data.columns))
+        print data
+        ngen = self.name_gen()
+        names = [ngen.next() for col in data]
+            
+        data.columns = names
         data.pop('seed')
         booli = booli if booli else [True]*len(data.index)
         data = data.loc[booli]
@@ -406,9 +426,17 @@ class Choices(mvc.Model):
         E2avg = E2.mean()
         stdE2 = E2.std()
         stdMeanE2 = stdE2 / np.sqrt(N)
-        MAG = data[['Mx', 'My', 'Mz']]
+        ix = []
+        for col in data:
+            #!!!Ovo mozda nije bas najsigurnije
+            #sto pocinje sa M
+            if col.startswith('M'):
+                ix.append(col)
+        print ix
+        MAG = data[ix]
         MAG2 = MAG ** 2
-        M2 = MAG2.Mx + MAG2.My + MAG2.Mz
+        M2 = MAG2.sum(1)
+        print 'm2',M2
         M1 = np.sqrt(M2)
         M4 = M2 ** 2
         M2avg = M2.mean()

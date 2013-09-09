@@ -467,7 +467,7 @@ class ThermPanel(wx.Panel):
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.controller = controller
         self.log = logging.getLogger("ThermPanel")
-        self.tooltip = wx.ToolTip("r:color to red\ng:color to green\n")
+        self.tooltip = wx.ToolTip("rainbow click")
         self.parent = parent
         self.init_plot()
         self.canvas.SetToolTip(self.tooltip)
@@ -828,9 +828,11 @@ class ThermPanel(wx.Panel):
         self.log.debug("Crtam grafik za{}".format(self.get_mc()))
         
         fmt =fmt_cycle.next()
+        print self.data.ix[item+'avg']*100
+        print self.data.ix['stdMean'+item]
         self.error_line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
-                             y=self.data.ix[item + 'avg'],
-                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',
+                             y=self.data.ix[item + 'avg']*100,
+                             yerr=self.data.ix['stdMean' + item]*100,fmt=fmt,fillstyle='none',
                                            picker=5)
         
         self.semilog_line = self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'

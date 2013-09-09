@@ -69,10 +69,13 @@ def main(ltdir):
         # ako je neka od simulacija proizvela neispravan simulation output
         # (manje od 5 kolona) -> prijavi gresku
         # (dtype garantuje da ce prva kolona biti interpretirana kao long long).x
-        all_frame =  pd.read_table(ofName,names=['seed', 'E', 'Mx', 'My', 'Mz'],
-                                   delim_whitespace=True, 
-                                   dtype={'seed':np.int64})
-        check_seeds(all_frame.seed)
+        all_frame =  pd.read_table(ofName,delim_whitespace=True)
+
+        for col in all_frame:
+            if len(all_frame[col].dropna())==0:
+                all_frame.pop(col)
+        print 'seed',all_frame.ix[0]
+        check_seeds(all_frame.ix[0])
         
 if __name__=="__main__":
     docopt(__doc__)
