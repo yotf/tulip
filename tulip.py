@@ -798,7 +798,7 @@ class ThermPanel(wx.Panel):
         
     def draw_legend(self,event):
         lbl_mc = self.get_mc()
-        lbl_mc ="%s=%s" %("SP",util.extract_name(lbl_mc).upper())
+        lbl_mc ="%s=%s" %("SP",util.extract_int(lbl_mc))
         lbl_t ="%s=%.4f" %(util.extract_name(self.cmb_dict['t'].GetValue()).upper(),float(util.extract_int(self.cmb_dict['t'].GetValue())/10000.0))
         l = self.cmb_dict['l'].GetValue()
         namel = util.extract_name(l).upper()
