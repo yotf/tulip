@@ -323,9 +323,7 @@ class ScatterPanel(wx.Panel):
         ts = set(zip(*self.data.index)[0])
         for t in ts:
             self.ax_hist.cla()
-            x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
-            print 'xyz',x,y,z
-            magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
+            magt = self.controller.calculate_magt(self.data.ix[t])
             self.ax_hist.hist(magt,bins=100)
             ylims.append(self.ax_hist.get_ylim())
             xlims.append(self.ax_hist.get_xlim())
@@ -357,21 +355,39 @@ class ScatterPanel(wx.Panel):
         dir_ = self.cmb_dirs.GetValue()
         t= (curr and self.temprs.curr()) or (self.temprs.next() if not backwards else self.temprs.prev())
         l = self.cmb_l.GetValue()
+        self.magt =self.controller.calculate_magt(self.data.ix[t])
+        self.magt = self.magt[booli] if booli else self.magt
+        print 'MAGT', self.magt
 
         self.mc_txt.SetRange(0,self.controller.get_maxmc(dir_,l,t))
         self.log.debug("t u step-u je ispalo :{}".format(t))
-        x,y,z = self.data.ix[t,'x'],self.data.ix[t,'y'],self.data.ix[t,'z']
-        self.magt =np.sqrt( x ** 2 + y ** 2 + z ** 2)
-        colors = np.where(self.magt>np.mean(self.magt),'r','b')
+        comps = self.controller.mag_components(self.data.ix[t])
+
+        self.ax_hist.cla()
         
+        z = self.ax_hist.hist(self.magt,bins=100,facecolor='green',alpha=0.75)
+        print "ret. histograma\n",z
+        print "size of z is{}".format(len(z[0]))
+        self.local_ylim = self.ax_hist.get_ylim()
+        self.local_xlim = self.ax_hist.get_xlim()
+        self.log.debug("local xlim: {} local ylim: {}".format(self.local_ylim, self.local_xlim))
+        self.on_chk_lim("dummy")
+        self.ax_hist.set_ylim(self.ylim)
+        self.ax_hist.set_xlim(self.xlim)
+        self.plot_qq(self.radio_selected)
+        if len(comps.columns)!=3:
+            util.show_error('Non 3d data','Scatter unavailable for non 3D data')
+            self.canvas.draw()
+            return
+        colors = np.where(self.magt>np.mean(self.magt),'r','b')
+        x,y,z = comps.icol(0),comps.icol(1),comps.icol(2)
         if booli:
             x=x[booli]
             y=y[booli]
             z=z[booli]
-            self.magt = self.magt[booli]
+            
                 
         self.ax_3d.cla()
-        self.ax_hist.cla()
         pylab.setp(self.ax_3d.get_xticklabels(),fontsize=8, color='#666666')
         pylab.setp(self.ax_3d.get_yticklabels(),fontsize=8, color='#666666')
         pylab.setp(self.ax_3d.get_zticklabels(),fontsize=8, color='#666666')
@@ -392,22 +408,14 @@ class ScatterPanel(wx.Panel):
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
-#        self.ax_hist.set_ylim(0,magt.max()*1000)
         self.log.debug("MAGT:\n %s"% self.magt)
-        z = self.ax_hist.hist(self.magt,bins=100,facecolor='green',alpha=0.75)
-        print "ret. histograma\n",z
-        print "size of z is{}".format(len(z[0]))
-        self.local_ylim = self.ax_hist.get_ylim()
-        self.local_xlim = self.ax_hist.get_xlim()
-        self.log.debug("local xlim: {} local ylim: {}".format(self.local_ylim, self.local_xlim))
-        self.on_chk_lim("dummy")
-        self.ax_hist.set_ylim(self.ylim)
-        self.ax_hist.set_xlim(self.xlim)
-        self.plot_qq(self.radio_selected)
         self.canvas.draw()
                
     def forceUpdate(self,event):
-        self.scat.changed()
+        try:
+            self.scat.changed()
+        except AttributeError:
+            pass
 
     def on_selectl(self,event):
         val = self.cmb_l.GetValue()
@@ -900,26 +908,29 @@ class AggPanel(wx.Panel):
         self.Bind(wx.EVT_COMBOBOX, self.on_select_dir, self.cmb_dirs)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
         self.clear_button = wx.Button(self, -1, 'Clear')
+        self.random_button = wx.Button(self, -1, 'Random')
         self.clear_button.Enable(True)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
                   self.clear_button)
+
+        self.Bind(wx.EVT_BUTTON, self.on_random_button,
+                  self.random_button)
 
         self.tick_txt = wx.StaticText(self,label="ticks")
         self.label_txt = wx.StaticText(self,label="labels")
         self.lbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
 
-        self.point_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
-                                    minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
+
         
-        self.point_slider.Enable(False)
+
 
         
         self.xylbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
         self.lbl_slider.Bind(wx.EVT_SCROLL,self.on_slider_scroll)
         self.xylbl_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
-        self.point_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
+
         self.chk_ann = wx.CheckBox(self,-1,"Annotate", size=(-1,30))
         self.chk_ann.Enable(False)
         self.Bind(wx.EVT_CHECKBOX, self.on_chk_ann, self.chk_ann)
@@ -942,8 +953,9 @@ class AggPanel(wx.Panel):
         self.hbox1.AddSpacer(20)
         self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.Add(self.point_slider,border=5,flag=wx.ALL
+        self.hbox1.Add(self.random_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+
         self.toolhbox =wx.BoxSizer(wx.HORIZONTAL)
         self.toolhbox.Add(self.toolbar)
         self.toolhbox.Add(self.tick_txt, border=5, flag=wx.ALL
@@ -1055,6 +1067,10 @@ class AggPanel(wx.Panel):
         self.chk_ann.SetValue(False)
         self.chk_ann.Enable(False)
         self.canvas.draw()
+
+    def on_random_button(self,event):
+        dir_ = self.cmb_dirs.GetValue()
+        self.controller.random_bestmats(dir_)
         
     def init_plot(self):
         

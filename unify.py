@@ -74,8 +74,8 @@ def main(ltdir):
         for col in all_frame:
             if len(all_frame[col].dropna())==0:
                 all_frame.pop(col)
-        print 'seed',all_frame.ix[0]
-        check_seeds(all_frame.ix[0])
+       
+        check_seeds(all_frame.icol(0))
         
 if __name__=="__main__":
     docopt(__doc__)

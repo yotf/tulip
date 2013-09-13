@@ -50,5 +50,17 @@ class twoway_cycle():
         self.log.debug("returning curr element:{}".format(self.it[self.i]))
         return self.it[self.i]
 
+class MyMessageBox(wx.MessageDialog):
+    
+    def __init__(self,message,title,style):
+        wx.MessageBox.__init__(self,None,message,title,style)
+        self.issue_button = wx.Button(self,-1,'Report Issue')
+        self.Bind(wx.EVT_BUTTON,self.on_report_issue,self.issue_button)
+
+    def on_report_issue(self,event):
+        import webbrowser
+        webbrowser.open('https://bitbucket.org/iTrustedYOu/tulip/issues/new')
+
 def show_error(title,message):
     result = wx.MessageBox(message,title,style=wx.OK | wx.ICON_ERROR)
+

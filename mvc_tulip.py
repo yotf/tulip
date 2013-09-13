@@ -182,6 +182,27 @@ class Choices(mvc.Model):
         self.save_mats()
         self.notify_observers()
 
+    def random_bestmats(self,dir_,**kwargs):
+        
+        """prosledjuje mu se direktorijum za koji da izabere
+        sve random bestmatove"""
+        import random
+       
+        try:
+            l = kwargs['l']
+            #zbog mogucnosti prosledjivanja None
+            for t,mcdict in self.files[dir_][l].items():
+                mc= random.sample(mcdict.keys(),1)[0]
+                print type(mc),mc
+                therm = random.sample(mcdict[mc].keys(),1)[0]
+                print dir_,l,t,mc,therm
+                self.add_bestmat(dir_,l,t,mc,therm)
+        except IndexError:
+            util.show_error('No Lattice Size selected','Contact developer to disable Random button')
+        except BaseException as e:
+            util.show_error("Don't know",str(e))
+            raise e
+
     def save_mats(self):
         from copy import deepcopy
         for_save = deepcopy(self.bestmats)
@@ -346,10 +367,9 @@ class Choices(mvc.Model):
             filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=tmc['therm']))
             self.log.debug("Loading data from file %s" % filename)
             # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
-            data = pd.read_table(filename,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
-            data.pop('seed')
-            self.log.debug("rows read: %s" % data.e.count())
-            data.set_index(np.arange(data.e.count()),inplace=True)
+            data = self.read_tdfile(filename,n)
+            self.log.debug("rows read: %s" % data.E.count())
+            data.set_index(np.arange(data.E.count()),inplace=True)
             all_data[t] = data
         
         data = pd.concat(all_data,axis=0)
@@ -388,6 +408,46 @@ class Choices(mvc.Model):
                 yield constants[cntr]
             cntr=cntr+1
 
+    def read_tdfile(self,filename,first_mcs):
+        data = pd.read_table(filename,nrows=first_mcs,delim_whitespace=True,header=None)
+        for col in data:
+            if len(data[col].dropna())==0:
+                data.pop(col)
+        self.log.debug('len of columns %s' %len(data.columns))
+        print data
+        ngen = self.name_gen()
+        names = [ngen.next() for col in data]
+        data.columns = names
+        data.pop('seed')
+        return data
+
+    def mag_components(self,data):
+        """izvlaci kolone koje sadrze
+        komponente magnetizacije i vraca
+        ih u novoj tabeli"""
+        ix = self.mag_index(data)
+        MAG = data[ix]
+        return MAG
+
+    def mag_index(self,data):
+        ix = []
+        for col in data:
+            if col.startswith('M'):
+                ix.append(col)
+        return ix
+
+    def calculate_magt(self,data):
+        """za datafrejm koji se sastoji
+        od nekoliko kolona gde su neke od njih
+        magnetne komponente, i pocinju sa M, on racuna
+        intenzitet"""
+        mag = self.mag_components(data)
+        mag2 = mag ** 2
+        # Mx^2 + My^2 + Mz^2 ...
+        magt = mag2.sum(1)
+        # koren iz toga, intenzitet
+        return np.sqrt(magt)
+
     def create_mat(self,dir_,l,t,therm,mc=None,booli=False):
         """Cita all fajlove i obradjuje ih statisticki. U slucaju
         da je prosledjen mc to znaci da smo prethodno dodali u onaj
@@ -402,18 +462,7 @@ class Choices(mvc.Model):
         filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=therm))
         
         self.log.debug("Creating mat from file {} for first {} rows".format(filename,mc))
-        data = pd.read_table(filename,nrows=mc,delim_whitespace=True,header=None)
-        for col in data:
-            if len(data[col].dropna())==0:
-                data.pop(col)
-        
-        self.log.debug('len of columns %s' %len(data.columns))
-        print data
-        ngen = self.name_gen()
-        names = [ngen.next() for col in data]
-            
-        data.columns = names
-        data.pop('seed')
+        data = self.read_tdfile(filename,mc)
         booli = booli if booli else [True]*len(data.index)
         data = data.loc[booli]
         self.log.debug("matdata booled :\n %s",data)
@@ -426,14 +475,9 @@ class Choices(mvc.Model):
         E2avg = E2.mean()
         stdE2 = E2.std()
         stdMeanE2 = stdE2 / np.sqrt(N)
-        ix = []
-        for col in data:
-            #!!!Ovo mozda nije bas najsigurnije
-            #sto pocinje sa M
-            if col.startswith('M'):
-                ix.append(col)
-        print ix
-        MAG = data[ix]
+        self.calculate_magt(data)
+
+        MAG = self.mag_components(data)
         MAG2 = MAG ** 2
         M2 = MAG2.sum(1)
         print 'm2',M2
@@ -862,6 +906,12 @@ class FileManager(mvc.Controller):
         bestm = self.current_choices()
         self.model.add_bestmat(self.ap_dir,**bestm)
 
+    def random_bestmats(self,dir_):
+        bestm = self.current_choices()
+        self.model.random_bestmats(dir_,**bestm)
+                
+            
+
     def remove_bestmat(self,**kwargs):
         typ = kwargs.keys()[0]
         self.match_stuff[typ]['choice'] = kwargs[typ]
@@ -930,6 +980,12 @@ class FileManager(mvc.Controller):
         self.log.debug('Getting scat title for dir_:{} l:{} t:{}'.format(dir_,l,t))
         return self.view.get_scat_title(dir_,l,t)
 
+    def calculate_magt(self,data):
+        return self.model.calculate_magt(data)
+
+    def mag_components(self,data):
+        return self.model.mag_components(data)
+
     def remove_faulty(self,dir_,l,t,booli):
         """Za odredjeno l i t izracunava novi
         mat, i stavlja ovaj izbor u sve moguce izbore
@@ -948,6 +1004,8 @@ class FileManager(mvc.Controller):
         mc = 'MC%s[%s]' % (mc,prev_mc)
         therm = self.model.bestmat_choices(dir_,l,t,which='therm')[0]
         self.model.add_virtual_file(dir_=dir_,l=l,t=t,mc=mc,therm=therm,booli=booli)
+
+    
 
     
 
