@@ -27,11 +27,11 @@ glregex = \
 T\d+        #Poklapam T sa bilo kojim int brojem posle
 THERM\d+)   #Poklapan THERM sa bilo kojim int brojem posle
 MC(\d+)     #Poklapam MC sa bilo kojim int broje posle
-.*\.dat$    #uzimamo .dat fajlove
+.*\.(dat|mp)$    #uzimamo .dat fajlove
 """
                , re.VERBOSE)
 
-mcregex = r'%sMC\d+.*?\.dat'
+mcregex = r'%sMC\d+.*?\.(dat|mp)'
 
 def check_seeds(seeds):
     """Checks if first column of a whitespace seperated file

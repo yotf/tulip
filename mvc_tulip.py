@@ -105,8 +105,11 @@ class ChoicesConverter(mvc.View):
         return 'LS={}\nSP={}'.format(util.extract_int(ls),util.extract_int(sp))
 
 class Choices(mvc.Model):
-    
-    all_regex = re.compile(r'^L\d+T\d+(?P<therm>THERM\d+)\.all$')
+    base_regex = r'^L\d+T\d+(?P<therm>THERM\d+)'
+    single_base = r'%sMC\d+.*' % base_regex
+    sp_regex = re.compile(r'%s\.sp$' % single_base)
+    mp_regex = re.compile(r'%s\.(mp|dat)$' % single_base)
+    all_regex = re.compile(r'%s\.all$' %base_regex)
     lt_regex = re.compile(r'(L\d+)(T\d+)$')
     statmc_regex = re.compile(r'^MC\d+$')
     def __init__(self):
@@ -124,11 +127,10 @@ class Choices(mvc.Model):
         """Ovo se poziva tek kada se pokrene aplikacija
         posto necemo imati progress bar niti ista"""
         
-        self.unify()
         try:
             self.files = self._map_filesystem()
-        except:
-            util.show_error("IO error","Error occured while reading simfolder")
+        except BaseException as e:
+            util.show_error("IO error","Error occured while reading simfolder:\n %s" %str(e))
         self.load_state()
         # za sada cu se zadovoljiti ovime. ali !! !!! ! ! !!!!
         # ok, tu ce biti hardkodovane formule. ali ideja mi je da
@@ -376,19 +378,21 @@ class Choices(mvc.Model):
         return data
             
         
-    def unify(self):
-        dirs = [ d for d in os.listdir(self.simdir) if os.path.isdir(join(self.simdir,d))]
-        self.log.debug('parent dirs: %s',dirs)
-        for d_ in dirs:
-            dirlist = [d for d in glob.glob(join(self.simdir,d_,"L[0-9]*[0-9]*")) if os.path.isdir(d)]
-            dirlist.sort()
-            for dir_ in dirlist:
-                try:
-                    self.log.debug('unifying directory %s' %dir_)
-                    unify.main(dir_)
-                except NotImplementedError :
-                    util.show_error("Duplicate Seeds","Duplicated seeds found while unifying! What to do, what to do????!?!?!")
+    def unify(self,lt_dir):
+        try:
+            unify.main(lt_dir)
+        except NotImplementedError :
+            util.show_error("Duplicate Seeds","Duplicated seeds found while unifying! What to do, what to do????!?!?!")
 
+    def spify(self,lt_dir):
+        """Proverava da nema dva fajla sa istim thermovima
+        i razlicitim mc-ovima. Blahhhhhh"""
+
+        ls = [(self.base_regex.match(f).groupdict()['therm'],f) for f in os.listdir(lt_dir) if self.base_regex.match(f)]
+        if len(ls)> len(set(ls)):
+            util.show_error('Single path error','Two files with same therm different mcs in %s. Please delete one. Exiting now')
+            sys.exit(0)
+        
     def therm_count(self,dir_,l,t,mc):
         """Vraca koliko ima tacaka za dato mc, tj.trebace kod
         ovog therm panela da vidi neko da ne plotuje nebulozne
@@ -448,6 +452,16 @@ class Choices(mvc.Model):
         # koren iz toga, intenzitet
         return np.sqrt(magt)
 
+    def get_filename(self,dir_,l,t,therm):
+        regex = re.compile(r'(^%s%s%s.*(\.sp|\.all))' %(l,t,therm))
+        filenames = [f for f in os.listdir(join(self.simdir,dir_,'%s%s' %(l,t))) if regex.match(f)]
+        if len(filenames)!=1:
+            util.show_error('Emergency','Report issue asap with code 1100010001110**__??')
+            raise BaseException
+        filename = filenames[0]
+        return join(self.simdir,dir_,'%s%s' %(l,t),filename)
+
+
     def create_mat(self,dir_,l,t,therm,mc=None,booli=False):
         """Cita all fajlove i obradjuje ih statisticki. U slucaju
         da je prosledjen mc to znaci da smo prethodno dodali u onaj
@@ -459,8 +473,13 @@ class Choices(mvc.Model):
         """
 
         mc = util.extract_int(mc) if mc else None
-        filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=therm))
-        
+        filename = None
+        try:
+            
+            filename = self.get_filename(dir_,l,t,therm)
+        except BaseException as e:
+            util.show_error('Yeah yeah',str(e))
+            return
         self.log.debug("Creating mat from file {} for first {} rows".format(filename,mc))
         data = self.read_tdfile(filename,mc)
         booli = booli if booli else [True]*len(data.index)
@@ -582,7 +601,8 @@ class Choices(mvc.Model):
                 except:
                     booli = False
 
-                self.log.debug('checking whether calculated : %s' %self.files[dir_][l][t][mc][therm])
+
+                self.log.debug('checking whether calculated : %s' % self.files[dir_][l][t][mc][therm])
                 if self.files[dir_][l][t][mc][therm] is None:
                     self.files[dir_][l][t][mc][therm]=self.create_mat(dir_,l,t,therm)
                 data_mat = self.files[dir_][l][t][mc][therm]
@@ -659,9 +679,11 @@ class Choices(mvc.Model):
                     del ldict[l]
                     continue
                 for t,tmc_dict in tdict.items():
-                    if t not in self.files[dir_][l].keys() or tmc_dict['mc'] not in self.files[dir_][l][t].keys() :
+                    mc = tmc_dict['mc']
+                    if t not in self.files[dir_][l].keys() or mc not in self.files[dir_][l][t].keys() or tmc_dict['therm'] not in self.files[dir_][l][t][mc].keys():
                         del tdict[t]
                         continue
+
         self.bestmats = bmat
         self.clean_bmat()
 
@@ -669,6 +691,16 @@ class Choices(mvc.Model):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
         u simdir-u i izvlaci l,t,i therm.
         """
+        funcs = {'sp':self.spify,'mp':self.unify}
+        def check_kind(filename):
+            """Ustvari bih mogla da napravim regex
+            za sva tri i onda po grupi da vracam
+            nesto, al ajde, ovo je jednostavno"""
+            if self.sp_regex.match(filename):
+                return 'sp'
+            elif self.mp_regex.match(filename):
+                return 'mp'
+                
         filess = dict()
         dirs_ = [dir_ for dir_ in os.listdir(self.simdir) if os.path.isdir(join(self.simdir,dir_))]
         self.log.debug('directories in sim folder: %s' % dirs_)
@@ -677,20 +709,46 @@ class Choices(mvc.Model):
             choices = defaultdict(dict)
             mc_to_all = defaultdict(list)
             self.log.debug('Currently mapping directory: %s' %dir_)
-            for root,dirs,files in os.walk(path):
-                #self.log.debug('checking if match: %s' %root)
-                ltmatch = self.lt_regex.search(root)
+            # za svaki folder, kind ce biti drugciji, potencijalno
+            kind = None
+            for lt_dir,dirs,files in os.walk(path):
+                
+                ltmatch = self.lt_regex.search(lt_dir)
                 if not ltmatch:
                     #u slucaju da je folder drugog formata
                     continue
                 l,t = ltmatch.groups()
-                matched = [f for f in files if self.all_regex.match(f)]
+                #samo gledamo one fajlove koji su nam odgovarajuceg formata
+                mp_and_sp_files = [f for f in files if self.sp_regex.match(f) or self.mp_regex.match(f)]
+                try:
+                    first_file = mp_and_sp_files[0]
+                except IndexError:
+                    #ne postoji ni jedan sp,mp ili dat, znaci svi su all
+                    # tako da nista ne radimo. u slucaju da su sp onda cemo
+                    # pak raditi ponovo spify
+                    pass
+                else:
+                    #obradjujemo fajlove
+                    kind = check_kind(first_file) if kind is None else kind
+                
+                    different_kind = [f for f in mp_and_sp_files if check_kind(f)!=kind]
+                    if different_kind:
+                        #znaci ako je bilo koji fajl drugog tipa
+                        # izaci ce iz programa
+                        util.show_error('Mixed pathsies',"""Please seperate multipaths from singlepaths in
+                        \n foldeR '%s', and lotder '%s'.\n Contact John if that's too much\n of a bother. Exiting now, bye!""" %( dir_,lt_dir))
+                        sys.exit(0)
+                    funcs[kind](lt_dir)
+
+                #ovo radimo kad smo obradili sve
+                new_files = os.listdir(join(self.simdir,dir_,lt_dir))
+                matched = [f for f in new_files if self.sp_regex.match(f) or self.all_regex.match(f)]
                 mct_choices = defaultdict(dict)
                 for all_ in matched:
-                    therm = self.all_regex.match(all_).groupdict()['therm']
+                    therm = re.search(self.base_regex,all_).groupdict()['therm']
                     #znaci za svaki therm ce dodavati u prikacenu listu
                     # mc-ove tako sto ce otvarati all fajl i brojati linije
-                    mc = "MC{sps}".format(sps=len(open(join(root,all_)).readlines()))
+                    mc = "MC{sps}".format(sps=len(open(join(lt_dir,all_)).readlines()))
                     mct_choices[mc][therm] = None
                 choices[l][t] = mct_choices
             if choices:

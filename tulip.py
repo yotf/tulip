@@ -836,14 +836,14 @@ class ThermPanel(wx.Panel):
         """Redraws the plot
         """
         self.reset_chkboxes()
-        self.log.debug("Crtam grafik za{}".format(self.get_mc()))
+        self.log.debug("Crtam grafiik za{}".format(self.get_mc()))
         
         fmt =fmt_cycle.next()
-        print self.data.ix[item+'avg']*100
+        print self.data.ix[item+'avg']
         print self.data.ix['stdMean'+item]
         self.error_line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
-                             y=self.data.ix[item + 'avg']*100,
-                             yerr=self.data.ix['stdMean' + item]*100,fmt=fmt,fillstyle='none',
+                             y=self.data.ix[item + 'avg'],
+                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',
                                            picker=5)
         
         self.semilog_line = self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
