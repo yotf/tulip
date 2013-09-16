@@ -41,6 +41,7 @@ from simp_zoom import zoom_factory
 from itertools import cycle
 from scipy import stats   
 from matplotlib.widgets import RectangleSelector
+from matplotlib.lines import Line2D
 import mvc_tulip
 import util
 
@@ -58,6 +59,8 @@ import tulip
 #znaci bice neki parameter dict i bice po jedan fmt cycle
 #za svaki od njih
 fmt_strings = ['g+-','r*-','bo-','y+-']
+linestyle_cycle = itertools.cycle(Line2D.lineStyles.keys())
+markers_cycle = itertools.cycle(Line2D.markers.keys())
 fmt_cycle = itertools.cycle(fmt_strings)
 
         
@@ -1111,6 +1114,7 @@ class AggPanel(wx.Panel):
             
             
     def on_pick(self,event):
+        from matplotlib.text import Annotation
         print type(event)
         print help(event)
         try:
@@ -1125,9 +1129,15 @@ class AggPanel(wx.Panel):
             print t,l
             #therm = 
         if event.mouseevent.button == 1:
-            print event.artist.set_visible(False)
+            print type(event.artist)
+            if isinstance(event.artist,Line2D):
+                event.artist.set_linestyle(linestyle_cycle.next())
+            elif isinstance(event.artist,Annotation):
+                event.artist.set_visible(False)
         elif event.mouseevent.button ==3:
-            pass
+            if isinstance(event.artist,Line2D):
+                event.artist.set_marker(markers_cycle.next())
+                
         self.canvas.draw()
 
         
