@@ -62,7 +62,7 @@ fmt_strings = ['g+-','r*-','bo-','y+-']
 linestyle_cycle = itertools.cycle(Line2D.lineStyles.keys())
 markers_cycle = itertools.cycle(Line2D.markers.keys())
 fmt_cycle = itertools.cycle(fmt_strings)
-
+logging_level = logging.DEBUG if os.getenv('TULIP_DEBUG') else logging.WARNING
         
         
 class ScatterPanel(wx.Panel):
@@ -79,7 +79,8 @@ class ScatterPanel(wx.Panel):
         
         wx.Panel.__init__(self,parent=parent,id=wx.ID_ANY)
         self.parent = parent
-        logging.basicConfig(level=logging.DEBUG)
+
+        logging.basicConfig(level=logging_level)
         self.log = logging.getLogger("ScatterPanel")
         self.tooltip = wx.ToolTip("'n':next\n'p':previous\nscroll:zoom")
         self.tooltip.Enable(False)
@@ -1453,7 +1454,7 @@ class App(wx.App):
             args = docopt(__doc__)
             simdir = args['SIMDIR']
         print simdir
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging_level)
 
         if not simdir or not os.path.isdir(simdir):
             dlg=wx.DirDialog(None,style=wx.DD_DEFAULT_STYLE,message="Where your simulation files are...")
