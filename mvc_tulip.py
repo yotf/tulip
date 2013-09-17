@@ -4,6 +4,7 @@ import re
 import logging
 import glob
 import os
+import sys
 from os.path import join
 import util
 import unify
@@ -131,6 +132,7 @@ class Choices(mvc.Model):
             self.files = self._map_filesystem()
         except BaseException as e:
             util.show_error("IO error","Error occured while reading simfolder:\n %s" %str(e))
+            raise e
         self.load_state()
         # za sada cu se zadovoljiti ovime. ali !! !!! ! ! !!!!
         # ok, tu ce biti hardkodovane formule. ali ideja mi je da
@@ -387,11 +389,15 @@ class Choices(mvc.Model):
     def spify(self,lt_dir):
         """Proverava da nema dva fajla sa istim thermovima
         i razlicitim mc-ovima. Blahhhhhh"""
-
-        ls = [(self.base_regex.match(f).groupdict()['therm'],f) for f in os.listdir(lt_dir) if self.base_regex.match(f)]
+        print 'spifyinggg'
+        ls = [re.match(self.base_regex,f).groupdict()['therm'] for f in os.listdir(lt_dir) if re.match(self.base_regex,f)]
+        print ls
         if len(ls)> len(set(ls)):
-            util.show_error('Single path error','Two files with same therm different mcs in %s. Please delete one. Exiting now')
-            sys.exit(0)
+            util.show_error('Single path error','Two files with same therm different mcs in %s. Please delete one. Exiting now' %lt_dir)
+            raise BaseException
+        
+        
+            
         
     def therm_count(self,dir_,l,t,mc):
         """Vraca koliko ima tacaka za dato mc, tj.trebace kod
@@ -737,7 +743,7 @@ class Choices(mvc.Model):
                         # izaci ce iz programa
                         util.show_error('Mixed pathsies',"""Please seperate multipaths from singlepaths in
                         \n foldeR '%s', and lotder '%s'.\n Contact John if that's too much\n of a bother. Exiting now, bye!""" %( dir_,lt_dir))
-                        sys.exit(0)
+                        raise BaseException
                     funcs[kind](lt_dir)
 
                 #ovo radimo kad smo obradili sve
@@ -816,7 +822,10 @@ class FileManager(mvc.Controller):
         i da postavljamo vrednosti gui elemenata i to
         """
         self.model.set_simdir(self.simdir)
-        self.model.init_model()
+        try:
+            self.model.init_model()
+        except:
+            self.tp.stop()
         self.update_gui()
        
        # self.ap.reader.populateListControls(**{'l':lch})

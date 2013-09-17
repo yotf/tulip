@@ -19,6 +19,7 @@ wxversion.select('2.8')
 import wx
 import pandas as pd
 import os
+import sys
 from os.path import join
 import glob
 import re
@@ -591,6 +592,8 @@ class ThermPanel(wx.Panel):
                                | wx.ALIGN_CENTER_VERTICAL)
 
 
+    def stop(self):
+        sys.exit(0)
 
     def on_save_button(self,event):
         filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
