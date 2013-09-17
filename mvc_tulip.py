@@ -453,7 +453,7 @@ class Choices(mvc.Model):
         return np.sqrt(magt)
 
     def get_filename(self,dir_,l,t,therm):
-        regex = re.compile(r'(^%s%s%s.*(\.sp|\.all))' %(l,t,therm))
+        regex = re.compile(r'(^%s%s%s(MC.*\.sp|\.all))' %(l,t,therm))
         filenames = [f for f in os.listdir(join(self.simdir,dir_,'%s%s' %(l,t))) if regex.match(f)]
         if len(filenames)!=1:
             util.show_error('Emergency','Report issue asap with code 1100010001110**__??')

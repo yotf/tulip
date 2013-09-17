@@ -841,9 +841,10 @@ class ThermPanel(wx.Panel):
         fmt =fmt_cycle.next()
         print self.data.ix[item+'avg']
         print self.data.ix['stdMean'+item]
+        
         self.error_line = self.ax_mag.errorbar(x=self.data.ix['THERM'],
                              y=self.data.ix[item + 'avg'],
-                             yerr=self.data.ix['stdMean' + item],fmt=fmt,fillstyle='none',
+                             yerr=np.array(self.data.ix['stdMean' + item]),fmt=fmt,fillstyle='none',
                                            picker=5)
         
         self.semilog_line = self.ax_cv.semilogx(self.data.ix['THERM'], self.data.ix['cv(%s)'
