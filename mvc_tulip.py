@@ -824,7 +824,8 @@ class FileManager(mvc.Controller):
         self.model.set_simdir(self.simdir)
         try:
             self.model.init_model()
-        except:
+        except BaseException as e:
+            raise e
             self.tp.stop()
         self.update_gui()
        

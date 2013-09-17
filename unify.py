@@ -31,7 +31,7 @@ MC(\d+)     #Poklapam MC sa bilo kojim int broje posle
 """
                , re.VERBOSE)
 
-mcregex = r'%sMC\d+.*?\.(dat|mp)'
+mcregex = r'(%sMC\d+.*?\.(dat|mp))'
 
 def check_seeds(seeds):
     """Checks if first column of a whitespace seperated file
@@ -52,7 +52,8 @@ def main(ltdir):
     group_file = dict()
     while all_files:
         grupa = glregex.search(all_files[0]).groups()[0]
-        group_file[grupa] = re.findall(mcregex % grupa, ' '.join(all_files))
+        group_file[grupa] = zip(*re.findall(mcregex % grupa, ' '.join(all_files)))[0]
+        print group_file[grupa]
         all_files = all_files[len(group_file[grupa]):]
     # Mnogo jednostavnije, a dozvoljava postojanje proizvoljnog broja 
     # linija komentara na proizvoljnim mestima (ili nepostojanja komentara).
@@ -61,6 +62,7 @@ def main(ltdir):
         ofName = join(ltdir,"%s.all") % key   # Output file name
         with open(ofName, 'a') as of:
             for sim_file in value:
+                print sim_file
                 with open(join(ltdir,sim_file)) as f:
                     of.write("".join(l for l in f if not l.strip().startswith("#")))
                 os.remove(join(ltdir,sim_file))
