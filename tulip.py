@@ -1036,7 +1036,7 @@ class AggPanel(wx.Panel):
         L_select = self.cmb_L.GetValue()
         dir_ = self.cmb_dirs.GetValue()
         mag_select = self.cmb_mag.GetValue()
-        lbl = "$%s_{%s}$" %(L_select[0],L_select[1:])
+        lbl = "simulation=%s %s=%s" %(dir_,util.extract_name(L_select).upper(),util.extract_int(L_select))
         agg_data = self.controller.get_agg_plot_data(dir_)
         
         self.ax_agg.plot(agg_data[L_select].ix['T'],
@@ -1047,7 +1047,6 @@ class AggPanel(wx.Panel):
         real_ts = agg_data[L_select].ix['T']
         mag_values = agg_data[L_select].ix[mag_select]
         for ti,m,tr in zip(index_ts,mag_values,real_ts):
-            print 'ti:{} m:{} tr:{}'.format(ti,m,tr)
             text = self.controller.annotate_agg(dir_,L_select,ti)
             self.annotations.append(self.ax_agg.annotate(text,xy=(tr,m),xytext=(tr,m), visible=False,fontsize=8,picker = 5))
 

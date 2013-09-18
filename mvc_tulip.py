@@ -109,7 +109,7 @@ class Choices(mvc.Model):
     base_regex = r'^L\d+T\d+(?P<therm>THERM\d+)'
     single_base = r'%sMC\d+.*' % base_regex
     sp_regex = re.compile(r'%s\.sp$' % single_base)
-    mp_regex = re.compile(r'%s\.(mp|dat)$' % single_base)
+    mp_regex = re.compile(r'%s(\.all|MC\d+.*\.mp|MC\d+.*\.dat)$' % base_regex)
     all_regex = re.compile(r'%s\.all$' %base_regex)
     lt_regex = re.compile(r'(L\d+)(T\d+)$')
     statmc_regex = re.compile(r'^MC\d+$')
@@ -131,7 +131,7 @@ class Choices(mvc.Model):
         try:
             self.files = self._map_filesystem()
         except BaseException as e:
-            util.show_error("IO error","Error occured while reading simfolder:\n %s" %str(e))
+#            util.show_error("IO error","Error occured while reading simfolder:\n %s" %str(e))
             raise e
         self.load_state()
         # za sada cu se zadovoljiti ovime. ali !! !!! ! ! !!!!
@@ -368,7 +368,7 @@ class Choices(mvc.Model):
         print self.bestmats[dir_][l].items()
         for t,tmc in self.bestmats[dir_][l].items():
             print self.simdir,dir_,l,t,tmc['therm']
-            filename = join(self.simdir,dir_,"{l}{t}".format(l=l,t=t),"{l}{t}{therm}.all".format(l=l,t=t,therm=tmc['therm']))
+            filename = self.get_filename(dir_,l,t,tmc['therm'])
             self.log.debug("Loading data from file %s" % filename)
             # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
             data = self.read_tdfile(filename,n)
@@ -394,10 +394,12 @@ class Choices(mvc.Model):
         print ls
         if len(ls)> len(set(ls)):
             util.show_error('Single path error','Two files with same therm different mcs in %s. Please delete one. Exiting now' %lt_dir)
+            try:
+                os.system("nautilus %s" % lt_dir)
+            except:
+                pass
             raise BaseException
         
-        
-            
         
     def therm_count(self,dir_,l,t,mc):
         """Vraca koliko ima tacaka za dato mc, tj.trebace kod
@@ -729,10 +731,8 @@ class Choices(mvc.Model):
                 try:
                     first_file = mp_and_sp_files[0]
                 except IndexError:
-                    #ne postoji ni jedan sp,mp ili dat, znaci svi su all
-                    # tako da nista ne radimo. u slucaju da su sp onda cemo
-                    # pak raditi ponovo spify
-                    pass
+                    #ne postoji ni jedan sp,mp ili dat ili all
+                    util.show_error('Empty LT folder','The folder %s is empty' %lt_dir)
                 else:
                     #obradjujemo fajlove
                     kind = check_kind(first_file) if kind is None else kind
@@ -742,7 +742,11 @@ class Choices(mvc.Model):
                         #znaci ako je bilo koji fajl drugog tipa
                         # izaci ce iz programa
                         util.show_error('Mixed pathsies',"""Please seperate multipaths from singlepaths in
-                        \n foldeR '%s', and lotder '%s'.\n Contact John if that's too much\n of a bother. Exiting now, bye!""" %( dir_,lt_dir))
+                        \n foldeR '%s', LT folder '%s'.\n Exiting now, bye!""" %( dir_,lt_dir))
+                        try:
+                            os.system("nautilus %s" %lt_dir)
+                        except:
+                            pass
                         raise BaseException
                     funcs[kind](lt_dir)
 
@@ -825,7 +829,6 @@ class FileManager(mvc.Controller):
         try:
             self.model.init_model()
         except BaseException as e:
-            raise e
             self.tp.stop()
         self.update_gui()
        
