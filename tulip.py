@@ -918,6 +918,7 @@ class AggPanel(wx.Panel):
         self.clear_button = wx.Button(self, -1, 'Clear')
         self.random_button = wx.Button(self, -1, 'Random')
         self.csel_button = csel.ColourSelect(self,-1,"",(0,0,0),size=wx.DefaultSize)
+        self.csel_button.Enable(False)
         self.clear_button.Enable(True)
         self.Bind(csel.EVT_COLOURSELECT,self.on_select_color)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
@@ -1049,6 +1050,7 @@ class AggPanel(wx.Panel):
         matpl_color = tuple(i/255.0 for i in color)
         self.ax_agg.plot(agg_data[L_select].ix['T'],
                          agg_data[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none',picker=5,color=matpl_color)
+        self.csel_button.Enable(True)
         self.set_cpicker_color(color)
         
         self.annotations = list()
@@ -1083,6 +1085,7 @@ class AggPanel(wx.Panel):
         self.set_ticklabelfontsize(self.lbl_slider.GetValue())
         self.chk_ann.SetValue(False)
         self.chk_ann.Enable(False)
+        self.csel_button.Enable(False)
         self.canvas.draw()
 
     def on_random_button(self,event):
