@@ -17,6 +17,9 @@ Options:
 import wxversion
 wxversion.select('2.8')
 import wx
+
+import wx.lib.colourselect as csel
+
 import pandas as pd
 import os
 import sys
@@ -46,12 +49,6 @@ from matplotlib.lines import Line2D
 import mvc_tulip
 import util
 
-
-#!!!!Izbaci utility metode u jedan modul   
-
-#mislim da je ovo robusnije od onog prethodnog
-#tako treba valjda i sa importima, nem pojma
-# to jos vidi
 import tulip
 #PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(tulip.__file__))
 #!!!Ove napravi kao dictionaryje. i nesto da mogu da se kombinuju
@@ -62,7 +59,9 @@ import tulip
 fmt_strings = ['g+-','r*-','bo-','y+-']
 linestyle_cycle = itertools.cycle(Line2D.lineStyles.keys())
 markers_cycle = itertools.cycle(Line2D.markers.keys())
+fillstyle_cycle=itertools.cycle(len(Line2D.markers.keys()) * Line2D.fillStyles)
 fmt_cycle = itertools.cycle(fmt_strings)
+color_cycle=itertools.cycle([(255,0,0),(0,128,0),(0,0,255),(255,255,0)])
 logging_level = logging.DEBUG if os.getenv('TULIP_DEBUG') else logging.WARNING
         
         
@@ -887,6 +886,7 @@ class AggPanel(wx.Panel):
         self.log= logging.getLogger('AggPanel')
         self.init_plot()
         self.init_gui()
+
         
     def init_gui(self):
 
@@ -917,7 +917,9 @@ class AggPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
         self.clear_button = wx.Button(self, -1, 'Clear')
         self.random_button = wx.Button(self, -1, 'Random')
+        self.csel_button = csel.ColourSelect(self,-1,"",(0,0,0),size=wx.DefaultSize)
         self.clear_button.Enable(True)
+        self.Bind(csel.EVT_COLOURSELECT,self.on_select_color)
         self.Bind(wx.EVT_BUTTON, self.on_clear_button,
                   self.clear_button)
 
@@ -928,26 +930,18 @@ class AggPanel(wx.Panel):
         self.label_txt = wx.StaticText(self,label="labels")
         self.lbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
-
-
-        
-
-
         
         self.xylbl_slider = wx.Slider(self,value = self.ax_agg.xaxis.get_ticklabels()[0].get_fontsize(),
                                     minValue=5,maxValue=20,size=(100,-1),style=wx.SL_HORIZONTAL)
         self.lbl_slider.Bind(wx.EVT_SCROLL,self.on_slider_scroll)
         self.xylbl_slider.Bind(wx.EVT_SCROLL,self.on_xyslider_scroll)
+        
 
         self.chk_ann = wx.CheckBox(self,-1,"Annotate", size=(-1,30))
         self.chk_ann.Enable(False)
         self.Bind(wx.EVT_CHECKBOX, self.on_chk_ann, self.chk_ann)
         
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        # self.hbox1.Add(self.agregate_btn, border=5, flag=wx.ALL
-        #                | wx.ALIGN_CENTER_VERTICAL)
-        # self.hbox1.Add(self.alt_btn, border=5, flag=wx.ALL
-                    #   | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_dirs, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.cmb_L, border=5, flag=wx.ALL
@@ -976,14 +970,12 @@ class AggPanel(wx.Panel):
                        | wx.ALIGN_CENTER_VERTICAL)
         self.toolhbox.Add(self.chk_ann, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.toolhbox.Add(self.csel_button, border=5, flag=wx.ALL
+                       | wx.ALIGN_CENTER_VERTICAL)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
 
         hboxmain = wx.BoxSizer(wx.HORIZONTAL)
         self.reader = Reader(parent=self,title='Chooser')
-        # panelCanvas = wx.Panel(self,-1)
-        # vboxCanvas = wx.BoxSizer(wx.HORIZONTAL)
-        # vboxCanvas.Add(self.canvas)
-        # panelCanvas.SetSizer(vboxCanvas)
         hboxmain.Add(self.canvas, flag = wx.EXPAND | wx.ALIGN_LEFT)
         hboxmain.Add(self.reader, flag= wx.EXPAND| wx.ALIGN_RIGHT)
         self.vbox.Add(hboxmain, 1, wx.EXPAND)
@@ -994,7 +986,12 @@ class AggPanel(wx.Panel):
 
     
 
-
+    def on_select_color(self,event):
+        print "COLOUR(wx)",event.GetValue()
+        self.ax_agg.get_lines()[-1].set_color(tuple(i/255.0 for i in (event.GetValue())))
+        self.ax_agg.legend(loc="best",frameon=False,shadow=True,fontsize=10)
+        self.canvas.draw()
+        
     def on_chk_ann(self,event):
         for ann in self.annotations:
             ann.set_visible(self.chk_ann.IsChecked())
@@ -1031,16 +1028,25 @@ class AggPanel(wx.Panel):
         print "FONTSIZE", fontsize
         self.set_ticklabelfontsize(fontsize)
 
-    
+    def set_cpicker_color(self,color):
+        print "COLOR",color
+
+        self.csel_button.SetColour(color)
+
+        
     def on_draw_button(self, event):
+        
         L_select = self.cmb_L.GetValue()
         dir_ = self.cmb_dirs.GetValue()
         mag_select = self.cmb_mag.GetValue()
         lbl = "simulation=%s %s=%s" %(dir_,util.extract_name(L_select).upper(),util.extract_int(L_select))
         agg_data = self.controller.get_agg_plot_data(dir_)
-        
+        color = color_cycle.next()
+        matpl_color = tuple(i/255.0 for i in color)
         self.ax_agg.plot(agg_data[L_select].ix['T'],
-                         agg_data[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none',picker=5)
+                         agg_data[L_select].ix[mag_select],fmt_cycle.next(), label=lbl,fillstyle='none',picker=5,color=matpl_color)
+        self.set_cpicker_color(color)
+        
         self.annotations = list()
         self.log.debug('agg_data: \n %s' %agg_data)
         index_ts = agg_data[L_select].ix['T'].index
@@ -1054,7 +1060,7 @@ class AggPanel(wx.Panel):
         self.chk_ann.Enable(True)
         
         #???!!!self.ax_agg.set_xlim(right=1.55)
-        leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True)
+        leg = self.ax_agg.legend(loc="best",frameon=False,shadow=True,fontsize=10)
 
         self.xy_ann = self.ax_agg.annotate('dummy text',xy = (0.0,0.0),fontsize=9,color='gray')
         self.xy_ann.set_visible(False)
@@ -1086,7 +1092,8 @@ class AggPanel(wx.Panel):
         fig_height = self.parent.GetParent().height / self.dpi * 3 / 4
         self.fig = Figure((fig_width, fig_height), dpi=self.dpi,facecolor='w')
         self.ax_agg = self.fig.add_subplot(111)
-
+     
+     
         self.xy_ann = self.ax_agg.annotate('dummy text',xy = (0.0,0.0),fontsize=9,color='gray')
         self.xy_ann.set_visible(False)
         
@@ -1099,12 +1106,22 @@ class AggPanel(wx.Panel):
 
         self.canvas.mpl_connect('pick_event', self.on_pick)
         self.canvas.mpl_connect('key_press_event',self.on_key_press)
+        self.fig.canvas.mpl_connect('scroll_event',self.on_scroll) 
         self.mte = self.canvas.mpl_connect('motion_notify_event', self.mouse_moved)
 
 
         
         ########################################
         ########### MATPLOTLIB EVENTS ##########
+
+    def on_scroll(self,event):
+        help(event)
+        curr_m = self.ax_agg.get_lines()[-1].get_markersize()
+        curr = self.ax_agg.get_lines()[-1].get_linewidth()
+        self.ax_agg.get_lines()[-1].set_linewidth(curr+event.step)
+        self.ax_agg.get_lines()[-1].set_markersize(curr_m+event.step)
+            
+        self.canvas.draw();
 
     def on_key_press(self,event):
         if event.key == 'x':
@@ -1141,7 +1158,8 @@ class AggPanel(wx.Panel):
         elif event.mouseevent.button ==3:
             if isinstance(event.artist,Line2D):
                 event.artist.set_marker(markers_cycle.next())
-                
+                event.artist.set_fillstyle(fillstyle_cycle.next())
+        self.ax_agg.legend(loc="best",frameon=False,shadow=True,fontsize=10)
         self.canvas.draw()
 
         
