@@ -131,7 +131,6 @@ class ScatterPanel(wx.Panel):
         
     
     def change_dist(self,event):
-        print type(event)
         dist= event.GetEventObject().GetLabel()
         self.radio_selected=dist;
         self.plot_qq(dist)
@@ -1122,7 +1121,6 @@ class AggPanel(wx.Panel):
         ########### MATPLOTLIB EVENTS ##########
 
     def on_scroll(self,event):
-        help(event)
         curr_m = self.ax_agg.get_lines()[-1].get_markersize()
         curr = self.ax_agg.get_lines()[-1].get_linewidth()
         self.ax_agg.get_lines()[-1].set_linewidth(curr+event.step)
@@ -1143,8 +1141,7 @@ class AggPanel(wx.Panel):
             
     def on_pick(self,event):
         from matplotlib.text import Annotation
-        print type(event)
-        print help(event)
+
         try:
             x,y = event.artist.xy
 
@@ -1503,7 +1500,6 @@ class App(wx.App):
 def main():
     controller = mvc_tulip.FileManager()
     app = App(controller)
-    #controller.init_gui(app.main)
     app.MainLoop()
 if __name__ == '__main__':
     main()
