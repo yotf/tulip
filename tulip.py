@@ -124,36 +124,10 @@ class ScatterPanel(wx.Panel):
         #znaci prosledjujemo mu za sta da generise mat
         curr_t = self.temprs.curr()
         curr_l = self.cmb_l.GetValue()
-<<<<<<< HEAD
-        print "AGGPANEL.aggd\n", AggPanel.aggd[curr_l][curr_t]
 
-        curr_mat = best_mat_dict[curr_l][curr_t]
-        fname,t,curr_tmc =re.match(r"(.*%s(T\d+)THERM(\d+))" % curr_l,curr_mat).groups()
-        #menjamo best_mat_dict, bez povratka!!!
-        mc = sum(booli)
-        print "Neodstranjenih rezultata ima:\n", mc
-        #!!!stavi ovde da bude statmat!!!
-        #!!! posto necemo da dupliciramo kod
-        #!!! tj, promenices statmat
-        mat=make_mat("%s.all" % fname,curr_tmc,booli=booli)
-        newmatfname = "%s%sTHERM%sMC%s.mat" % (curr_l,curr_t,curr_tmc,mc)
-        print "newmatfname",newmatfname
-        tmpdir = join(SIM_DIR,"tmp")
-        if not os.path.exists(tmpdir):
-            os.makedirs(tmpdir)
-        mat.to_csv(join(tmpdir,newmatfname), sep=' ')
-        global repaired_dict
-        print "repaired dict",repaired_dict
-        
-        repaired_dict[curr_l][curr_t]=join(tmpdir,newmatfname)
-        print "repaired dict",repaired_dict
-        print "NEW MAT",mat
-        print "BEST MAT DICT",best_mat_dict
-=======
         dir_ = self.cmb_dirs.GetValue()
         
         self.controller.remove_faulty(dir_,curr_l,curr_t,booli)
->>>>>>> expp
         self.step("dummy",curr=True,booli=booli)
         
     
@@ -348,25 +322,6 @@ class ScatterPanel(wx.Panel):
    
     def set_lims(self,l):
 
-<<<<<<< HEAD
-        for f in best_mat_dict[l].values():
-            fname,t,self.curr_tmc =re.match(r"(.*%s(T\d+)THERM(\d+))" % l,f).groups()
-            print f
-            
-            self.log.debug("Loading data for tempearture {}".format(t))
-            self.curr_all = '%s.all' % fname
-            self.log.debug("Loading data from file %s" % self.curr_all)
-            # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
-            data = pd.read_table(self.curr_all,delim_whitespace=True,nrows=n, names=['seed', 'e', 'x', 'y', 'z'])
-            data.pop('seed')
-            self.log.debug("rows read: %s" % data.e.count())
-            data.set_index(np.arange(data.e.count()),inplace=True)
-            self.all_data[t] = data
-        
-        self.data = pd.concat(self.all_data,axis=0)
-        self.ts = self.all_data.keys()
-=======
->>>>>>> expp
         ylims = list()
         xlims = list()
         ts = set(zip(*self.data.index)[0])
@@ -453,12 +408,9 @@ class ScatterPanel(wx.Panel):
         self.log.debug("Magt has {} elements".format(self.magt.count()))
         
         self.scat =  self.ax_3d.scatter(x,y,z,s=10,c = self.magt,cmap=cm.RdYlBu)
-<<<<<<< HEAD
-        therm,sp = getthermmc(self.cmb_l.GetValue(),t)
-        title ="T={:.4f}\nLS={}\n SP={}".format((float(t[1:])/10000),therm,sp)
-=======
+
         title = self.controller.get_scat_title(dir_,l,t)
->>>>>>> expp
+
         self.ax_3d.set_title(title, fontsize=10, position=(0.1,0.95))
         
         self.log.debug("Maksimum magt je {}".format(self.magt.max()))
@@ -853,19 +805,14 @@ class ThermPanel(wx.Panel):
         self.draw_plot()
         
     def draw_legend(self,event):
-<<<<<<< HEAD
-        lbl_mc=re.match(r"^(L\d+T\d+)(MC\d+).*\.plot$",self.cmb_pfiles.GetValue().split(os.path.sep)[-1]).groups()[1]
-        lbl_mc ="%s=%s" %("SP",lbl_mc[2:])
-        lbl_t ="%s=%.4f" %(self.cmb_T.GetValue()[0],float(self.cmb_T.GetValue()[1:])/10000)
-        lbl_l ="%s=%s"% (self.cmb_L.GetValue()[0],self.cmb_L.GetValue()[1:])
-=======
+
         lbl_mc = self.get_mc()
         lbl_mc ="%s=%s" %("SP",util.extract_int(lbl_mc))
         lbl_t ="%s=%.4f" %(util.extract_name(self.cmb_dict['t'].GetValue()).upper(),float(util.extract_int(self.cmb_dict['t'].GetValue())/10000.0))
         l = self.cmb_dict['l'].GetValue()
         namel = util.extract_name(l).upper()
         lbl_l ="%s=%s"% (namel,util.extract_int(l))
->>>>>>> expp
+
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
         tchk  = self.chk_t.IsChecked()
