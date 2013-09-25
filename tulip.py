@@ -988,9 +988,13 @@ class AggPanel(wx.Panel):
 
     def on_select_color(self,event):
         print "COLOUR(wx)",event.GetValue()
-        self.ax_agg.get_lines()[-1].set_color(tuple(i/255.0 for i in (event.GetValue())))
-        self.ax_agg.legend(loc="best",frameon=False,shadow=True,fontsize=10)
-        self.canvas.draw()
+        try:
+            self.ax_agg.get_lines()[-1].set_color(tuple(i/255.0 for i in (event.GetValue())))
+        except:
+            pass
+        else:
+            self.ax_agg.legend(loc="best",frameon=False,shadow=True,fontsize=10)
+            self.canvas.draw()
         
     def on_chk_ann(self,event):
         for ann in self.annotations:
