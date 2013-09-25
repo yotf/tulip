@@ -28,7 +28,7 @@ def create_plot(df, cv_name,ltdir):
             'cv(M4)':df.ix['stdMeanM4']/df.ix['M4avg']}
     out = pd.DataFrame(out)
     out = pd.concat([df,out.T])
-    print out
+    print "compose:OUT",out
     out.to_csv(join(ltdir,cv_name))
     #cisto da mogu da se igram sa njim is ipythona
     #mada organizacija bi mogla da mi bude drugcija
@@ -63,5 +63,6 @@ def main(ltdir,mcsteps="\d+"):
 
 
 if __name__=="__main__":
+    from docopt import docopt
     docopt(__doc__)
     main(os.getcwd())

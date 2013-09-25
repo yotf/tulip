@@ -23,13 +23,21 @@ import numpy as np
 import os
 import re
 from os.path import join
-
-# nije sigurno potrebno ovoliko svega
-
+import logging
 
 
-def create_mat(data, tmc, base,ltdir):
+def create_mat(in_file,out_file_base,therm,mc_count,booli=False):
+    """Dobija ime all_fajla,
+    """
+    out_file = "{}MC{}.mat".format(out_file_base,mc_count)
+    log.debug("out file: %s" %out_file)
+    data = pd.read_table(in_file, nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])
+    data.pop('seed')
+    booli = booli if booli else [True]*len(data.index)
+    data = data.loc[booli]
+    log.debug("matdata booled :\n %s",data)
     N = len(data.index)
+    log.debug("broj rezultata: %s" % N)
     Eavg = data.E.mean()
     stdE = data.E.std()
     stdMeanE = stdE / np.sqrt(N)
@@ -70,7 +78,7 @@ def create_mat(data, tmc, base,ltdir):
         'stdMeanM4',
         ]
     values = pd.Series([
-        tmc,
+        therm,
         Eavg,
         stdE,
         stdMeanE,
@@ -88,81 +96,7 @@ def create_mat(data, tmc, base,ltdir):
         stdMeanM4,
         ], index=val_names)
 
-    values.to_csv(join(ltdir,base) + '.mat', sep=' ')
-
-
-
-def create_mat_raw(data, tmc, base,ltdir):
-
-    N = len(data.index)
-
-    avg = data.mean()
-    std_ = data.std()
-    stdMean = std_ / np.sqrt(N)
-
-
-    d = {
-        'THERM': tmc,
-        'mean': avg,
-        'std': std_,
-        'stdMean': stdMean,
-        }
-    exp = pd.DataFrame(index=data.columns, data=d)
-    exp.to_csv(join(ltdir,base) + '.raw', sep=' ')
-
-
-
-
-def create_stat(data, tmc, base,ltdir):
-
-    N = len(data.index)
-    avg = data.mean()
-    std_ = data.std()
-    stdMean = std_ / np.sqrt(N)
-    MAG = data[['Mx', 'My', 'Mz']]
-    MAG2 = MAG ** 2
-    M2 = MAG2.Mx + MAG2.My + MAG2.Mz
-    M1 = np.sqrt(M2)
-    M4 = M2 ** 2
-    M2avg = M2.mean()
-    M1avg = M1.mean()
-    M4avg = M4.mean()
-
-    stdMeanM2 = 2 * np.sqrt(avg['Mx'] ** 2 * std_['Mx'] ** 2 
-                            + avg['My'] ** 2 * std_['My'] ** 2 
-                            + avg['Mz'] ** 2 * std_['Mz'] ** 2) / np.sqrt(N)
-
-    # ili ovako
-
-    stdMeanM2 = 2 * np.sqrt(avg['Mx'] ** 2 * stdMean['Mx'] ** 2
-                            + avg['My'] ** 2 * stdMean['My'] ** 2
-                            + avg['Mz'] ** 2 * stdMean['Mz'] ** 2)
-    stdMeanM4 = M1avg * stdMeanM2
-
-    out = pd.Series([
-        tmc,
-        M1avg,
-        M2avg,
-        stdMeanM2,
-        M4avg,
-        stdMeanM4,
-        ], 
-        index=[
-        'THERM',
-        'M1avg',
-        'M2avg',
-        'stdMeanM2',
-        'M4avg',
-        'stdMeanM4',
-        ])
-    out.to_csv(join(ltdir,base + '.stat'), sep=' ')
-
-
-def create_output(data, tmc, base,ltdir):
-    create_mat_raw(data, tmc, base,ltdir)
-    create_mat(data, tmc, base,ltdir)
-    create_stat(data, tmc, base,ltdir)
-
+    values.to_csv(out_file, sep=' ')
 
 
 glregex = \
@@ -176,24 +110,34 @@ THERM(\d+))  #THERM sa bilo kojim int brojem posle
                , re.VERBOSE)
 
 def main(ltdir,n=None):
+    from collections import defaultdict
+    logging.basicConfig(level=logging.DEBUG)
+    global log
+    log = logging.getLogger(__name__)
     unified = [f for f in os.listdir(ltdir) if glregex.match(f)]
-
+    therm_mc_dict = defaultdict(list)
     for u in unified:
-        print 'Unified:  ', u
-        base_name, therm_count = glregex.match(u).groups()        
+        log.debug('Unified: %s '%u)
+        base_name, therm_count = glregex.match(u).groups()
+
         mc_count=int(len(open(join(ltdir,u)).readlines()))
-        # jedino ako nije prosledjeno n ili ako je prosledjeno n
-        # koje je manje ili jednako broj mc koraka u fajlu ima
-        # smisla da bilo sta radimo
-        if n is None or n<=mc_count:
-            mc_count = n or mc_count
-            print mc_count
-            agregate = "{}MC{}".format(base_name,str(mc_count))
-            print "Aggregate: ", agregate
-            # hm, verovatno postoji bolji nacin odbacivanja prve kolone
-            #proveri da li moze beline da gleda za separator
-            data = pd.read_table(join(ltdir,u), nrows=mc_count, delim_whitespace=True, names=['seed', 'E', 'Mx', 'My', 'Mz'])[['E', 'Mx', 'My', 'Mz']]
-            create_output(data, therm_count, agregate,ltdir)
+        #znaci ako je prosledjeno n koje je vece od mc
+        # ono ne zadovoljava, i ne generise se ( u suprotnom bi
+        # se samo prebrisao postojeci fajl )
+        if n > mc_count:
+            continue
+        mc_count = n or mc_count
+        # znaci ako generismo vec fajl
+        # trebace da nam bude u ovom dictu
+        therm_mc_dict[therm_count].append(mc_count)
+        log.debug("mc_count=%s" % mc_count)
+        out_file_base = join(ltdir,base_name)
+
+        log.debug("Out .mat file base:%s" %out_file_base)
+        in_file = join(ltdir,u)
+        log.debug("In .all file: %s" % in_file )
+        create_mat(in_file ,out_file_base,therm_count,mc_count)
+    return therm_mc_dict
 
 
 if __name__=="__main__":
