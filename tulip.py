@@ -920,7 +920,7 @@ class AggPanel(wx.Panel):
         self.Bind(wx.EVT_COMBOBOX, self.on_select_dir, self.cmb_dirs)
         self.Bind(wx.EVT_BUTTON, self.on_draw_button, self.draw_button)
         self.clear_button = wx.Button(self, -1, 'Clear')
-        self.random_button = wx.Button(self, -1, 'Random')
+        self.random_button = wx.Button(self, -1, "'Best'")
         self.csel_button = csel.ColourSelect(self,-1,"",(0,0,0),size=wx.DefaultSize)
         self.csel_button.Enable(False)
         self.clear_button.Enable(True)

@@ -196,9 +196,11 @@ class Choices(mvc.Model):
             l = kwargs['l']
             #zbog mogucnosti prosledjivanja None
             for t,mcdict in self.files[dir_][l].items():
-                mc= random.sample(mcdict.keys(),1)[0]
+                #mc= random.sample(mcdict.keys(),1)[0]
+                mc = max(mcdict.keys(),key=lambda x:util.extract_int(x))
                 print type(mc),mc
-                therm = random.sample(mcdict[mc].keys(),1)[0]
+                #therm = random.sample(mcdict[mc].keys(),1)[0]
+                therm = max(mcdict[mc].keys(),key=lambda x:util.extract_int(x))
                 print dir_,l,t,mc,therm
                 self.add_bestmat(dir_,l,t,mc,therm)
         except IndexError:
