@@ -1,5 +1,14 @@
+"""
+.. module:: mvc
+   :platform: Unix, Windows
+   :synopsis:  MVC of the appliaction
+
+.. moduleauthor:: Tara Petric <tara.petric@gmail.com>
+
+"""
+
 import wx
-import mvc
+import mvc_skelet
 import re
 import logging
 import glob
@@ -14,98 +23,7 @@ import pandas as pd
 import numpy as np
 from profile import *
 
-class ChoicesConverter(mvc.View):
-    """Ova klasa sprema za prikaz
-    za gui izbore inace i u matchooseru"""
-
-    def __init__(self,model,controller):
-        mvc.View.__init__(self,model,controller)
-        self.log = logging.getLogger("ChoicesConverter")
-
-    def model_updated(self,subject=None):
-        """Nisam sigurna da mi ovo treba
-        sto samo kontroler, zasto view prica
-        direktno sa guijem a ne preko modela
-        hmmm???? Sada mi dobijemo """
-        pass
-        # self.update_gui()
-
-    def choices(self,dir_=None,l=None,t=None,mc=None,therm_count=False):
-        reverse = True if not t else False
-        if t and not mc and therm_count:
-            return self.mc_choices(dir_,l,t)
-        else:
-            return sorted(self.model.choices(dir_=dir_,l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
-
-    def get_scat_title(self,dir_,l,t):
-       
-        therm = self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0]
-        print therm
-        therm = util.extract_int(therm)
-        mc = util.extract_int(self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0])
-        return "T={:.4f}\nLS={}\n SP={}".format(float(util.extract_int(t))/10000.0,therm,mc)
-
-    @counter
-    @benchmark
-    @logg
-    def matchooseritems(self,dir_,l=None,t=None,mc=None):
-        items = list()
-        # ako je prosledjen mc onda zelimo therm
-        which = 'therm' if mc else 'mc'
-        bestmat_ch = self.model.bestmat_choices(dir_,l,t,which)
-        self.log.debug('bestmatch %s' %bestmat_ch)
-        for x in self.choices(dir_,l,t,mc):
-            fdict = {'pointSize':10,'family':wx.FONTFAMILY_DEFAULT,
-                     'style':wx.FONTSTYLE_NORMAL,'weight':wx.FONTWEIGHT_NORMAL}
-            self.log.debug('uredjujem izgleda za :%s' %x)
-            item = wx.ListItem()
-            item.SetText(x)
-            if x in bestmat_ch and (mc is None or mc in self.model.bestmat_choices(dir_,l,t,'mc')):
-                self.log.debug('boldovao')
-                fdict['weight']=wx.FONTWEIGHT_BOLD
-            
-            font = wx.Font(**fdict)
-            # if x in self.model.altmat_choices():
-            #     font.SetWeight(wx.FONTWEIGHT_BOLD)
-            item.SetFont(font)
-            items.append(item)
-        return items
-
-    def bmat_choices(self,dir_=None,l=None,t=None,which = 'mc'):
-        return sorted(self.model.bestmat_choices(dir_,l,t,which),key = lambda x:util.extract_int(x))
-        
-    def _l_choices_agg(self):
-        return sorted(self.model.bestmat_ls(), key = lambda x:util.extract_int(x))
-
-    def mag_choices_agg(self):
-        """Ovde cu morati da gledam u hm, pa to jeste fazon, sto
-        da, cu morati da imam ovo, sto znaci da je pre toga uradjen
-        bar jedan agregate. treba da je uradjen bar jedan agregate.
-        posto nama se desava sledece:. a mozda da uradimo da u settings
-        panelu mogu da se menjaju formule i tacno sve formule, samo onda bi trebalo
-        da zapamtim neke formule, pa mogla bih sada da izvucim iz agregate-a formuel
-        i da ih drzim zapamcene, tj, tu ce nam biti i onda kad radim agregate idem
-        iz tih formula. Hoce formule biti u modelu ili kako??? Pa da, nema tu sta,
-        ok, ajd lepo radi ovaj view. Pa radim sve lepo, samo eto preskacem stvari
-        koje mislim da ne treba sada. tj, da, prioritizujem, sta hoces"""
-        return self.model.mag_choices()
-
-    def mc_choices(self,dir_,l,t):
-        """Vraca sve raspolozive mc-ove, formatirane za prikaz. Oni ujedno i odredjuju moguce
-        plotove za therm panel. Ovo podize pitanje da li je bolje da
-        se gleda za koje mc-ove postoje koji thermovi, i obrnuto"""
-        mc_choices = self.model.choices(dir_=dir_,l=l,t=t)
-        
-        sorted_mcs =  sorted(mc_choices,key=lambda x: util.extract_int(x))
-        return ["{mc} ({tmc})".format(mc=mc,tmc=self.model.therm_count(dir_,l,t,mc)) for mc in sorted_mcs ]
-
-
-    def annotate_agg(self,dir_,l,t):
-        ls =self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0]
-        sp =self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0]
-        return 'LS={}\nSP={}'.format(util.extract_int(ls),util.extract_int(sp))
-
-class Choices(mvc.Model):
+class Choices(mvc_skelet.Model):
     base_regex = r'^L\d+T\d+(?P<therm>THERM\d+)'
     single_base = r'%sMC\d+.*' % base_regex
     sp_regex = re.compile(r'%s\.sp$' % single_base)
@@ -114,10 +32,13 @@ class Choices(mvc.Model):
     lt_regex = re.compile(r'(L\d+)(T\d+)$')
     statmc_regex = re.compile(r'^MC\d+$')
     def __init__(self):
-        """Ne znam da li nam treba
-        nesto posebno ovde. Mislim
-        da se sve radi u runtime"""
-        mvc.Model.__init__(self)
+        """
+        Initializes the logger
+        and sets all the dictionaries used to None
+        for clarity
+        : returns : Nothing
+        """
+        mvc_skelet.Model.__init__(self)
         self.log = logging.getLogger("Choices")
         self.bestmats = None
         self.mags = None
@@ -125,19 +46,38 @@ class Choices(mvc.Model):
 
         
     def init_model(self):
-        """Ovo se poziva tek kada se pokrene aplikacija
-        posto necemo imati progress bar niti ista"""
+        """Initializes the model
+        Runs when GUI is up
+        Maps the current filesystem
+
+         Sets the quantaties of interest that can be plotted:
         
+        * susc
+        * Tcap
+        * M1avg
+        * M2avg
+        * M4avg
+        * Eavg
+        * E2avg
+        * U
+
+        .. todo::
+        
+           Custom formulae?
+        
+        :returns: Nothing
+        
+        Raises :class: 'BaseException' If there was an exception \
+        when mapping the filesystem, it is propagated to the app \
+        and it exits with code 0
+        
+        """
         try:
             self.files = self._map_filesystem()
         except BaseException as e:
-#            util.show_error("IO error","Error occured while reading simfolder:\n %s" %str(e))
             raise e
         self.load_state()
-        # za sada cu se zadovoljiti ovime. ali !! !!! ! ! !!!!
-        # ok, tu ce biti hardkodovane formule. ali ideja mi je da
-        # mogu da se ukucaju formule. to bi bilo tako sto ce se zadati
-        # pisati velicine i aritmeticki operator, najnormalnije ce sse pisat
+        
         self.mags = [
         'susc',
         'Tcap',
@@ -149,37 +89,53 @@ class Choices(mvc.Model):
         'U'        
         ]
 
-    def mag_choices(self):
-        self.log.debug("Vracam mag choices : %s" %self.mags)
-        return self.mags
-
-
-
-    def set_simdir(self,simdir):
-        """Ovo zove kontroler pre nego
-        sto pozove init_model metodu. Mislim
-        ovo nije bas najsrecnije. Treba neki
-        communication diagram da napravim, ali
-        nije strasno posto se samo na pocetku
-        poziva
-        """
-        self.simdir = simdir
-
 
     def add_virtual_file(self,dir_,l,t,mc,therm,booli):
-        """Dodaje ovog kao izbor u bestmat, zatim ga
-        dodaje u izbore fajlova uz to da je prethodno izracunao
-        mat za njega. """
-        # self.add_bestmat(dir_=dir_,l=l,t=t,mc=mc,therm=therm)
+        """Calculates the mat file for the given parameters
+        Updates the direcotry structure to show the new
+        number of SPs and the appropriate number of LSs
+
+        Notifies observers of change in model
+        
+        :param dir_: The simulation directory.
+        :param l: The linear lattice size.
+        :type l: str.
+        :type dir_: str.
+        :param t: The given temperature.
+        :type t: str.
+        :param mc: The number of Simulation Paths.
+        :type mc: str.
+        :param therm: The number of Lattice Sweeps.
+        :type therm: str.
+        :param booli: When 'cutting' bad results.
+        :type booli: boolean index.
+        
+        """
         mat = self.create_mat(dir_,l,t,therm,booli=booli)
         therm_ch = dict()
         therm_ch[therm]=mat
         self.files[dir_][l][t][mc].update(therm_ch)
         self.notify_observers()
-
         
     def add_bestmat(self,dir_,l,t,mc,therm):
-        self.log.debug('Adding bestmat!')
+        """Adds a file as the best choice
+        to be used for later plotting.
+        **Notifies** *observers*.
+        
+        :param dir_: The simulation directory.
+        :param l: The linear lattice size.
+        :type l: str.
+        :type dir_: str.
+        :param t: The given temperature.
+        :type t: str.
+        :param mc: The number of Simulation Paths.
+        :type mc: str.
+        :param therm: The number of Lattice Sweeps.
+        :type therm: str.
+        
+        """
+        
+        
         self.bestmats[dir_] = self.bestmats[dir_] if self.bestmats.has_key(dir_) else dict()
         self.bestmats[dir_][l]=self.bestmats[dir_][l] if self.bestmats[dir_].has_key(l) else dict()
         self.bestmats[dir_][l][t] = {'mc':mc,'therm':therm}
@@ -187,21 +143,24 @@ class Choices(mvc.Model):
         self.notify_observers()
 
     def random_bestmats(self,dir_,**kwargs):
+        """Chooses the \'best' results, by choosing the ones
+        with the most LSs and SPs for a chosen linear lattice
+        size
+
+        Raises :class: BaseException, maybe 
+
+        :returns: Nothing.
         
-        """prosledjuje mu se direktorijum za koji da izabere
-        sve random bestmatove"""
-        import random
-       
+        :Parameters:
+           - `dir_`: The simulation directory
+           - `**kwargs`: Should be linear lattice size
+        
+        """
         try:
             l = kwargs['l']
-            #zbog mogucnosti prosledjivanja None
             for t,mcdict in self.files[dir_][l].items():
-                #mc= random.sample(mcdict.keys(),1)[0]
                 mc = max(mcdict.keys(),key=lambda x:util.extract_int(x))
-                print type(mc),mc
-                #therm = random.sample(mcdict[mc].keys(),1)[0]
                 therm = max(mcdict[mc].keys(),key=lambda x:util.extract_int(x))
-                print dir_,l,t,mc,therm
                 self.add_bestmat(dir_,l,t,mc,therm)
         except IndexError:
             util.show_error('No Lattice Size selected','Contact developer to disable Random button')
@@ -210,6 +169,10 @@ class Choices(mvc.Model):
             raise e
 
     def save_mats(self):
+        """Saves a deepcopy of the math dictionary, \
+        excluding the \'virtual' ones
+        
+        """
         from copy import deepcopy
         for_save = deepcopy(self.bestmats)
         for dir_,ldict in for_save.items():
@@ -222,18 +185,29 @@ class Choices(mvc.Model):
         with open(join(self.simdir,'bestmat.dict'),'wb') as bmatfile:
             pickle.dump(dict(for_save),bmatfile)
             
-            
     @logg
     def remove_bestmat(self,**kwargs):
-        """U slucaju da je na l
-        kliknuto, svi za taj l se brisu
-        i suprotnom samo odrejeni. Jako je
-        tight coupling izmedju ovih zbog ovog
-        kwargs. Mozda bude pravilo problema"""
+        """Removes the bestmat for given **L** and **T**
+
+        Cleans the bestmat dictionary, saves it, and notifies \
+        observers of change in model
+        
+
+        :Parameters:
+           - `**kwargs`:
+              - `dir_` (req.)
+              - `l` (req.)
+              - `t` (req.)
+
+        .. todo::
+
+           Implement for whole **L**. Hm, should work. Changed - check! 
+
+        """
         dir_= kwargs['dir_']
         l = kwargs['l']
-        t = kwargs['t']
         try:
+            t = kwargs['t']
             del self.bestmats[dir_][l][t]
             if not self.bestmats[dir_][l]:
                 self.log.debug('Sad je prazno za taj l, brisem ga celog')
@@ -253,8 +227,13 @@ class Choices(mvc.Model):
             
         
     def add_mc(self,mc,**kwargs):
-        """Prima za koje l t da generise novo
-        mc, i stavlja ga u sturkturu podataka
+        """
+        Adds new SP, for drawing different
+        precision. Adds it to the map of filesystem
+
+        :Parameters:
+           -`**kwargs`: **L**inear lattice size, and **T**emperature 
+        
         """
 
         statmc = self.get_static_mcs(**kwargs)[0]
@@ -267,6 +246,9 @@ class Choices(mvc.Model):
 
 
     def add_to_map(self,dir_,l,t,mc,tdict):
+        """Adds to filesystem map, and notifies observers
+        
+        """
         self.files[dir_][l][t][mc]=tdict
         self.notify_observers()
         
@@ -276,13 +258,6 @@ class Choices(mvc.Model):
         self.log.debug("Vracam max mc")
         return util.extract_int(max(self.choices(dir_,l,t),key =lambda x: util.extract_int(x)))
         
-    def get_mags(self):
-        """Taj mags ce sadrzati i formule
-        a i mozda ove stringove koji korespondiraju.
-        Videcemo. Samo Nek ti proradi ovo i onda malo
-        doteruj"""
-        return self.mags
-
     @logg
     def choices(self,dir_=None,l=None,t=None,mc=None):
         """Nemoj da prosledjujes van redosleda argumenta
@@ -365,7 +340,12 @@ class Choices(mvc.Model):
     def load_sp_data(self,dir_,l,n=None):
         """Ucitava podatke za isrcatavanje na
         scatter panelu, i vraca u formatu pogodnom
-        za plotovanje"""
+        za plotovanje
+
+
+        .. versionadded: 2.0
+        
+        """
         all_data = dict()
         print self.bestmats[dir_][l].items()
         for t,tmc in self.bestmats[dir_][l].items():
@@ -481,7 +461,6 @@ class Choices(mvc.Model):
         ODREDJENI rezultati, pa koristimo taj argument kao indeks koji
         ce izdvojiti samo zeljenje rezultate
         """
-
         mc = util.extract_int(mc) if mc else None
         filename = None
         try:
@@ -505,11 +484,12 @@ class Choices(mvc.Model):
         stdE2 = E2.std()
         stdMeanE2 = stdE2 / np.sqrt(N)
         self.calculate_magt(data)
-
+        #Ovo mozda da bude unutrasnja funkcija
+        # Nem pojma, treba videti sta ti treba
+        # gde pa onda da znas
         MAG = self.mag_components(data)
         MAG2 = MAG ** 2
         M2 = MAG2.sum(1)
-        print 'm2',M2
         M1 = np.sqrt(M2)
         M4 = M2 ** 2
         M2avg = M2.mean()
@@ -618,7 +598,6 @@ class Choices(mvc.Model):
                 data_mat = self.files[dir_][l][t][mc][therm]
                 self.log.debug(type(data_mat))
                 data_mat.rename({'THERM': 'T'},inplace=True)
-                self.log.debug('TTTTT :%s',t)
                 data_mat.ix['T']=int(t[1:])
                 agg_mat.append((data_mat,t))
             #uvek cemo imati samo jednu kolonu, naravno
@@ -769,7 +748,9 @@ class Choices(mvc.Model):
         self.log.debug('mapped fsystem: %s' % filess)
         return filess
 
-class FileManager(mvc.Controller):
+
+
+class FileManager(mvc_skelet.Controller):
     """Ova klasa ce brinuti o postojacim l,t,mc, i therm
     i takodje o izborima razlicitim, znaci originalnim statickim
     i dinamickim, i onima sa izbacenim rezultatima.Inicijalizuje se sa
@@ -827,7 +808,7 @@ class FileManager(mvc.Controller):
         da inicijalizujemo model
         i da postavljamo vrednosti gui elemenata i to
         """
-        self.model.set_simdir(self.simdir)
+        self.model.simdir = self.simdir
         try:
             self.model.init_model()
         except BaseException as e:
@@ -848,7 +829,7 @@ class FileManager(mvc.Controller):
         
         # samo ce morati da vidi ako ima, ako nema jbg
         # bice prazno
-        self.ap.set_mag_choices(self.view.mag_choices_agg())
+        self.ap.set_mag_choices(self.view.mags)
         self.refresh_matchooser()
         ####SCATTER PANEL####
 
@@ -1080,7 +1061,82 @@ class FileManager(mvc.Controller):
 
     
 
-    
+class ChoicesConverter(mvc_skelet.View):
+    """Ova klasa sprema za prikaz
+    za gui izbore inace i u matchooseru"""
+
+    def __init__(self,model,controller):
+        mvc_skelet.View.__init__(self,model,controller)
+        self.log = logging.getLogger("ChoicesConverter")
+
+    def choices(self,dir_=None,l=None,t=None,mc=None,therm_count=False):
+        reverse = True if not t else False
+        if t and not mc and therm_count:
+            return self.mc_choices(dir_,l,t)
+        else:
+            return sorted(self.model.choices(dir_=dir_,l=l,t=t,mc=mc), key= lambda x:util.extract_int(x) ,reverse=reverse)
+
+    def get_scat_title(self,dir_,l,t):
+       
+        therm = self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0]
+        print therm
+        therm = util.extract_int(therm)
+        mc = util.extract_int(self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0])
+        return "T={:.4f}\nLS={}\n SP={}".format(float(util.extract_int(t))/10000.0,therm,mc)
+
+    @counter
+    @benchmark
+    @logg
+    def matchooseritems(self,dir_,l=None,t=None,mc=None):
+        items = list()
+        # ako je prosledjen mc onda zelimo therm
+        which = 'therm' if mc else 'mc'
+        bestmat_ch = self.model.bestmat_choices(dir_,l,t,which)
+        self.log.debug('bestmatch %s' %bestmat_ch)
+        for x in self.choices(dir_,l,t,mc):
+            fdict = {'pointSize':10,'family':wx.FONTFAMILY_DEFAULT,
+                     'style':wx.FONTSTYLE_NORMAL,'weight':wx.FONTWEIGHT_NORMAL}
+            self.log.debug('uredjujem izgleda za :%s' %x)
+            item = wx.ListItem()
+            item.SetText(x)
+            if x in bestmat_ch and (mc is None or mc in self.model.bestmat_choices(dir_,l,t,'mc')):
+                self.log.debug('boldovao')
+                fdict['weight']=wx.FONTWEIGHT_BOLD
+            
+            font = wx.Font(**fdict)
+            # if x in self.model.altmat_choices():
+            #     font.SetWeight(wx.FONTWEIGHT_BOLD)
+            item.SetFont(font)
+            items.append(item)
+        return items
+
+    def bmat_choices(self,dir_=None,l=None,t=None,which = 'mc'):
+        return sorted(self.model.bestmat_choices(dir_,l,t,which),key = lambda x:util.extract_int(x))
+        
+    def _l_choices_agg(self):
+        return sorted(self.model.bestmat_ls(), key = lambda x:util.extract_int(x))
+
+    @property
+    def mags(self):
+        return self.model.mags
+
+    def mc_choices(self,dir_,l,t):
+        """Vraca sve raspolozive mc-ove, formatirane za prikaz. Oni ujedno i odredjuju moguce
+        plotove za therm panel. Ovo podize pitanje da li je bolje da
+        se gleda za koje mc-ove postoje koji thermovi, i obrnuto"""
+        mc_choices = self.model.choices(dir_=dir_,l=l,t=t)
+        
+        sorted_mcs =  sorted(mc_choices,key=lambda x: util.extract_int(x))
+        return ["{mc} ({tmc})".format(mc=mc,tmc=self.model.therm_count(dir_,l,t,mc)) for mc in sorted_mcs ]
+
+
+    def annotate_agg(self,dir_,l,t):
+        ls =self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='therm')[0]
+        sp =self.model.bestmat_choices(dir_=dir_,l=l,t=t,which='mc')[0]
+        return 'LS={}\nSP={}'.format(util.extract_int(ls),util.extract_int(sp))
 
    
+
+
+
 

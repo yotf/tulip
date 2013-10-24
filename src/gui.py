@@ -14,6 +14,8 @@ Options:
     -h --help
 """
    
+
+#from . mvc import Choices,ChoicesConverter,FileManager
 import wxversion
 wxversion.select('2.8')
 import wx
@@ -23,6 +25,11 @@ import wx.lib.colourselect as csel
 import pandas as pd
 import os
 import sys
+import gui
+print __package__
+PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(gui.__file__))
+sys.path.append(PACKAGE_ABS_PATH)
+import mvc
 from os.path import join
 import glob
 import re
@@ -46,11 +53,7 @@ from itertools import cycle
 from scipy import stats   
 from matplotlib.widgets import RectangleSelector
 from matplotlib.lines import Line2D
-import mvc_tulip
-import util
 
-import tulip
-#PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(tulip.__file__))
 #!!!Ove napravi kao dictionaryje. i nesto da mogu da se kombinuju
 #nem pojma. da moze da se menja, znaci neka struktura koja ce se u zavisnosti
 #od parametra ce advancovati jedan cycle++, od bilo koji od ovih
@@ -474,7 +477,7 @@ class ExpPanel(wx.Panel):
 class ThermPanel(wx.Panel):
 
     cmbord = ['dir_','l','t','mc']
-    cmbsize=[150,70,70,130]
+    cmbsize=[150,70,120,130]
     plts = ['M1', 'M2', 'M4']
     
     def __init__(self, parent,controller):
@@ -528,12 +531,13 @@ class ThermPanel(wx.Panel):
         self.hbox1.AddSpacer(20)
                 
         self.make_combos()
-        
+
         self.hbox1.Add(self.draw_button, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
 
         self.hbox1.Add(self.clear_button, border=5, flag=wx.ALL
                        | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.AddSpacer(20)
         self.hbox1.Add(self.mc_txt, border=5, flag=wx.ALL
                | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.Add(self.add_button, border=5, flag=wx.ALL
@@ -1503,7 +1507,7 @@ class App(wx.App):
         self.controller.application_started()
 
 def main():
-    controller = mvc_tulip.FileManager()
+    controller = mvc.FileManager()
     app = App(controller)
     app.MainLoop()
 if __name__ == '__main__':
