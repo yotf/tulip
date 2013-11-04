@@ -1,0 +1,997 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>src.mvc package &mdash; src  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="src  documentation" href="index.html" />
+    <link rel="up" title="src package" href="src.html" />
+    <link rel="prev" title="src package" href="src.html" /> 
+  </head>
+  <body>
+
+<div style="background-color: white; text-align: left; padding: 10px 10px 15px 15px">
+<a href="index.html"><img src="_static/logo.png" border="0" alt="py4sci"/></a>
+</div>
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="src.html" title="src package"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">home</a>|&nbsp;</li>
+        <li><a href="search.html">search</a>|&nbsp;</li>
+
+          <li><a href="src.html" accesskey="U">src package</a> &raquo;</li> 
+      </ul>
+    </div>
+
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">src.mvc package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-src.mvc.mvc_skelet">src.mvc.mvc_skelet module</a></li>
+<li><a class="reference internal" href="#module-src.mvc.profile">src.mvc.profile module</a></li>
+<li><a class="reference internal" href="#module-src.mvc.unify">src.mvc.unify module</a></li>
+<li><a class="reference internal" href="#module-src.mvc.util">src.mvc.util module</a></li>
+<li><a class="reference internal" href="#module-src.mvc">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="src.html"
+                        title="previous chapter">src package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/src.mvc.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="src-mvc-package">
+<h1>src.mvc package<a class="headerlink" href="#src-mvc-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-src.mvc.mvc_skelet">
+<span id="src-mvc-mvc-skelet-module"></span><h2>src.mvc.mvc_skelet module<a class="headerlink" href="#module-src.mvc.mvc_skelet" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="src.mvc.mvc_skelet.Controller">
+<em class="property">class </em><tt class="descclassname">src.mvc.mvc_skelet.</tt><tt class="descname">Controller</tt><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Controller"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Controller" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Ova klasa se brine o korisnickom unosu</p>
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Controller.init_components">
+<tt class="descname">init_components</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Controller.init_components"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Controller.init_components" title="Permalink to this definition">¶</a></dt>
+<dd><p>Priprema komponente modela i prikaza, i kaci kao observera
+modelu svoju metodu. Ovo treba da se pozove iz __init__ metode
+podklase</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Controller.init_model">
+<tt class="descname">init_model</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Controller.init_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Controller.init_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dodeljuje instancu &#8216;Model&#8217;-a self.modelu, implementirati
+u podklasi</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Controller.init_view">
+<tt class="descname">init_view</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Controller.init_view"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Controller.init_view" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dodeljuje instancu &#8216;View&#8217;-a self.view-u,implementirati
+u podklasi. Ali koliko cemo kontrolera imati. i zar ce svaki
+imati samo jedan view???</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.mvc_skelet.Controller.model">
+<tt class="descname">model</tt><em class="property"> = None</em><a class="headerlink" href="#src.mvc.mvc_skelet.Controller.model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instanca &#8216;Model&#8217;-a, koju dodeli &#8216;init_model()&#8217;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Controller.model_updated">
+<tt class="descname">model_updated</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Controller.model_updated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Controller.model_updated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ovo Model zove kad se updejtuje. Implementiraj u
+podklasama</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.mvc_skelet.Controller.view">
+<tt class="descname">view</tt><em class="property"> = None</em><a class="headerlink" href="#src.mvc.mvc_skelet.Controller.view" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instanca &#8216;View&#8217;-a, koju pripremi &#8216;init_view()&#8217;.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="src.mvc.mvc_skelet.Model">
+<em class="property">class </em><tt class="descclassname">src.mvc.mvc_skelet.</tt><tt class="descname">Model</tt><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.mvc.mvc_skelet.Subject" title="src.mvc.mvc_skelet.Subject"><tt class="xref py py-class docutils literal"><span class="pre">src.mvc.mvc_skelet.Subject</span></tt></a></p>
+<p>Stanje aplikacije i poslovna logika</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="src.mvc.mvc_skelet.Subject">
+<em class="property">class </em><tt class="descclassname">src.mvc.mvc_skelet.</tt><tt class="descname">Subject</tt><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Subject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Subject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Observer pattern</p>
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Subject.attach_observer">
+<tt class="descname">attach_observer</tt><big>(</big><em>observer</em><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Subject.attach_observer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Subject.attach_observer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prima callback funkciju koju
+dodaje na listu observera</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Subject.detach_observer">
+<tt class="descname">detach_observer</tt><big>(</big><em>observer</em><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Subject.detach_observer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Subject.detach_observer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.Subject.notify_observers">
+<tt class="descname">notify_observers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#Subject.notify_observers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.Subject.notify_observers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.mvc_skelet.Subject.observers">
+<tt class="descname">observers</tt><em class="property"> = None</em><a class="headerlink" href="#src.mvc.mvc_skelet.Subject.observers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Funkcije koje ce se pozvati kad se podaci azuriraju</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="src.mvc.mvc_skelet.View">
+<em class="property">class </em><tt class="descclassname">src.mvc.mvc_skelet.</tt><tt class="descname">View</tt><big>(</big><em>model</em>, <em>controller</em><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#View"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.View" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Logika za prikaz</p>
+<dl class="method">
+<dt id="src.mvc.mvc_skelet.View.model_updated">
+<tt class="descname">model_updated</tt><big>(</big><em>subject=None</em><big>)</big><a class="reference internal" href="_modules/src/mvc/mvc_skelet.html#View.model_updated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.mvc_skelet.View.model_updated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ovu metodu poziva model kad se promeni,
+more se implementirati u podklasama</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Hmm, not sure if i&#8217;ll ever need this 
+so the view, doesn&#8217;t really do anything when model is
+updated i think, it&#8217;s just the controller...</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.mvc.profile">
+<span id="src-mvc-profile-module"></span><h2>src.mvc.profile module<a class="headerlink" href="#module-src.mvc.profile" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="src.mvc.profile.benchmark">
+<tt class="descclassname">src.mvc.profile.</tt><tt class="descname">benchmark</tt><big>(</big><em>func</em><big>)</big><a class="reference internal" href="_modules/src/mvc/profile.html#benchmark"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.profile.benchmark" title="Permalink to this definition">¶</a></dt>
+<dd><p>A decorator that prints the time a function takes
+to execute.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.mvc.profile.counter">
+<tt class="descclassname">src.mvc.profile.</tt><tt class="descname">counter</tt><big>(</big><em>func</em><big>)</big><a class="reference internal" href="_modules/src/mvc/profile.html#counter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.profile.counter" title="Permalink to this definition">¶</a></dt>
+<dd><p>A decorator that counts and prints the number of times a function has been executed</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.mvc.profile.logg">
+<tt class="descclassname">src.mvc.profile.</tt><tt class="descname">logg</tt><big>(</big><em>func</em><big>)</big><a class="reference internal" href="_modules/src/mvc/profile.html#logg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.profile.logg" title="Permalink to this definition">¶</a></dt>
+<dd><p>A decorator that logs the activity of the script.
+(it actually just prints it, but it could be logging!)</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.mvc.unify">
+<span id="src-mvc-unify-module"></span><h2>src.mvc.unify module<a class="headerlink" href="#module-src.mvc.unify" title="Permalink to this headline">¶</a></h2>
+<hr class="docutils" />
+<p>Usage: unify.py</p>
+<dl class="function">
+<dt id="src.mvc.unify.check_seeds">
+<tt class="descclassname">src.mvc.unify.</tt><tt class="descname">check_seeds</tt><big>(</big><em>seeds</em><big>)</big><a class="reference internal" href="_modules/src/mvc/unify.html#check_seeds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.unify.check_seeds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if first column of a whitespace seperated file
+has unique values of longlong&#8217;s.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.mvc.unify.main">
+<tt class="descclassname">src.mvc.unify.</tt><tt class="descname">main</tt><big>(</big><em>ltdir</em><big>)</big><a class="reference internal" href="_modules/src/mvc/unify.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.unify.main" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-src.mvc.util">
+<span id="src-mvc-util-module"></span><h2>src.mvc.util module<a class="headerlink" href="#module-src.mvc.util" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="src.mvc.util.MyMessageBox">
+<em class="property">class </em><tt class="descclassname">src.mvc.util.</tt><tt class="descname">MyMessageBox</tt><big>(</big><em>message</em>, <em>title</em>, <em>style</em><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#MyMessageBox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.MyMessageBox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">wx._windows.MessageDialog</span></tt></p>
+<dl class="method">
+<dt id="src.mvc.util.MyMessageBox.on_report_issue">
+<tt class="descname">on_report_issue</tt><big>(</big><em>event</em><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#MyMessageBox.on_report_issue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.MyMessageBox.on_report_issue" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="src.mvc.util.extract_int">
+<tt class="descclassname">src.mvc.util.</tt><tt class="descname">extract_int</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#extract_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.extract_int" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca prvi int iz stringa, ako ga
+ima - u suprotnom vraca nulu!</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.mvc.util.extract_name">
+<tt class="descclassname">src.mvc.util.</tt><tt class="descname">extract_name</tt><big>(</big><em>string</em><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#extract_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.extract_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca ime izbora
+L1010-&gt;l i tako</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="src.mvc.util.show_error">
+<tt class="descclassname">src.mvc.util.</tt><tt class="descname">show_error</tt><big>(</big><em>title</em>, <em>message</em><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#show_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.show_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="src.mvc.util.twoway_cycle">
+<em class="property">class </em><tt class="descclassname">src.mvc.util.</tt><tt class="descname">twoway_cycle</tt><big>(</big><em>it</em><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#twoway_cycle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.twoway_cycle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uzima iterable, i na zvanje prev i next
+vraca odgovarajuce clanove. ovo je verovatno
+moglo lepse preko nekih dekoratora, generatora
+nesto</p>
+<dl class="method">
+<dt id="src.mvc.util.twoway_cycle.curr">
+<tt class="descname">curr</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#twoway_cycle.curr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.twoway_cycle.curr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.util.twoway_cycle.next">
+<tt class="descname">next</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#twoway_cycle.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.twoway_cycle.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.util.twoway_cycle.prev">
+<tt class="descname">prev</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc/util.html#twoway_cycle.prev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.util.twoway_cycle.prev" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-src.mvc">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-src.mvc" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-mvc"></span><dl class="class">
+<dt id="src.mvc.Choices">
+<em class="property">class </em><tt class="descclassname">src.mvc.</tt><tt class="descname">Choices</tt><a class="reference internal" href="_modules/src/mvc.html#Choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.mvc.mvc_skelet.Model" title="src.mvc.mvc_skelet.Model"><tt class="xref py py-class docutils literal"><span class="pre">src.mvc.mvc_skelet.Model</span></tt></a></p>
+<dl class="method">
+<dt id="src.mvc.Choices.add_bestmat">
+<tt class="descname">add_bestmat</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>mc</em>, <em>therm</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.add_bestmat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.add_bestmat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a file as the best choice
+to be used for later plotting.
+<strong>Notifies</strong> <em>observers</em>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dir</strong> (<em>str.</em>) &#8211; The simulation directory.</li>
+<li><strong>l</strong> (<em>str.</em>) &#8211; The linear lattice size.</li>
+<li><strong>t</strong> (<em>str.</em>) &#8211; The given temperature.</li>
+<li><strong>mc</strong> (<em>str.</em>) &#8211; The number of Simulation Paths.</li>
+<li><strong>therm</strong> (<em>str.</em>) &#8211; The number of Lattice Sweeps.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.add_mc">
+<tt class="descname">add_mc</tt><big>(</big><em>mc</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.add_mc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.add_mc" title="Permalink to this definition">¶</a></dt>
+<dd><p id="add-mc">Adds new SP, for drawing different
+precision. Adds it to the map of filesystem, while
+at the same time, taking care that the new file
+has the same LS choices as the actual file on the
+filesystem. Meaning that we create a virtual &#8216;file&#8217;
+in memory that corresponds to the actual file, just
+<em>cut</em> in smaller peace so that it takes into account
+fewer SPs, for reduced precision, and observation sake</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body">-<cite>**kwargs</cite>: <a href="#id1"><span class="problematic" id="id2">**</span></a>L**inear lattice size, and <a href="#id3"><span class="problematic" id="id4">**</span></a>T**emperature .</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.add_virtual_file">
+<tt class="descname">add_virtual_file</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>mc</em>, <em>therm</em>, <em>booli</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.add_virtual_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.add_virtual_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the mat file for the given parameters
+Updates the direcotry structure to show the new
+number of SPs and the appropriate number of LSs</p>
+<p>Notifies observers of change in model</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dir</strong> (<em>str.</em>) &#8211; The simulation directory.</li>
+<li><strong>l</strong> (<em>str.</em>) &#8211; The linear lattice size.</li>
+<li><strong>t</strong> (<em>str.</em>) &#8211; The given temperature.</li>
+<li><strong>mc</strong> (<em>str.</em>) &#8211; The number of Simulation Paths.</li>
+<li><strong>therm</strong> (<em>str.</em>) &#8211; The number of Lattice Sweeps.</li>
+<li><strong>booli</strong> (<em>boolean index.</em>) &#8211; When &#8216;cutting&#8217; bad results.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.agg">
+<tt class="descname">agg</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.agg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.agg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.agregate">
+<tt class="descname">agregate</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.agregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.agregate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.all_regex">
+<tt class="descname">all_regex</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0xb2a9528&gt;</em><a class="headerlink" href="#src.mvc.Choices.all_regex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.base_regex">
+<tt class="descname">base_regex</tt><em class="property"> = '^L\\d+T\\d+(?P&lt;therm&gt;THERM\\d+)'</em><a class="headerlink" href="#src.mvc.Choices.base_regex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.bestmat_choices">
+<tt class="descname">bestmat_choices</tt><big>(</big><em>dir_=None</em>, <em>l=None</em>, <em>t=None</em>, <em>which='mc'</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.bestmat_choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.bestmat_choices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Depending on the parameters passed, returns the subsequent
+optimal choices (made by the user) for the given parameters
+e.g. if only <a href="#id5"><span class="problematic" id="id6">dir_</span></a> was passed returns a list of L choices.
+This method is used mostly by the &#8216;view&#8217;, since the display
+of many components, annotations, legends etc depend on this.
+When it happens that all arguments are passed, the components
+to be returned are plain strings (only one choices for given
+parameters) then it is wrapped in a list for uniformity&#8217;s sake.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dir</strong> (<em>str.</em>) &#8211; The simulation directory.</li>
+<li><strong>l</strong> (<em>str.</em>) &#8211; The linear lattice size.</li>
+<li><strong>t</strong> (<em>str.</em>) &#8211; The given temperature.</li>
+<li><strong>which</strong> &#8211; Do we want the choice of optimal SPs or LSs (&#8216;therm&#8217;|&#8217;mc&#8217;)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-1">
+<p class="first admonition-title">Todo</p>
+<p class="last">Define keywords used throughout documentation.</p>
+</div>
+<div class="admonition-todo admonition" id="index-2">
+<p class="first admonition-title">Todo</p>
+<p class="last">Figure out what else is used for determening bestmats
+Since this is only used by the &#8216;view&#8217; part.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.calculate_magt">
+<tt class="descname">calculate_magt</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.calculate_magt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.calculate_magt" title="Permalink to this definition">¶</a></dt>
+<dd><p>za datafrejm koji se sastoji
+od nekoliko kolona gde su neke od njih
+magnetne komponente, i pocinju sa M, on racuna
+intenzitet</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.choices">
+<tt class="descname">choices</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.choices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.compose">
+<tt class="descname">compose</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.compose"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.compose" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.create_mat">
+<tt class="descname">create_mat</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>therm</em>, <em>mc=None</em>, <em>booli=False</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.create_mat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.create_mat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cita all fajlove i obradjuje ih statisticki. U slucaju
+da je prosledjen mc to znaci da smo prethodno dodali u onaj
+choices dictionary odgovarajuc mc, i da sad radimo za njega
+ako ne prosledjujemo, sve regularno citamo sve, a ne samo
+mc prvih redova. Ako je prosledjen booli to znaci da su izbaceni
+ODREDJENI rezultati, pa koristimo taj argument kao indeks koji
+ce izdvojiti samo zeljenje rezultate</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.get_filename">
+<tt class="descname">get_filename</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>therm</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.get_filename"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.get_filename" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.get_maxmc">
+<tt class="descname">get_maxmc</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.get_maxmc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.get_maxmc" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The max number of Simulation Paths                   for chosen directory.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.get_plot_dict">
+<tt class="descname">get_plot_dict</tt><big>(</big><em>dir_</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.get_plot_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.get_plot_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca dictionary koji
+sadrzi podatke o tome sta
+ce se agregirate, tj. sta ce
+se plotovati. Moze samo matove,
+moze samo altove, a moze i trenutno
+izabrane</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.init_model">
+<tt class="descname">init_model</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.init_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.init_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes the model
+Runs when GUI is up
+Maps the current filesystem</p>
+<blockquote>
+<div>Sets the quantaties of interest that can be plotted:</div></blockquote>
+<ul class="simple">
+<li>susc</li>
+<li>Tcap</li>
+<li>M1avg</li>
+<li>M2avg</li>
+<li>M4avg</li>
+<li>Eavg</li>
+<li>E2avg</li>
+<li>U</li>
+</ul>
+<div class="admonition-todo admonition" id="index-3">
+<p class="first admonition-title">Todo</p>
+<p class="last">Custom formulae?</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Nothing</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body">BaseException If there was an exception         when mapping the filesystem, it is propagated to the app         and it exits with code 0</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.load_bestmat">
+<tt class="descname">load_bestmat</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.load_bestmat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.load_bestmat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Proverava da li postoji u strukturi fajlova
+odgovarajuci podaci iz bestmat-a, ako nema - brise ih
+vraca azuran bestmat dict</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.load_choices">
+<tt class="descname">load_choices</tt><big>(</big><em>fname</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.load_choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.load_choices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.load_sp_data">
+<tt class="descname">load_sp_data</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>n=None</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.load_sp_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.load_sp_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ucitava podatke za isrcatavanje na
+scatter panelu, i vraca u formatu pogodnom
+za plotovanje</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.load_state">
+<tt class="descname">load_state</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.load_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.load_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the state (for now only bestmat choices)
+that the user last left the application in..</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Nothing</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.lt_regex">
+<tt class="descname">lt_regex</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0xb2d6458&gt;</em><a class="headerlink" href="#src.mvc.Choices.lt_regex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.mag_components">
+<tt class="descname">mag_components</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.mag_components"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.mag_components" title="Permalink to this definition">¶</a></dt>
+<dd><p>izvlaci kolone koje sadrze
+komponente magnetizacije i vraca
+ih u novoj tabeli</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.mag_index">
+<tt class="descname">mag_index</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.mag_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.mag_index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.mp_regex">
+<tt class="descname">mp_regex</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0xb335000&gt;</em><a class="headerlink" href="#src.mvc.Choices.mp_regex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.name_gen">
+<tt class="descname">name_gen</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.name_gen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.name_gen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.random_bestmats">
+<tt class="descname">random_bestmats</tt><big>(</big><em>dir_</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.random_bestmats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.random_bestmats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Chooses the &#8216;best&#8217; results, by choosing the ones
+with the most LSs and SPs for a chosen linear lattice
+size</p>
+<p>Raises :class: BaseException, maybe</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Nothing.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><cite>dir_</cite>: The simulation directory</li>
+<li><cite>**kwargs</cite>: Should be linear lattice size</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-todo admonition" id="index-4">
+<p class="first admonition-title">Todo</p>
+<p class="last">Make activated for combobox L select, instead         of matchooser L</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.read_tdfile">
+<tt class="descname">read_tdfile</tt><big>(</big><em>filename</em>, <em>first_mcs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.read_tdfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.read_tdfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.remap_fsystem">
+<tt class="descname">remap_fsystem</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.remap_fsystem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.remap_fsystem" title="Permalink to this definition">¶</a></dt>
+<dd><p>BICE PROBLEM SA NOVO GENERISANIM MC-OVIMA!!!</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.remove_bestmat">
+<tt class="descname">remove_bestmat</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.remove_bestmat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.remove_bestmat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.save_mats">
+<tt class="descname">save_mats</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.save_mats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.save_mats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves a deepcopy of the math dictionary,         excluding the &#8216;virtual&#8217; ones</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>virtual</strong> &#8211; The ones created on the <em>fly</em>
+not in the filsystem</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.single_base">
+<tt class="descname">single_base</tt><em class="property"> = '^L\\d+T\\d+(?P&lt;therm&gt;THERM\\d+)MC\\d+.*'</em><a class="headerlink" href="#src.mvc.Choices.single_base" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.sp_regex">
+<tt class="descname">sp_regex</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0xb2a5748&gt;</em><a class="headerlink" href="#src.mvc.Choices.sp_regex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.spify">
+<tt class="descname">spify</tt><big>(</big><em>lt_dir</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.spify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.spify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Proverava da nema dva fajla sa istim thermovima
+i razlicitim mc-ovima. Blahhhhhh</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.Choices.statmc_regex">
+<tt class="descname">statmc_regex</tt><em class="property"> = &lt;_sre.SRE_Pattern object at 0xb2cf530&gt;</em><a class="headerlink" href="#src.mvc.Choices.statmc_regex" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.therm_count">
+<tt class="descname">therm_count</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>mc</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.therm_count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.therm_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca koliko ima tacaka za dato mc, tj.trebace kod
+ovog therm panela da vidi neko da ne plotuje nebulozne
+stvari. znaci ovo ce biti u nekim viticastim zagradama
+iza broja mc-ova</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.Choices.unify">
+<tt class="descname">unify</tt><big>(</big><em>lt_dir</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#Choices.unify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.Choices.unify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="src.mvc.ChoicesConverter">
+<em class="property">class </em><tt class="descclassname">src.mvc.</tt><tt class="descname">ChoicesConverter</tt><big>(</big><em>model</em>, <em>controller</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.mvc.mvc_skelet.View" title="src.mvc.mvc_skelet.View"><tt class="xref py py-class docutils literal"><span class="pre">src.mvc.mvc_skelet.View</span></tt></a></p>
+<p>Ova klasa sprema za prikaz
+za gui izbore inace i u matchooseru</p>
+<dl class="method">
+<dt id="src.mvc.ChoicesConverter.annotate_agg">
+<tt class="descname">annotate_agg</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.annotate_agg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.annotate_agg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.ChoicesConverter.bmat_choices">
+<tt class="descname">bmat_choices</tt><big>(</big><em>dir_=None</em>, <em>l=None</em>, <em>t=None</em>, <em>which='mc'</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.bmat_choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.bmat_choices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.ChoicesConverter.choices">
+<tt class="descname">choices</tt><big>(</big><em>dir_=None</em>, <em>l=None</em>, <em>t=None</em>, <em>mc=None</em>, <em>therm_count=False</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.choices" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.ChoicesConverter.get_scat_title">
+<tt class="descname">get_scat_title</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.get_scat_title"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.get_scat_title" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="src.mvc.ChoicesConverter.mags">
+<tt class="descname">mags</tt><em class="property"> None</em><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.mags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.mags" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.ChoicesConverter.matchooseritems">
+<tt class="descname">matchooseritems</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.matchooseritems"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.matchooseritems" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.ChoicesConverter.mc_choices">
+<tt class="descname">mc_choices</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#ChoicesConverter.mc_choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.ChoicesConverter.mc_choices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca sve raspolozive mc-ove, formatirane za prikaz. Oni ujedno i odredjuju moguce
+plotove za therm panel. Ovo podize pitanje da li je bolje da
+se gleda za koje mc-ove postoje koji thermovi, i obrnuto</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="src.mvc.FileManager">
+<em class="property">class </em><tt class="descclassname">src.mvc.</tt><tt class="descname">FileManager</tt><a class="reference internal" href="_modules/src/mvc.html#FileManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.mvc.mvc_skelet.Controller" title="src.mvc.mvc_skelet.Controller"><tt class="xref py py-class docutils literal"><span class="pre">src.mvc.mvc_skelet.Controller</span></tt></a></p>
+<p>Ova klasa ce brinuti o postojacim l,t,mc, i therm
+i takodje o izborima razlicitim, znaci originalnim statickim
+i dinamickim, i onima sa izbacenim rezultatima.Inicijalizuje se sa
+postojacim l-ovima, postojacim t-ovima, postojacim mc i thermovima
+Prosledjivace mu se lt_dict, ali lt_dict nece biti globalna varijabla
+sada, vec ce se ovde cuvati, samo u drugom obliku</p>
+<dl class="method">
+<dt id="src.mvc.FileManager.add_bestmat">
+<tt class="descname">add_bestmat</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.add_bestmat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.add_bestmat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.add_mc">
+<tt class="descname">add_mc</tt><big>(</big><em>mc</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.add_mc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.add_mc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dodaje mc u choices, thermove ce morati da
+preuzme od prvog suseda koji nije &#8216;specijalan&#8217;
+Hm, verovatno je pogresno sto iz modela prikazujem
+errore. verovatno bi trebalo samo da raisujem errore
+i to a ovde da ih hvatam. hmm</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.annotate_agg">
+<tt class="descname">annotate_agg</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.annotate_agg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.annotate_agg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca anotaciju za odredjeno l i t</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.ap_dir_selected">
+<tt class="descname">ap_dir_selected</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.ap_dir_selected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.ap_dir_selected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.application_started">
+<tt class="descname">application_started</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.application_started"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.application_started" title="Permalink to this definition">¶</a></dt>
+<dd><p>Posto je sve vec napravljeno, mozemo
+da inicijalizujemo model
+i da postavljamo vrednosti gui elemenata i to</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.calculate_magt">
+<tt class="descname">calculate_magt</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.calculate_magt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.calculate_magt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.current_choices">
+<tt class="descname">current_choices</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.current_choices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.current_choices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca trenutno selektovan izbor
+u bestmat chooseru</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.get_agg_plot_data">
+<tt class="descname">get_agg_plot_data</tt><big>(</big><em>dir_</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.get_agg_plot_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.get_agg_plot_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.get_maxmc">
+<tt class="descname">get_maxmc</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.get_maxmc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.get_maxmc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.get_plot_data">
+<tt class="descname">get_plot_data</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>mc</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.get_plot_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.get_plot_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vraca datafrejm za plotovanje</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.get_scat_title">
+<tt class="descname">get_scat_title</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.get_scat_title"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.get_scat_title" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.init_gui">
+<tt class="descname">init_gui</tt><big>(</big><em>thermPanel</em>, <em>aggPanel</em>, <em>scatterPanel</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.init_gui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.init_gui" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kaci gui, kad napravi sve komponente gui-ja
+iz TabContainera</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.init_model">
+<tt class="descname">init_model</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.init_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.init_model" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.init_scatter">
+<tt class="descname">init_scatter</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.init_scatter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.init_scatter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.init_view">
+<tt class="descname">init_view</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.init_view"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.init_view" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ne znam da li je ok da imam
+vise view-a, ili da li je potrebno</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.l_gen">
+<tt class="descname">l_gen</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.l_gen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.l_gen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.listctrl_selected">
+<tt class="descname">listctrl_selected</tt><big>(</big><em>choice</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.listctrl_selected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.listctrl_selected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.load_sp_data">
+<tt class="descname">load_sp_data</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>n=None</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.load_sp_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.load_sp_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.mag_components">
+<tt class="descname">mag_components</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.mag_components"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.mag_components" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.mc_gen">
+<tt class="descname">mc_gen</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.mc_gen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.mc_gen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.model_updated">
+<tt class="descname">model_updated</tt><big>(</big><em>subject=None</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.model_updated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.model_updated" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.on_l_select_tp">
+<tt class="descname">on_l_select_tp</tt><big>(</big><em>l</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.on_l_select_tp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.on_l_select_tp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kada korisnik selektuje l u thermpanelu,
+namestaju se odredjeni t</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.populate_matchooser">
+<tt class="descname">populate_matchooser</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.populate_matchooser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.populate_matchooser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.random_bestmats">
+<tt class="descname">random_bestmats</tt><big>(</big><em>dir_</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.random_bestmats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.random_bestmats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.refresh_matchooser">
+<tt class="descname">refresh_matchooser</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.refresh_matchooser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.refresh_matchooser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.remap_fsystem">
+<tt class="descname">remap_fsystem</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.remap_fsystem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.remap_fsystem" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.remove_bestmat">
+<tt class="descname">remove_bestmat</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.remove_bestmat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.remove_bestmat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.remove_faulty">
+<tt class="descname">remove_faulty</tt><big>(</big><em>dir_</em>, <em>l</em>, <em>t</em>, <em>booli</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.remove_faulty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.remove_faulty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Za odredjeno l i t izracunava novi
+mat, i stavlja ovaj izbor u sve moguce izbore
+i stavlja taj izbor u izbor za bestmat, sto je
+problem je l&#8217; posto ne postoji na disku teh teh
+a kako bi se cuvalo, cuvalo bi se nekako brate
+znaci samo taj booli treba da sacuvamo ali jbg
+kad nije uniformno sa bestmatom mozda u taj dict
+da ubacimo samo jos jedno polje hmmm hmmm i da ga
+tako cuvamo. samo kad bi se to onda racunalo mmm
+i kako bi se ucitalo pri pokretanju. moralo bi. ajd
+za sada nek se lepo racuna i dodaje tamo gde treba
+a posle cemo videti</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.set_matchooser_lists">
+<tt class="descname">set_matchooser_lists</tt><big>(</big><em>listctrl_names</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.set_matchooser_lists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.set_matchooser_lists" title="Permalink to this definition">¶</a></dt>
+<dd><p>CUva reference na listcontrols</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.set_simdir">
+<tt class="descname">set_simdir</tt><big>(</big><em>simdir</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.set_simdir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.set_simdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prosledjuje modelu simdir
+ovo je pre nego sto je aplikacija
+pocela</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.sp_on_dir_select">
+<tt class="descname">sp_on_dir_select</tt><big>(</big><em>val</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.sp_on_dir_select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.sp_on_dir_select" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.t_gen">
+<tt class="descname">t_gen</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.t_gen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.t_gen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.therm_gen">
+<tt class="descname">therm_gen</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.therm_gen"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.therm_gen" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.tp_on_select">
+<tt class="descname">tp_on_select</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.tp_on_select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.tp_on_select" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="src.mvc.FileManager.update_gui">
+<tt class="descname">update_gui</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/src/mvc.html#FileManager.update_gui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#src.mvc.FileManager.update_gui" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ako je promenjen model
+updejtuju se svi elementi gui-ja</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="src.html" title="src package"
+             >previous</a> |</li>
+        <li><a href="index.html">home</a>|&nbsp;</li>
+        <li><a href="search.html">search</a>|&nbsp;</li>
+
+          <li><a href="src.html" >src package</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Author.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b3.
+    </div>
+  </body>
+</html>

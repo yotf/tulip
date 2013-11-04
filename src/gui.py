@@ -1053,7 +1053,7 @@ class AggPanel(wx.Panel):
         L_select = self.cmb_L.GetValue()
         dir_ = self.cmb_dirs.GetValue()
         mag_select = self.cmb_mag.GetValue()
-        lbl = "simulation=%s %s=%s" %(dir_,mvc.util.extract_name(L_select).upper(),util.extract_int(L_select))
+        lbl = "simulation=%s %s=%s" %(dir_,mvc.util.extract_name(L_select).upper(),mvc.util.extract_int(L_select))
         agg_data = self.controller.get_agg_plot_data(dir_)
         color = color_cycle.next()
         matpl_color = tuple(i/255.0 for i in color)

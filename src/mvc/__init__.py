@@ -1,4 +1,5 @@
 """
+
 .. module:: mvc
    :platform: Unix, Windows
    :synopsis:  MVC of the appliaction
@@ -67,7 +68,7 @@ class Choices(mvc_skelet.Model):
         
         :returns: Nothing
         
-        Raises :class: 'BaseException' If there was an exception \
+        :raises: BaseException If there was an exception \
         when mapping the filesystem, it is propagated to the app \
         and it exits with code 0
         
@@ -154,6 +155,10 @@ class Choices(mvc_skelet.Model):
         :Parameters:
            - `dir_`: The simulation directory
            - `**kwargs`: Should be linear lattice size
+
+        .. todo:: Make activated for combobox L select, instead \
+        of matchooser L
+        
         
         """
         try:
@@ -171,6 +176,9 @@ class Choices(mvc_skelet.Model):
     def save_mats(self):
         """Saves a deepcopy of the math dictionary, \
         excluding the \'virtual' ones
+
+        :keyword virtual: The ones created on the *fly*
+                          not in the filsystem
         
         """
         from copy import deepcopy
@@ -199,9 +207,7 @@ class Choices(mvc_skelet.Model):
               - `l` (req.)
               - `t` (req.)
 
-        .. todo::
-
-           Implement for whole **L**. Hm, should work. Changed - check! 
+        .. todo:: Implement for whole **L**. Hm, should work, but doesn't..
 
         """
         dir_= kwargs['dir_']
@@ -221,63 +227,102 @@ class Choices(mvc_skelet.Model):
             except KeyError:
                 self.log.debug('Kliknuo korisnik na ne bestmat stvar. Idiot!')
 
-        self.clean_bmat()
+        self.__clean_bmat()
         self.save_mats()
         self.notify_observers()
-            
         
     def add_mc(self,mc,**kwargs):
         """
+        .. _add_mc:
+        
         Adds new SP, for drawing different
-        precision. Adds it to the map of filesystem
+        precision. Adds it to the map of filesystem, while
+        at the same time, taking care that the new file
+        has the same LS choices as the actual file on the
+        filesystem. Meaning that we create a virtual \'file'
+        in memory that corresponds to the actual file, just
+        *cut* in smaller peace so that it takes into account
+        fewer SPs, for reduced precision, and observation sake
 
         :Parameters:
-           -`**kwargs`: **L**inear lattice size, and **T**emperature 
+           -`**kwargs`: **L**inear lattice size, and **T**emperature .
         
         """
 
-        statmc = self.get_static_mcs(**kwargs)[0]
+        statmc = self.__get_static_mcs(**kwargs)[0]
         kwargs['mc']=statmc
         therms = self.choices(**kwargs)
         tdict = {key:None for key in therms}
         self.log.debug("adding mc %s" % tdict )
         kwargs['mc']="MC%s" % mc
-        self.add_to_map(tdict = tdict,**kwargs)
+        self.__add_to_map(tdict = tdict,**kwargs)
 
 
-    def add_to_map(self,dir_,l,t,mc,tdict):
+    def __add_to_map(self,dir_,l,t,mc,tdict):
         """Adds to filesystem map, and notifies observers
+        Called exclusively by add_mc_
         
         """
         self.files[dir_][l][t][mc]=tdict
         self.notify_observers()
         
     def get_maxmc(self,dir_,l,t):
-        """Vraca makisamalan BROJ
-        mc-ova"""
+        """
+        :returns: The max number of Simulation Paths \
+                  for chosen directory.
+
+        """
         self.log.debug("Vracam max mc")
         return util.extract_int(max(self.choices(dir_,l,t),key =lambda x: util.extract_int(x)))
         
     @logg
     def choices(self,dir_=None,l=None,t=None,mc=None):
-        """Nemoj da prosledjujes van redosleda argumenta
-        tj, nemoj da si prosledila therm ako nemas
-        mc!"""
+        """Depending on the parameters passed,
+        this method returns the subsequent choices
+        e.g. if dir_ was passed, it returns choices of
+        Linear lattice size, etc.
+
+        :param dir_: Simulation directory (opt.).
+        :param l_: Linear lattice size (opt.).
+        :param t_: Temperature(opt.).
+        :param mc_: Number of Simulation Paths(opt.).
+        
+        """
         ls = [dir_,l,t,mc]
         x = self.files
         for val in ls:
             if not val:
                 break
             x = x[val]
-        #self.log.debug("Vracam izbore :{} za l:{} t:{} mc:{} ".format(x,l,t,mc))
         return x.keys()
 
     def bestmat_choices(self,dir_=None,l=None,t=None,which='mc'):
         """
-        Ocekuje dobar format. ne znam kako to da omogucim
-        uvek. sta bi ovaj rekao. oni treba da komuniciraju
-        i dogovore format. hmh. mi kazemo sta hocemo a oni
-        izkomuniciraju
+        Depending on the parameters passed, returns the subsequent
+        optimal choices (made by the user) for the given parameters
+        e.g. if only dir_ was passed returns a list of L choices.
+        This method is used mostly by the \'view', since the display
+        of many components, annotations, legends etc depend on this.
+        When it happens that all arguments are passed, the components
+        to be returned are plain strings (only one choices for given
+        parameters) then it is wrapped in a list for uniformity's sake.
+
+        :param dir_: The simulation directory.
+        :param l: The linear lattice size.
+        :type l: str.
+        :type dir_: str.
+        :param t: The given temperature.
+        :type t: str.
+        :param which: Do we want the choice of optimal SPs or LSs ('therm'|'mc')
+
+
+
+        .. todo:: Define keywords used throughout documentation.
+
+        .. todo:: Figure out what else is used for determening bestmats
+                  Since this is only used by the \'view' part.
+
+
         """
         
         ls = [dir_,l,t,which]
@@ -292,27 +337,41 @@ class Choices(mvc_skelet.Model):
         self.log.debug("Vracam bestmat izbore :{} za l:{} t:{} mctherm:{} ".format(x,l,t,which))
         self.log.debug('type od povratne vrednosti je {}'.format(type(x)))
         
-        return [x] if isinstance(x,basestring) else x
+        return [x] if isinstance(x,basestring) else x.keys()
         
         
-    def get_static_mcs(self,**kwargs):
+    def __get_static_mcs(self,**kwargs):
         """
-        Vraca samo one mc-ove koji se nalaze
-        na disku. ili imaju isti format kao ti na disku
-        jbg
+        Called exclusively by the add_mc_ method
+
+        :returns: All the SPs that correspond to actual simulation
+                  precision on the disk.
+        
         """
         statmcs = [ mc for mc in self.choices(**kwargs) if self.statmc_regex.match(mc)]
         self.log.debug("Vracam staticke mc-ove:{} za dir:{dir_} l:{l} t:{t}".format(statmcs,**kwargs))
         return statmcs
         
     def load_state(self):
-        """Postavlja tulip u stanje u kom
-        ga je korisnik ostavio. Sto se tice
-        izbora samo, doduse"""
+        """
+        Loads the state (for now only bestmat choices)
+        that the user last left the application in..
+
+        :returns: Nothing
+        
+        """
         self.load_bestmat()
 
-    def clean_bmat(self):
-        """Brise prazne vrednosti iz bestmata"""
+    def __clean_bmat(self):
+        """
+        \'Cleans' the dictionary contatining
+        user choices for bestmats. As in, removes
+        the empty keys from the dictionary
+        for presentation sake. Is called solely from
+        methods that remove bestmat choices and the ones
+        that loads them, since those are the only ones
+        who can leave the dictionary *dirty*
+        """
         
         for dir_,ldict in self.bestmats.items():
             if not ldict:
@@ -674,7 +733,7 @@ class Choices(mvc_skelet.Model):
                         continue
 
         self.bestmats = bmat
-        self.clean_bmat()
+        self.__clean_bmat()
 
     def _map_filesystem(self):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
@@ -831,9 +890,6 @@ class FileManager(mvc_skelet.Controller):
         # bice prazno
         self.ap.set_mag_choices(self.view.mags)
         self.refresh_matchooser()
-        ####SCATTER PANEL####
-
-
 
     def remap_fsystem(self):
         self.model.remap_fsystem()
