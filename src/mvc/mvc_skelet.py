@@ -28,11 +28,19 @@ class View(object):
     def __init__(self,model,controller):
         self.model = model
         self.controller = controller
-        self.model.attach_observer(self.model_updated)
+        #self.model.attach_observer(self.model_updated)
 
     def model_updated(self,subject=None):
         """Ovu metodu poziva model kad se promeni,
-        more se implementirati u podklasama"""
+        more se implementirati u podklasama
+        
+        .. todo:: Hmm, not sure if i'll ever need this 
+                  so the view, doesn't really do anything when model is
+                  updated i think, it's just the controller...
+        
+        """
+
+        
         raise NotImplementedError
 
 class Controller(object):

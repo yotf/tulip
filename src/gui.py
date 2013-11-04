@@ -65,7 +65,8 @@ markers_cycle = itertools.cycle(Line2D.markers.keys())
 fillstyle_cycle=itertools.cycle(len(Line2D.markers.keys()) * Line2D.fillStyles)
 fmt_cycle = itertools.cycle(fmt_strings)
 color_cycle=itertools.cycle([(255,0,0),(0,128,0),(0,0,255),(255,255,0)])
-logging_level = logging.DEBUG if os.getenv('TULIP_DEBUG') else logging.WARNING
+#logging_level = logging.DEBUG if os.getenv('TULIP_DEBUG') else logging.WARNING
+logging_level = logging.DEBUG 
         
         
 class ScatterPanel(wx.Panel):
@@ -346,7 +347,7 @@ class ScatterPanel(wx.Panel):
         # self.mc_txt.SetRange(0,self.controller.get_maxmc(l))
         self.ts = sorted(ts,key = lambda x: int(x[1:]))
         # self.temprs = self.temprs if keep else twoway_cycle(self.ts)
-        self.temprs = util.twoway_cycle(self.ts)
+        self.temprs = mvc.util.twoway_cycle(self.ts)
         self.setup_plot(curr=True)
         self.canvas.mpl_connect('draw_event',self.forceUpdate)
         
@@ -383,7 +384,7 @@ class ScatterPanel(wx.Panel):
         self.ax_hist.set_xlim(self.xlim)
         self.plot_qq(self.radio_selected)
         if len(comps.columns)!=3:
-            util.show_error('Non 3d data','Scatter unavailable for non 3D data')
+            mvc.util.show_error('Non 3d data','Scatter unavailable for non 3D data')
             self.canvas.draw()
             return
         colors = np.where(self.magt>np.mean(self.magt),'r','b')
@@ -690,7 +691,7 @@ class ThermPanel(wx.Panel):
         try:
             value = items[0] if curr_val=='--' or curr_val not in items else curr_val
         except IndexError:
-            util.show_error("Simdir error", "No %s choices! Wrong simulation directory?" %name)
+            mvc.util.show_error("Simdir error", "No %s choices! Wrong simulation directory?" %name)
         else:
             cmb.SetValue(value)
             self.on_select(**kwargs)
@@ -735,7 +736,7 @@ class ThermPanel(wx.Panel):
         try:
             val_dict = {k:combo.GetValue() for k,combo in self.cmb_dict.items() if self.cmbord.index(name)>=self.cmbord.index(k)}
         except ValueError as ve:
-            util.show_error('ValueError',str(ve))
+            mvc.util.show_error('ValueError',str(ve))
         else:
             return val_dict
         
@@ -811,11 +812,11 @@ class ThermPanel(wx.Panel):
     def draw_legend(self,event):
 
         lbl_mc = self.get_mc()
-        lbl_mc ="%s=%s" %("SP",util.extract_int(lbl_mc))
-        lbl_t ="%s=%.4f" %(util.extract_name(self.cmb_dict['t'].GetValue()).upper(),float(util.extract_int(self.cmb_dict['t'].GetValue())/10000.0))
+        lbl_mc ="%s=%s" %("SP",mvc.util.extract_int(lbl_mc))
+        lbl_t ="%s=%.4f" %(mvc.util.extract_name(self.cmb_dict['t'].GetValue()).upper(),float(mvc.util.extract_int(self.cmb_dict['t'].GetValue())/10000.0))
         l = self.cmb_dict['l'].GetValue()
-        namel = util.extract_name(l).upper()
-        lbl_l ="%s=%s"% (namel,util.extract_int(l))
+        namel = mvc.util.extract_name(l).upper()
+        lbl_l ="%s=%s"% (namel,mvc.util.extract_int(l))
 
         lchk  = self.chk_l.IsChecked()
         mcchk  = self.chk_mc.IsChecked()
@@ -1052,7 +1053,7 @@ class AggPanel(wx.Panel):
         L_select = self.cmb_L.GetValue()
         dir_ = self.cmb_dirs.GetValue()
         mag_select = self.cmb_mag.GetValue()
-        lbl = "simulation=%s %s=%s" %(dir_,util.extract_name(L_select).upper(),util.extract_int(L_select))
+        lbl = "simulation=%s %s=%s" %(dir_,mvc.util.extract_name(L_select).upper(),util.extract_int(L_select))
         agg_data = self.controller.get_agg_plot_data(dir_)
         color = color_cycle.next()
         matpl_color = tuple(i/255.0 for i in color)
@@ -1207,7 +1208,7 @@ class AggPanel(wx.Panel):
         except IndexError as e:
             self.cmb_dirs.SetValue('--')
         except Exception as e:
-            util.show_error('Some error!',str(e))
+            mvc.util.show_error('Some error!',str(e))
 
         else:
             self.cmb_dirs.SetValue(val)
@@ -1349,7 +1350,7 @@ class MyListCtrl(wx.ListCtrl):
         konzistentim, nadamo se"""
         selected = event.GetIndex()
         selected = self.GetItemText(selected)
-        name = util.extract_name(selected)
+        name = mvc.util.extract_name(selected)
         self.controller.remove_bestmat(**{name:selected})
         
     def LoadData(self,list_items):
@@ -1464,7 +1465,7 @@ class Reader(wx.Panel):
             try:
                 self.list_controls[key].LoadData(itemlist)
             except AttributeError,e:
-                util.show_error("Pogresan kljuc za listcontrolu","Ovo nije smelo da se desi, report issue!\nDetails: %s" %e)
+                mvc.util.show_error("Pogresan kljuc za listcontrolu","Ovo nije smelo da se desi, report issue!\nDetails: %s" %e)
 
 
 class App(wx.App):
