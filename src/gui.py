@@ -233,7 +233,9 @@ class ScatterPanel(wx.Panel):
 
     def comboBoxData(self):
         return (("dirCombo",(150,-1),wx.CB_READONLY,self.on_select_dir),
-                ("lCombo",(70,-1),wx.CB_READONLY,self.on_selectl))
+                ("lCombo",(70,-1),wx.CB_READONLY,self.on_selectl),
+                ("compCombo",(70,-1),wx.CB_READONLY,self.on_select_comp)
+        )
 
     def addToHBox(self,hbox,item,before=None):
         pos = len(hbox.GetChildren()) if not before else before
@@ -394,6 +396,11 @@ class ScatterPanel(wx.Panel):
         print "Loading data for {}...".format(self.cmb_l.GetValue()) 
         self.load_data(l=self.cmb_l.GetValue())
         self.setup_plot()
+
+    def on_select_comp(self,event):
+        t = self.temprs.curr()
+        self.__plot_by_components(event.GetEventObject().GetValue(),t,self.data)
+        self.canvas.draw()
    
     def set_lims(self,l):
 
@@ -439,13 +446,22 @@ class ScatterPanel(wx.Panel):
         return dir_,l,t
 
     def __plot_by_components(self,index,t,data):
+        print index
         components = self.controller.mag_components(data)
-        print "COMPONENTS",components.ix[t,'M0']
+        print "COMPONENTS",components.ix[t,index]
         self.ax_comp.cla()
-        self.ax_comp.hist(components.ix[t,'M0'],bins=100,facecolor='green',alpha=0.75)
+        self.ax_comp.hist(components.ix[t,index],bins=100,facecolor='green',alpha=0.75)
 #        self.ax_comp.set_title(title, fontsize=10, position=(0.1,0.95))
-        self.ax_comp.set_xlabel('M0', fontsize=10)
+        self.ax_comp.set_xlabel(index, fontsize=10)
 
+    def set_components_index(self,ix):
+        try:
+            first = ix[0]
+        except IndexError:
+            pass
+        else:
+            self.combos['compCombo'].SetItems(ix)
+            self.combos['compCombo'].SetValue(first)
     
     def step(self,event, backwards=False,curr=False,booli=False, is3D=True):
         """Crta za sledece, proslo ili trenutno t"""
@@ -461,7 +477,7 @@ class ScatterPanel(wx.Panel):
 
         self.__plot_hist(magt)
         self.__plot_qq(self.radio_selected,magt)
-        self.__plot_by_components(0,t,self.data)
+        self.__plot_by_components('M0',t,self.data)
         self.__set_ticklabels(10)
 
         if is3D:

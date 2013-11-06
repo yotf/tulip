@@ -556,6 +556,9 @@ class Choices(mvc_skelet.Model):
             print col
             if col.startswith('M'):
                 ix.append(col)
+        if not ix:
+            util.show_error("File format error","You don't have any spin \
+                            component data in your results file")
         return ix
 
     def calculate_magt(self,data):
@@ -1177,6 +1180,8 @@ class FileManager(mvc_skelet.Controller):
             # Mislim da je ovako najjasnije, znaci kontroler misli
             # i namesti mu, onda ovaj na osnovu toga stavlja sebe
             self.sp.is3D = is3D
+            ix = self.model.mag_index(data)
+            self.sp.set_components_index(ix)
             
             self.sp.arrange_canvas(show3D=True)
             print "is3d", is3D
