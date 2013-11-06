@@ -372,7 +372,6 @@ class Choices(mvc_skelet.Model):
         that loads them, since those are the only ones
         who can leave the dictionary *dirty*
         """
-        
         for dir_,ldict in self.bestmats.items():
             if not ldict:
                 del self.bestmats[dir_]
@@ -388,6 +387,12 @@ class Choices(mvc_skelet.Model):
         
 
     def load_choices(self,fname):
+        """
+        Loads a dictionary that was saved
+        in the simulation directory (one that is inputed at the beginning)
+        into memory. Usually the choices that user made during
+        previous runnings of the program.
+        """
         self.log.debug("Loading {}".format(fname))
         with open(join(self.simdir,fname),mode="ab+") as hashf:
             try:
@@ -396,22 +401,39 @@ class Choices(mvc_skelet.Model):
                 fcontent = dict()
         return fcontent
 
-    def load_sp_data(self,dir_,l,n=None):
-        """Ucitava podatke za isrcatavanje na
-        scatter panelu, i vraca u formatu pogodnom
-        za plotovanje
+    def dist_by_component(self,dir_,l):
+        """
+        Returns data for plotting the histogram
+        of distribution of each spin component for
+        each result.
+        
+        .. todo:: Should see if it's better to ask the model
+                  to extract data for given t, or leave it
+                  to the gui?? Or leave the whole thing to the gui??
 
+        
+        """
+        pass
+    
+
+    def load_sp_data(self,dir_,l,n=None):
+        """Loads the data for plotting in the Scatter Panel.
+        It's different from the other panels, since *all* simulation
+        results are relevant for plots in this panel
+
+        :returns: pandas DataFrame containing all the data
+                  relevant for plotting histograms and distributions
+                  of spin components, for given simulation and linear
+                  lattice size.
 
         .. versionadded: 2.0
         
         """
         all_data = dict()
-        print self.bestmats[dir_][l].items()
+        
         for t,tmc in self.bestmats[dir_][l].items():
-            print self.simdir,dir_,l,t,tmc['therm']
             filename = self.get_filename(dir_,l,t,tmc['therm'])
             self.log.debug("Loading data from file %s" % filename)
-            # ne znam da li mi treba ovde neki try catch hmhmhmhmhmhmhmmhhh
             data = self.read_tdfile(filename,n)
             self.log.debug("rows read: %s" % data.E.count())
             data.set_index(np.arange(data.E.count()),inplace=True)
@@ -422,10 +444,25 @@ class Choices(mvc_skelet.Model):
             
         
     def unify(self,lt_dir):
+        """
+        Calls the unify script for given directory(LT). If there are duplicated
+        seeds - opens the directory where it occured (Only where nautilus is
+        installed)
+        
+        .. todo:: Print better error messages when duplicated seeds found
+                  and lead to directory where it occured.
+                
+        """
         try:
             unify.main(lt_dir)
         except NotImplementedError :
             util.show_error("Duplicate Seeds","Duplicated seeds found while unifying! What to do, what to do????!?!?!")
+            try:
+                os.system("nautilus %s" % lt_dir)
+            except:
+                pass
+
+            
 
     def spify(self,lt_dir):
         """Proverava da nema dva fajla sa istim thermovima
@@ -443,15 +480,29 @@ class Choices(mvc_skelet.Model):
         
         
     def therm_count(self,dir_,l,t,mc):
-        """Vraca koliko ima tacaka za dato mc, tj.trebace kod
-        ovog therm panela da vidi neko da ne plotuje nebulozne
-        stvari. znaci ovo ce biti u nekim viticastim zagradama
-        iza broja mc-ova"""
+        """
+        This is a UI method, for representing choices
+        for plotting in the ThermPanel. It is used to show
+        the number of points that will be plotted for each line.
+
+        :returns: The number of results with the same parameters(L,T), but different
+                  number of Lattice Sweeps
+        """
         therms = self.choices(dir_,l,t,mc)
         self.log.debug("Vracam broj thermova:{} za mc:{}".format(len(therms),mc))
         return len(therms)
 
     def name_gen(self):
+        """
+        Generates names for columns in the loaded DataFrame
+        of the simulation results file. First two are required
+        and are named seed and E respectively, other ones are
+        named with a prefix M and the index of the spin component
+        they represent. Indexing starts from 0.
+
+        :yields: Generated name.
+        
+        """
         cntr=0
         constants = ['seed','E']
         while(True):
@@ -461,13 +512,29 @@ class Choices(mvc_skelet.Model):
                 yield constants[cntr]
             cntr=cntr+1
 
-    def read_tdfile(self,filename,first_mcs):
+    def read_tdfile(self,filename,first_mcs=None):
+        """
+        Reads the file containing the simulation results
+        and loads them in a pandas DataFrame, using as delim any
+        number of whitespaces. When loaded, it gets rid of empty
+        columns and generates names for the columns depending
+        on the number of spin components. Seed column is not
+        needed in the future - so it gets disregarded and popped
+        from the DataFrame.
+
+        :param filename: The name of the file containing simulation results.
+        :type filename: str.
+        :param first_mcs: The number of rows to be read from the file.
+        :type first_mcs: int or None.
+
+        :returns: A pandas DataFrame containing the data from the file.
+        
+        """
         data = pd.read_table(filename,nrows=first_mcs,delim_whitespace=True,header=None)
         for col in data:
             if len(data[col].dropna())==0:
                 data.pop(col)
         self.log.debug('len of columns %s' %len(data.columns))
-        print data
         ngen = self.name_gen()
         names = [ngen.next() for col in data]
         data.columns = names
@@ -484,7 +551,9 @@ class Choices(mvc_skelet.Model):
 
     def mag_index(self,data):
         ix = []
+        print "DATADATA\n",data
         for col in data:
+            print col
             if col.startswith('M'):
                 ix.append(col)
         return ix
@@ -493,7 +562,11 @@ class Choices(mvc_skelet.Model):
         """za datafrejm koji se sastoji
         od nekoliko kolona gde su neke od njih
         magnetne komponente, i pocinju sa M, on racuna
-        intenzitet"""
+        intenzitet
+        .. todo:: Ovo pogledati obavezno, i rascistiti cije su nadleznosti
+                  i sta se prosledjuje tacno
+
+        """
         mag = self.mag_components(data)
         mag2 = mag ** 2
         # Mx^2 + My^2 + Mz^2 ...
@@ -1072,13 +1145,46 @@ class FileManager(mvc_skelet.Controller):
     
     #############SCATTER PANEL###################
 
+    @logg
     def init_scatter(self):
         bmat_ch = self.view.bmat_choices()
-        self.sp.set_dir_choices(bmat_ch)
+        try:
+            dir_ = self.sp.set_dir_choices(bmat_ch)
+        except IndexError:
+            self.sp.able_buttons(False)
+        else:
+            self.sp.able_buttons(True)
+            self.sp_on_dir_select(dir_)
 
-    def sp_on_dir_select(self,val):
-        lch = self.view.bmat_choices(dir_=val)
-        self.sp.set_l_choices(lch)
+    @logg
+    def sp_on_dir_select(self,dir_):
+        lch = self.view.bmat_choices(dir_=dir_)
+        
+        try:
+            lchosen = self.sp.set_l_choices(lch)
+        except IndexError:
+
+            # u slucaju da nema L-a, znaci
+            # nista ne radimo
+            pass
+        else:
+            # u suprotnom, loadujemo datu
+            # za dato dir i l i firstn
+            firstn = self.sp.firstn
+            data = self.load_sp_data(dir_,lchosen,n=firstn)
+            is3D = True if data.shape[1]==4 else False
+            #Prvo mu settuje is3D, pa onda se ovaj sam namesti
+            # Mislim da je ovako najjasnije, znaci kontroler misli
+            # i namesti mu, onda ovaj na osnovu toga stavlja sebe
+            self.sp.is3D = is3D
+            
+            self.sp.arrange_canvas(show3D=True)
+            print "is3d", is3D
+        
+            self.sp.data = data
+            self.sp.set_lims(lchosen)
+            self.sp.setup_plot(curr=False,is3D=is3D)
+        
 
     def load_sp_data(self,dir_,l,n=None):
         return self.model.load_sp_data(dir_,l,n)

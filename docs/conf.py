@@ -20,7 +20,7 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 #
-sys.path.insert(0, os.path.abspath('/home/john/repos/tulip/src'))
+sys.path.insert(0, os.path.abspath('/home/john/repos/tulip/tulipko'))
 sys.path.insert(0, os.path.abspath('/home/john/repos/tulip/'))
 print sys.path
 
