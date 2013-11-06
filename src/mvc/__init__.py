@@ -25,6 +25,7 @@ import numpy as np
 from profile import *
 
 class Choices(mvc_skelet.Model):
+    
     base_regex = r'^L\d+T\d+(?P<therm>THERM\d+)'
     single_base = r'%sMC\d+.*' % base_regex
     sp_regex = re.compile(r'%s\.sp$' % single_base)
@@ -32,12 +33,14 @@ class Choices(mvc_skelet.Model):
     all_regex = re.compile(r'%s\.all$' %base_regex)
     lt_regex = re.compile(r'(L\d+)(T\d+)$')
     statmc_regex = re.compile(r'^MC\d+$')
+    
     def __init__(self):
         """
         Initializes the logger
         and sets all the dictionaries used to None
         for clarity
-        : returns : Nothing
+        
+        :returns: Nothing.
         """
         mvc_skelet.Model.__init__(self)
         self.log = logging.getLogger("Choices")
@@ -66,7 +69,7 @@ class Choices(mvc_skelet.Model):
         
            Custom formulae?
         
-        :returns: Nothing
+        :returns: Nothing.
         
         :raises: BaseException If there was an exception \
         when mapping the filesystem, it is propagated to the app \
@@ -1161,34 +1164,58 @@ class FileManager(mvc_skelet.Controller):
 
     @logg
     def sp_on_dir_select(self,dir_):
+        """
+        Sets the l_choices in scatter
+        to the ones present in the bestmat choices
+        for the given directory. If there are any
+        the ScatterPanel is initialized accordingly
+
+        :param dir_: The simulation directory we want to
+                     initialize scatter for.
+        :type dir_: str.
+
+        """
         lch = self.view.bmat_choices(dir_=dir_)
-        
         try:
             lchosen = self.sp.set_l_choices(lch)
         except IndexError:
-
-            # u slucaju da nema L-a, znaci
-            # nista ne radimo
             pass
         else:
-            # u suprotnom, loadujemo datu
-            # za dato dir i l i firstn
-            firstn = self.sp.firstn
-            data = self.load_sp_data(dir_,lchosen,n=firstn)
-            is3D = True if data.shape[1]==4 else False
-            #Prvo mu settuje is3D, pa onda se ovaj sam namesti
-            # Mislim da je ovako najjasnije, znaci kontroler misli
-            # i namesti mu, onda ovaj na osnovu toga stavlja sebe
-            self.sp.is3D = is3D
-            ix = self.model.mag_index(data)
-            self.sp.set_components_index(ix)
-            
-            self.sp.arrange_canvas(show3D=True)
-            print "is3d", is3D
+            self.__sp_init(dir_,lchosen)
+
+    def __sp_init(self,dir_,lchosen):
+        """Initializes the state of the Scatter gui
+        As in the plotting data, the enablement of
+        radio buttons for switching between 3d and
+        components distribution histograms. The enablement,
+        and conents
+        of the components distribution switcher combobox.
+        Arranges the canvas with appropriate axes, sets the
+        limits of the magnitude histogram, and setups the
+        initial plots. This will only happen if there
+        are chosen L's for the given simulation directory
+
+        :param dir_: The simulation directory we want to
+                     initialize scatter for.
+        :type dir_: str.
+        :param lchosen: The current linear lattice size choices.
+        :type lchosen: str.
+
+        :returns: Nothing!
         
-            self.sp.data = data
-            self.sp.set_lims(lchosen)
-            self.sp.setup_plot(curr=False,is3D=is3D)
+        """
+        firstn = self.sp.firstn
+        data = self.load_sp_data(dir_,lchosen,n=firstn)
+        is3D = True if data.shape[1]==4 else False
+        self.sp.is3D = is3D
+        ix = self.model.mag_index(data)
+        self.sp.set_components_index(ix)
+        self.sp.enable_3d_radio(is3D)
+        self.sp.enable_components_combo( not is3D)
+        self.sp.arrange_canvas(show3D=True)
+        self.sp.data = data
+        self.sp.set_lims(lchosen)
+        self.sp.setup_plot(curr=False,is3D=is3D)
         
 
     def load_sp_data(self,dir_,l,n=None):

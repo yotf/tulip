@@ -1,5 +1,4 @@
-To see documentation go into docs directory and do make html. 
-Open the html in docs/_build/html/index.html
+Documentation can be viewed here (under construction ) [tulipko](http://itrustedyou.bitbucket.org/tulipko)
 
 #Tulip
 Tulip is an interactive visualization and graph plotting software application written in Python, used for studying the thermodynamical characteristics of classical Heisenberg model in singlepath and multipath approach.

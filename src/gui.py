@@ -96,6 +96,7 @@ class ScatterPanel(wx.Panel):
         self.data = None
         self.combos = {}
         self.chkboxes = {}
+        self.radiobuttons = defaultdict(list)
         
 
         logging.basicConfig(level=logging_level)
@@ -295,18 +296,26 @@ class ScatterPanel(wx.Panel):
             radio = wx.RadioButton(self,-1,label=label,pos=size,style=style)
             self.Bind(wx.EVT_RADIOBUTTON,handler,radio)
             self.addToHBox(hbox2,radio)
+            self.radiobuttons[group].append(radio)
+            
         self.radio_selected = "norm"
 
     
     def change_3d(self,event):
+        """
+        .. todo:: This should go in the controller.
+        
+        """
         label = event.GetEventObject().GetLabel()
         print label
         if self.is3D and label=='3d':
             self.arrange_canvas(show3D = True)
             self.step("dummy",curr=True,is3D=True)
+            self.enable_components_combo(False)
         else:
             self.arrange_canvas(show3D = False)
             self.step("dummy",curr=True)
+            self.enable_components_combo(True)
 
 
         
@@ -555,8 +564,6 @@ class ScatterPanel(wx.Panel):
             dircmb.SetValue(dir_)
             return dir_
 
-            
-
     
     def set_l_choices(self,lch):
         """stavlja izbore za l, i stavlja
@@ -575,6 +582,15 @@ class ScatterPanel(wx.Panel):
         else:
             lcombo.SetValue(l)
             return l
+
+    def enable_3d_radio(self,yesno):
+        for radiob in self.radiobuttons['group2']:
+            radiob.Enable(yesno)
+
+
+    def enable_components_combo(self,yesno):
+        self.combos['compCombo'].Enable(yesno)
+        
 
 
 
