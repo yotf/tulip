@@ -14,10 +14,8 @@ Options:
     -h --help
 """
    
-
-#from . mvc import Choices,ChoicesConverter,FileManager
 import wxversion
-wxversion.select('2.8')
+#wxversion.select('2.8')
 import wx
 
 import wx.lib.colourselect as csel
@@ -26,10 +24,12 @@ import pandas as pd
 import os
 import sys
 import gui
+sys.settrace
 print __package__
 PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(gui.__file__))
 sys.path.append(PACKAGE_ABS_PATH)
 import mvc
+from mvc.mvc_test import FileManager
 from os.path import join
 import glob
 import re
@@ -37,22 +37,24 @@ import logging
 from collections import defaultdict
 import itertools
 import matplotlib
+matplotlib.use('WxAgg')
 from matplotlib import widgets
 from matplotlib import gridspec
    
-matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
 from matplotlib import cm
    
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+
 import numpy as np
+
 import pylab
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import axes_grid1
 from simp_zoom import zoom_factory
 from itertools import cycle
-from scipy import stats   
+from scipy import stats
 from matplotlib.widgets import RectangleSelector
 from matplotlib.lines import Line2D
 
@@ -591,18 +593,6 @@ class ScatterPanel(wx.Panel):
     def enable_components_combo(self,yesno):
         self.combos['compCombo'].Enable(yesno)
         
-
-
-
-class ExpPanel(wx.Panel):
-    def __init__(self,parent,controller):
-        wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
-        self.controller = controller
-        self.log = logging.getLogger("ExpPanel")
-        self.l = wx.SpinCtrl(self, size = (80,-1))
-        self.t = wx.SpinCtrl(self, size = (80,-1))
-        self.therm = wx.SpinCtrl(self, size = (80,-1))
-        self.so = wx.SpinCtrl(self, size = (80,-1))
 
 class ThermPanel(wx.Panel):
 
@@ -1373,12 +1363,10 @@ class TabContainer(wx.Notebook):
         tp = ThermPanel(self,controller)
         ag = AggPanel(self,controller)
         scat = ScatterPanel(self,controller)
-        exp = ExpPanel(self,controller)
         self.controller.init_gui(tp,ag,scat)
         self.AddPage(tp, 'Therm')
         self.AddPage(ag, 'Aggregate')
         self.AddPage(scat,"Scatter")
-        self.AddPage(exp,"Exp")
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.OnPageChanging)
 
     def flash_status_message(self,message):
@@ -1637,7 +1625,7 @@ class App(wx.App):
         self.controller.application_started()
 
 def main():
-    controller = mvc.FileManager()
+    controller = FileManager()
     app = App(controller)
     app.MainLoop()
 if __name__ == '__main__':
