@@ -16,7 +16,6 @@ import sys
 import os
 from os.path import join
 import re
-from docopt import docopt
 
 
 

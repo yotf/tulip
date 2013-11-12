@@ -11,7 +11,9 @@ import pandas as pd
 import numpy as np
 # from . import mvc_skelet,unify,util
 # from profile import *
-from . import *
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+print os.path.abspath(os.path.dirname(__file__))
+import mvc_skelet,unify,util
 from profile import *
 
 class Choices(mvc_skelet.Model):
@@ -39,6 +41,7 @@ class Choices(mvc_skelet.Model):
         self.bestmats = None
         self.mags = None
         self.files = None
+        self.simdir = None
 
     def init_model(self):
         """Initializes the model
@@ -248,7 +251,7 @@ class Choices(mvc_skelet.Model):
                 self.log.debug('Kliknuo korisnik na ne bestmat stvar. Idiot!'
                                )
 
-        self.__clean_bmat()
+        self.__clean_bmat(self.bestmats)
         self.save_mats()
         self.notify_observers()
 
@@ -442,14 +445,34 @@ class Choices(mvc_skelet.Model):
         in the simulation directory (one that is inputed at the beginning)
         into memory. Usually the choices that user made during
         previous runnings of the program.
+
+        :param fname: Filename of the dictionary to be
+                      loaded as choices. 
+        :type fname: str.
+
+        :returns: the read dictionary of structure:
+                  {key type=dir:{key_type=llsize:{key_type=t:{keys='therm','mc'}}}}
+        
+        
         """
 
         self.log.debug('Loading {}'.format(fname))
         with open(join(self.simdir, fname), mode='ab+') as hashf:
             try:
-                fcontent = dict(pickle.load(hashf))
+                fcontent = pickle.load(hashf)
             except EOFError:
+                #Ako ne postoji vec
                 fcontent = dict()
+        try:
+            fcontent = dict(fcontent)
+        except TypeError:
+            fcontent = dict()
+            util.show_error("Choices file error","""The filename that
+                            was passed to this function %s, doesn't
+                            point to a valid 'choices' file!\n
+                            abs path: %s\n Deleting file...""" \
+                            %(fname,join(self.simdir, fname)))
+            os.remove(join(self.simdir, fname))
         return fcontent
 
     def dist_by_component(self, dir_, l):
@@ -981,6 +1004,21 @@ class Choices(mvc_skelet.Model):
         vraca azuran bestmat dict"""
 
         bmat = self.load_choices('bestmat.dict')
+        self.__make_consistent(bmat)
+        self.bestmats = bmat
+
+    def __make_consistent(self,bmat):
+        """
+        Compares the contents of the
+        choices dictionary passed and
+        the state of the filsystem,deletes
+        everything from the choices dictionary
+        that is not consistent.
+        It can leave the dictionary dirty,
+        containing keys with no associated
+        content..So it cleans it..
+                            
+        """
         for (dir_, ldict) in bmat.items():
             if dir_ not in self.files.keys():
                 del bmat[dir_]
@@ -997,9 +1035,8 @@ class Choices(mvc_skelet.Model):
                         not in self.files[dir_][l][t][mc].keys():
                         del tdict[t]
                         continue
+        self.__clean_bmat(bmat)
 
-        self.bestmats = bmat
-        self.__clean_bmat()
 
     def _map_filesystem(self):
         """Ide kroz sve direktorijume ( za sada jedan sim dir)
