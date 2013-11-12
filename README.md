@@ -10,14 +10,23 @@ Application details can be found at [wiki].
 For Ubuntu 12.04 installationa, a binary
 can be downloaded at the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads) page. Otherwise, follow the instructions bellow and have fun!
 
-
-first, run this in terminal, it will install all the dependencies and packages needed
-except wxpython
-
+#### Installing Python2.7
+run the following comands in terminal:
 ```
-sudo add-apt-repository ppa:fkrull/deadsnakes && sudo apt-get update && sudo apt-get install python2.7 && sudo apt-get install python-pip && sudo pip install numpy && sudo pip install pandas && sudo apt-get build-dep python-matplotlib && sudo pip-install matplotlib && sudo pip-install scipy
+sudo add-apt-repository ppa:fkrull/deadsnakes
+sudo apt-get update
+sudo apt-get install python2.7 
 ```
-INSTALLING WXPYTHON:
+That will install Python2.7 as ``python``
+
+#### Installing matplotlib dependencies
+`` sudo apt-get build-dep python-matplotlib ``
+
+### Installing pip
+The Python Package installer pip is needed...
+``sudo apt-get pip install``
+
+#### Installing WxPython:
 
   -   Install wxGTK 2.8 with the command, 'sudo apt-get install python-wxgtk2.8'
   -   Run the command, 'apt-get source -d wxwidgets2.8'
@@ -27,26 +36,31 @@ INSTALLING WXPYTHON:
   -   Now run the command, 'sudo python setup.py install'
   -   wxPython and wxWidgets are now successfully installed!
 
+### Installing tulipko
+after cloning the repo with command:
+::
+  
+   git clone https://iTrustedYOu@bitbucket.org/iTrustedYOu/tulipko.git
 
-Once the previous steps were completed successfully you can go 
-ahead and clone this repository with the command
+go into the cloned directory
 
-```
- git clone https://iTrustedYOu@bitbucket.org/iTrustedYOu/tulipko.git
-```
+::
 
-And voila, tulipko is installed - that easy!!! 
+   cd tulipko
+
+And install tulipko
+
+::
+
+  python setup.py install
+
+Now you can run tulipko with command ``tulipko`` in the terminal
 
 
 ## Running the application
 
-Once installed, you can go ahead and run the application
-from the folder you cloned tulipko into (tulipko by default)
-with this command:
-
-```
-python src/gui.py
-```
+Once installed you can go ahead and run tulipko by typing
+the command ``tulipko`` in terminal or
 
 If you are using the binary, just run it by double clicking it.
 
@@ -58,7 +72,7 @@ that contains one or multiple
 simulation folders (folders with different parameters other than the standards
 L, T, SP, LS). The directory structure looks like this, so make sure to select
 your TDF folder (won't work otherwise!)
-
+```
 +---3D-N3-MP   {TDF}
 |   +---g0
 |   |   +---LT dirs
@@ -72,3 +86,4 @@ your TDF folder (won't work otherwise!)
 |   |   +---LT dirs
 ...
 
+```
