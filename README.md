@@ -8,7 +8,11 @@ Application details can be found at [wiki].
 ## Dependencies and installation
 
 For Ubuntu 12.04 installationa, a binary
-can be downloaded at the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads) page. Otherwise, follow the instructions bellow and have fun!
+can be downloaded at the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads/tulipko) page. 
+
+For Windows, you can download a self contained .exe file from the [downloads page](https://bitbucket.org/iTrustedYOu/tulipko/downloads/gui.exetulipko-win.exe) as well.
+
+For other linux distrubitions and OS-es, you can try and  follow the instructions belllow. Should be fun. 
 
 #### Installing Python2.7
 run the following comands in terminal:
