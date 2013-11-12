@@ -5,14 +5,35 @@ Tulip is an interactive visualization and graph plotting software application wr
 
 Application details can be found at [wiki].
 
+## Binaries for Linux and Windows
+
+No installation needed, just download and run the binaries.
+
+### Linux (Tested on Ubuntu 12.04)
+
+You can download the executable file from
+the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads/tulipko)page. 
+
+Run it by double clicking on it.
+
+### Windows (Tested on Windows 7)
+
+For Windows, you can download an exe file from the [downloads page](https://bitbucket.org/iTrustedYOu/tulipko/downloads/gui.exetulipko-win.exe).
+
+Run it by double clicking on it!
+
+
+If you are unable to run tulipko from the binaries provided
+above, please report it as an [issue](https://bitbucket.org/iTrustedYOu/tulipko/issues). In the meantime, try the method described below. Should be fun.
+
 ## Dependencies and installation
-
-For Ubuntu 12.04 installationa, a binary
-can be downloaded at the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads/tulipko) page. 
-
-For Windows, you can download a self contained .exe file from the [downloads page](https://bitbucket.org/iTrustedYOu/tulipko/downloads/gui.exetulipko-win.exe) as well.
-
-For other linux distrubitions and OS-es, you can try and  follow the instructions belllow. Should be fun. 
+If you wish to download and run, and contribute to the development
+version, you will have to install the 'whole package',
+meaning the python development version, multiple packages
+that matplotlib is dependent on (including font packages,
+latex, packages for manipulatin png images..), wxpython with wxwidgets
+and the third party packages used for calculations and
+statistical analysis - pandas, numpy and scipy.
 
 #### Installing Python2.7
 run the following comands in terminal:
@@ -42,31 +63,29 @@ The Python Package installer pip is needed...
 
 ### Installing tulipko
 after cloning the repo with command:
-::
+
   
-   git clone https://iTrustedYOu@bitbucket.org/iTrustedYOu/tulipko.git
+   ```git clone https://iTrustedYOu@bitbucket.org/iTrustedYOu/tulipko.git```
 
 go into the cloned directory
 
-::
 
-   cd tulipko
+
+```   cd tulipko ```
 
 And install tulipko
 
-::
-
-  python setup.py install
-
-Now you can run tulipko with command ``tulipko`` in the terminal
 
 
-## Running the application
+```  python setup.py install ```
 
-Once installed you can go ahead and run tulipko by typing
-the command ``tulipko`` in terminal or
+or alternatively if you don't want to install
+it on your system but run it as a python script,
+you can download all the dependancies via ```pip install package_name```
+and then run the ```gui.py``` script with ```python src/gui.py```
 
-If you are using the binary, just run it by double clicking it.
+If you installed tulipko, you should be able to run it
+by typing ```tulipko``` in your terminal. 
 
 
 ## Quick intro
