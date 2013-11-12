@@ -1,18 +1,22 @@
 Code documentation can be viewed here (under construction ) [tulipko](http://itrustedyou.bitbucket.org/tulipko)
 
-#Tulip
+# Tulip
 Tulip is an interactive visualization and graph plotting software application written in Python, used for studying the thermodynamical characteristics of classical Heisenberg model in singlepath and multipath approach.
 
 Application details can be found at [wiki].
 
-## Binaries for Linux and Windows
+#### Binaries for Linux and Windows
 
 No installation needed, just download and run the binaries.
+
+If you are unable to run tulipko from the binaries provided
+below, please report it as an [issue](https://bitbucket.org/iTrustedYOu/tulipko/issues). In the meantime, try the method described [here][install] . Should be fun.
+
 
 ### Linux (Tested on Ubuntu 12.04)
 
 You can download the executable file from
-the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads/tulipko)page. 
+the [downloads](https://bitbucket.org/iTrustedYOu/tulipko/downloads/tulipko) page. 
 
 Run it by double clicking on it.
 
@@ -22,9 +26,7 @@ For Windows, you can download an exe file from the [downloads page](https://bitb
 
 Run it by double clicking on it!
 
-
-If you are unable to run tulipko from the binaries provided
-above, please report it as an [issue](https://bitbucket.org/iTrustedYOu/tulipko/issues). In the meantime, try the method described below. Should be fun.
+<a name="install" />
 
 ## Dependencies and installation
 If you wish to download and run, and contribute to the development
