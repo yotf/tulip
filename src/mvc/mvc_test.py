@@ -1039,8 +1039,39 @@ class Choices(mvc_skelet.Model):
 
 
     def _map_filesystem(self):
-        """Ide kroz sve direktorijume ( za sada jedan sim dir)
-        u simdir-u i izvlaci l,t,i therm.
+        """Goes through all the subdirectories
+        of a TDF (Tulip Data File) and extracts
+        the available parameters and arranges
+        them hierarchicaly, representing an
+        overview of what's availbale.
+        It's structure should be ::
+           +---DIR_  
+           |   +---L1
+           |   | +---T1
+           |   | | +---MC1
+           |   | | | +---THERM1
+           |   | | | |
+           |   | | | +---THERM2
+           |   | | | |
+           |   | | |  ...
+           |   | | +---MC2
+           |   | | |
+           |   | | ...
+           |   | |
+           |   | + ---T2
+           |   | | +---MC1
+           |   | | | +---THERM1
+           |   | | | |
+           |   | | | +---THERM2
+           |   | |   |
+           |   |    ...
+           |   +---L2
+           |   |
+           |   ...
+           +---DIR2
+           |
+           ...
+
         """
 
         funcs = {'sp': self.spify, 'mp': self.unify}

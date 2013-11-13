@@ -13,7 +13,8 @@ import mvc_test
 
 class ChoicesTest(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """
         Initializes the model
         and sets the TDF path.
@@ -64,6 +65,8 @@ class ChoicesTest(unittest.TestCase):
                     for t_ in dct[dir_][l_].keys():
                         self.__test_dict(dct[dir_][l_][t_],eq=2)
                         self.assertEqual(['therm','mc'],dct[dir_][l_][t_].keys())
+
+    def test_
 
 
 unittest.main()

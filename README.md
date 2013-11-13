@@ -83,7 +83,8 @@ And install tulipko
 
 or alternatively if you don't want to install
 it on your system but run it as a python script,
-you can download all the dependancies via ```pip install package_name```
+you can download all the dependancies listed [here](https://bitbucket.org/iTrustedYOu/tulipko/wiki/Install)
+ via ```pip install package_name```
 and then run the ```gui.py``` script with ```python src/gui.py```
 
 If you installed tulipko, you should be able to run it
