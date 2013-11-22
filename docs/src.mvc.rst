@@ -12,10 +12,27 @@ src.mvc.mvc_skelet module
     :undoc-members:
     :show-inheritance:
 
-src.mvc.profile module
+src.mvc.mvc_test module
+-------------------------
+
+.. automodule:: src.mvc.mvc_test
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+src.mvc.mvc_test module
+-------------------------
+
+.. automodule:: src.mvc.mvc_test
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+src.mvc.tests module
 ----------------------
 
-.. automodule:: src.mvc.profile
+.. automodule:: src.mvc.tests
     :members:
     :undoc-members:
     :show-inheritance:

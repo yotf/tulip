@@ -15,7 +15,7 @@ Options:
 """
    
 import wxversion
-#wxversion.select('2.8')
+wxversion.select('2.8')
 import wx
 
 import wx.lib.colourselect as csel

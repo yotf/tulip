@@ -18,7 +18,7 @@ from profile import *
 
 class Choices(mvc_skelet.Model):
 
-    base_regex = r'^L\d+T\d+(?P<therm>THERM\d+)'
+    base_regex = r'L\d+T\d+(?P<therm>THERM\d+)'
     single_base = r'%sMC\d+.*' % base_regex
     sp_regex = re.compile(r'%s\.sp$' % single_base)
     mp_regex = re.compile(r'%s(\.all|MC\d+.*\.mp|MC\d+.*\.dat)$'
@@ -75,6 +75,7 @@ class Choices(mvc_skelet.Model):
             self.files = self.map_filesystem()
         except BaseException, e:
             raise e
+            
         self.bestmats = self.load_state()
 
         self.mags = [
@@ -416,7 +417,7 @@ class Choices(mvc_skelet.Model):
 
         return self.load_bestmat()
 
-    def __clean_bmat(self):
+    def __clean_bmat(self,bmat):
         """
         \'Cleans' the dictionary contatining
         user choices for bestmats. As in, removes
@@ -427,9 +428,9 @@ class Choices(mvc_skelet.Model):
         who can leave the dictionary *dirty*
         """
 
-        for (dir_, ldict) in self.bestmats.items():
+        for (dir_, ldict) in bmat.items():
             if not ldict:
-                del self.bestmats[dir_]
+                del bmat[dir_]
             for (l, tdict) in ldict.items():
                 if not tdict:
                     del ldict[l]
@@ -1004,6 +1005,7 @@ class Choices(mvc_skelet.Model):
 
         bmat = self.load_choices('bestmat.dict')
         self.__make_consistent(bmat)
+        self.__clean_bmat(bmat)
         return bmat
 
     def __make_consistent(self,bmat):
@@ -1034,7 +1036,7 @@ class Choices(mvc_skelet.Model):
                         not in self.files[dir_][l][t][mc].keys():
                         del tdict[t]
                         continue
-        self.__clean_bmat(bmat)
+
 
 
     def map_filesystem(self):
@@ -1080,10 +1082,12 @@ class Choices(mvc_skelet.Model):
             za sva tri i onda po grupi da vracam
             nesto, al ajde, ovo je jednostavno"""
 
-            if self.sp_regex.match(filename):
+            if self.sp_regex.search(filename):
                 return 'sp'
-            elif self.mp_regex.match(filename):
+            elif self.mp_regex.search(filename):
                 return 'mp'
+            else:
+                return filename
 
         def process_lt_dir(lt_dir):
             
@@ -1147,9 +1151,9 @@ class Choices(mvc_skelet.Model):
                     # cisto da ne prljamo dictionary
                     # ali bi verovatno bilo jasnije
                     # da uradim neki clean dict
-                    choices[l][t] = match
+                    choices[l][t] = mct_choices
             if choices:
-                filess[dir_] = choices
+                filess[dir_.split(os.path.sep)[-1]] = choices
                 
         from pprint import pprint
         pprint(filess)

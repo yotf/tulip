@@ -21,23 +21,26 @@ class ChoicesTest(unittest.TestCase):
         Should add a list of simdirs
         for testing
         """
-        simdirs = ["/media/123AEBFC3AEBDAAD/sim_output/"]
-        simdir = "/media/123AEBFC3AEBDAAD/sim_output/"
-        self.choices = mvc_test.Choices()
-        self.choices.simdir=simdir
+        tdfs = ["/media/123AEBFC3AEBDAAD/sim_output/"]
+        tdf  = "/media/123AEBFC3AEBDAAD/sim_output/"
+        cls.choices = mvc_test.Choices()
+        cls.choices.simdir=tdf
 
     def __test_dict(self,dct,meq=None,leq=None,eq=None):
         """Ovo moze nekako da se automatizuje???
         TJ, da prosledimo operator kao string???
         """
-        self.assertEqual(type(dct),types.DictType)
+        import collections
+        self.assertTrue(isinstance(dct,collections.Mapping))
+        for key in dct:
+            self.assertTrue(isinstance(key,basestring))
         if meq:
             self.assertTrue(len(dct.keys())>=meq)
         elif leq:
             self.assertTrue(len(dct.keys())<=leq)
         else:
             self.assertTrue(len(dct.keys())==eq)
-            
+
 
     def test_load_choices(self):
         """Checks if structure of read
@@ -66,6 +69,9 @@ class ChoicesTest(unittest.TestCase):
                         self.__test_dict(dct[dir_][l_][t_],eq=2)
                         self.assertEqual(['therm','mc'],dct[dir_][l_][t_].keys())
 
+        print "Bestmat tests passed - you are awesome!!!"
+        return True
+
     def test_init_model(self):
         """
         Ovde bi trebalo da je loadovano stanje
@@ -76,7 +82,8 @@ class ChoicesTest(unittest.TestCase):
         
         """
         self.choices.init_model()
-        self.assertTrue(self.choices.files && self.choices.bestmats)
+        self.assertTrue(self.choices.files and self.choices.bestmats)
+        print "init_model tests passed - you are awesome!"
 
     def test_map_filesystem(self):
         """ Treba da bude odredjena struktura
@@ -85,7 +92,26 @@ class ChoicesTest(unittest.TestCase):
         |
         +-simdir2
         """
+        import collections
         files = self.choices.map_filesystem()
+        for simd_name,l_map in files.iteritems():
+            self.assertTrue(isinstance(simd_name,basestring))
+            self.__test_dict(l_map,meq=1)
+            for l,t_map in l_map.iteritems():
+                self.assertTrue(isinstance(l,basestring))
+                self.__test_dict(t_map,meq=1)
+            for t,mc_map in t_map.iteritems():
+                self.assertTrue(isinstance(t,basestring))
+                self.__test_dict(mc_map,meq=1)
+                for mc,therm_map in mc_map.iteritems():
+                    self.assertTrue(isinstance(mc,basestring))
+                    self.__test_dict(l_map,meq=1)
+
+
+        print "Map filesystem tests passed - you are Awesome!")
+                
+                
+            
         # znaci treba d prodjem kroz dictionary
         # i da vidim da li ima dobru strukturu
         

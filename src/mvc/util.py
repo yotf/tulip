@@ -2,6 +2,8 @@ import wx
 import re
 import numpy as np
 import logging
+import os
+from os.path import join
 def extract_int(string):
     """Vraca prvi int iz stringa, ako ga
     ima - u suprotnom vraca nulu!
@@ -86,6 +88,6 @@ def absolute_listfiles(pardir,regex=None):
     themselves. Ifa  regex is passed , it has to be
     matched.
     """
-    files = [join(pardid,f) for f in os.listdir(pardir) if (not regex or regex.match(f))]
+    files = [join(pardir,f) for f in os.listdir(pardir) if (not regex or regex.match(f))]
     return files
     
