@@ -72,10 +72,10 @@ class Choices(mvc_skelet.Model):
         """
 
         try:
-            self.files = self._map_filesystem()
+            self.files = self.map_filesystem()
         except BaseException, e:
             raise e
-        self.load_state()
+        self.bestmats = self.load_state()
 
         self.mags = [
             'susc',
@@ -414,7 +414,7 @@ class Choices(mvc_skelet.Model):
         
         """
 
-        self.load_bestmat()
+        return self.load_bestmat()
 
     def __clean_bmat(self):
         """
@@ -455,7 +455,6 @@ class Choices(mvc_skelet.Model):
         
         
         """
-
         self.log.debug('Loading {}'.format(fname))
         with open(join(self.simdir, fname), mode='ab+') as hashf:
             try:
@@ -1005,7 +1004,7 @@ class Choices(mvc_skelet.Model):
 
         bmat = self.load_choices('bestmat.dict')
         self.__make_consistent(bmat)
-        self.bestmats = bmat
+        return bmat
 
     def __make_consistent(self,bmat):
         """
@@ -1038,7 +1037,7 @@ class Choices(mvc_skelet.Model):
         self.__clean_bmat(bmat)
 
 
-    def _map_filesystem(self):
+    def map_filesystem(self):
         """Goes through all the subdirectories
         of a TDF (Tulip Data File) and extracts
         the available parameters and arranges
@@ -1086,91 +1085,74 @@ class Choices(mvc_skelet.Model):
             elif self.mp_regex.match(filename):
                 return 'mp'
 
+        def process_lt_dir(lt_dir):
+            
+            mp_files = util.absolute_listfiles(lt_dir,self.mp_regex)
+            sp_files = util.absolute_listfiles(lt_dir,self.sp_regex)
+            if mp_files and sp_files:
+                util.show_error('Mixed pathsies',
+                                    """Please seperate multipaths from singlepaths in
+                                    
+ foldeR '%s', LT folder '%s'.
+                                    Exiting now, bye!"""
+                                    % (dir_, lt_dir))
+                try:
+                    os.system('nautilus %s' % lt_dir)
+                except:
+                    pass
+                    
+                raise BaseException
+                    
+            nonempty = mp_files or sp_files
+
+            try:
+                first_file = nonempty[0]
+            except IndexError:
+                util.show_error('Empty LT folder',
+                                    'The folder %s is empty' % lt_dir)
+            else:
+                kind = check_kind(first_file)
+                funcs[kind](lt_dir)
+            mct_choices = parse_lt_dir(nonempty,lt_dir)    
+            return mct_choices
+
+
+        def parse_lt_dir(nonempty,lt_dir):
+            mct_choices = defaultdict(dict)
+            for all_ in nonempty:
+                therm = re.search(self.base_regex,
+                        all_).groupdict()['therm']
+                mc = 'MC{sps}'.format(sps=len(open(join(lt_dir,
+                        all_)).readlines()))
+                mct_choices[mc][therm] = None
+            return mct_choices
+            
         filess = dict()
-        dirs_ = [dir_ for dir_ in os.listdir(self.simdir)
-                 if os.path.isdir(join(self.simdir, dir_))]
+        # sve simulacijske foldere, tj foldere sa razlicitim
+        # simulacijama ucitava u dirs_
+        dirs_ = util.absolute_listdir_dir(self.simdir)
         self.log.debug('directories in sim folder: %s' % dirs_)
+        
         for dir_ in dirs_:
-            path = join(self.simdir, dir_)
             choices = defaultdict(dict)
-            mc_to_all = defaultdict(list)
             self.log.debug('Currently mapping directory: %s' % dir_)
-
-            # za svaki folder, kind ce biti drugciji, potencijalno
-
-            kind = None
-            for (lt_dir, dirs, files) in os.walk(path):
-
+            lt_dirs = util.absolute_listdir_dir(dir_)
+            for lt_dir in lt_dirs:
                 ltmatch = self.lt_regex.search(lt_dir)
                 if not ltmatch:
-
-                    # u slucaju da je folder drugog formata
-
                     continue
                 (l, t) = ltmatch.groups()
-
-                # samo gledamo one fajlove koji su nam odgovarajuceg formata
-
-                mp_and_sp_files = [f for f in files
-                                   if self.sp_regex.match(f)
-                                   or self.mp_regex.match(f)]
-                try:
-                    first_file = mp_and_sp_files[0]
-                except IndexError:
-
-                    # ne postoji ni jedan sp,mp ili dat ili all
-
-                    util.show_error('Empty LT folder',
-                                    'The folder %s is empty' % lt_dir)
-                else:
-
-                    # obradjujemo fajlove
-
-                    kind = (check_kind(first_file) if kind
-                            is None else kind)
-
-                    different_kind = [f for f in mp_and_sp_files
-                            if check_kind(f) != kind]
-                    if different_kind:
-
-                        # znaci ako je bilo koji fajl drugog tipa
-                        # izaci ce iz programa
-
-                        util.show_error('Mixed pathsies',
-                                """Please seperate multipaths from singlepaths in
-                        
- foldeR '%s', LT folder '%s'.
- Exiting now, bye!"""
-                                % (dir_, lt_dir))
-                        try:
-                            os.system('nautilus %s' % lt_dir)
-                        except:
-                            pass
-                        raise BaseException
-                    funcs[kind](lt_dir)
-
-                # ovo radimo kad smo obradili sve
-
-                new_files = os.listdir(join(self.simdir, dir_, lt_dir))
-                matched = [f for f in new_files
-                           if self.sp_regex.match(f)
-                           or self.all_regex.match(f)]
-                mct_choices = defaultdict(dict)
-                for all_ in matched:
-                    therm = re.search(self.base_regex,
-                            all_).groupdict()['therm']
-
-                    # znaci za svaki therm ce dodavati u prikacenu listu
-                    # mc-ove tako sto ce otvarati all fajl i brojati linije
-
-                    mc = 'MC{sps}'.format(sps=len(open(join(lt_dir,
-                            all_)).readlines()))
-                    mct_choices[mc][therm] = None
-                choices[l][t] = mct_choices
+                mct_choices  = process_lt_dir(lt_dir)
+                if mct_choices:
+                    # cisto da ne prljamo dictionary
+                    # ali bi verovatno bilo jasnije
+                    # da uradim neki clean dict
+                    choices[l][t] = match
             if choices:
                 filess[dir_] = choices
-
-        self.log.debug('mapped fsystem: %s' % filess)
+                
+        from pprint import pprint
+        pprint(filess)
         return filess
 
 

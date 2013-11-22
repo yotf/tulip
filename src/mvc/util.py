@@ -64,3 +64,28 @@ class MyMessageBox(wx.MessageDialog):
 def show_error(title,message):
     result = wx.MessageBox(message,title,style=wx.OK | wx.ICON_ERROR)
 
+
+def absolute_listdir_dir(pardir,regex=None):
+    """
+    Given an absolute path to a directory, returns a list of
+    the subdirectories contained within.
+    If a regex was passed, returned directory names have to match it
+    """
+    
+    dirs = [join(pardir,dir_) for dir_ in os.listdir(pardir)
+                 if
+            os.path.isdir(join(pardir, dir_))
+            and
+            (not regex or regex.search(dir_))]
+    return dirs
+
+def absolute_listfiles(pardir,regex=None):
+    """
+    Given an absolute path to direcotry, returns a list
+    of files contained within that are not directories
+    themselves. Ifa  regex is passed , it has to be
+    matched.
+    """
+    files = [join(pardid,f) for f in os.listdir(pardir) if (not regex or regex.match(f))]
+    return files
+    

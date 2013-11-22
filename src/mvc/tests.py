@@ -66,7 +66,30 @@ class ChoicesTest(unittest.TestCase):
                         self.__test_dict(dct[dir_][l_][t_],eq=2)
                         self.assertEqual(['therm','mc'],dct[dir_][l_][t_].keys())
 
-    def test_
+    def test_init_model(self):
+        """
+        Ovde bi trebalo da je loadovano stanje
+        tj. da bestmatdict ima nesto u njemu
+        proverili smo da li ima odgovarajucu strukturu
+        i proslom testu. i filesystem bi trebalo da je
+        mapiran. Njega treba da testiram
+        
+        """
+        self.choices.init_model()
+        self.assertTrue(self.choices.files && self.choices.bestmats)
+
+    def test_map_filesystem(self):
+        """ Treba da bude odredjena struktura
+        pa treba da bude, bez prljavih gluposti
+        + simdir1
+        |
+        +-simdir2
+        """
+        files = self.choices.map_filesystem()
+        # znaci treba d prodjem kroz dictionary
+        # i da vidim da li ima dobru strukturu
+        
+        
 
 
 unittest.main()

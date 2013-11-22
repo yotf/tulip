@@ -24,12 +24,12 @@ import pandas as pd
 import os
 import sys
 import gui
-sys.settrace
 print __package__
 PACKAGE_ABS_PATH = os.path.abspath(os.path.dirname(gui.__file__))
 sys.path.append(PACKAGE_ABS_PATH)
 import mvc
 from mvc.mvc_test import FileManager
+from mvc.profile import *
 from os.path import join
 import glob
 import re
@@ -1590,6 +1590,8 @@ class App(wx.App):
     def __init__(self,controller,*args, **kwargs):
         self.controller = controller
         wx.App.__init__(self,*args,**kwargs)
+
+    @logg
     def OnInit(self):
         """
         Poziva wx.App u okviru inita. Ovde mozemo
@@ -1621,6 +1623,7 @@ class App(wx.App):
         self.SetTopWindow(self.main)
         wx.CallAfter(self.application_started)
         return True
+    @logg
     def application_started(self):
         self.controller.application_started()
 
